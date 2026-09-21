@@ -1,0 +1,17 @@
+{
+  "name": "Viva FIT APP",
+  "short_name": "Viva FIT APP",
+  "description": "Plataforma para personal trainers e alunos",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#FF6B35",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
