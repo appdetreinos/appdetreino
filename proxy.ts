@@ -1,7 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
-  return NextResponse.next();
+  const { pathname } = request.nextUrl;
+
+  let response = NextResponse.next({
+    request,
+    headers: { "x-pathname": pathname },
+  });
+
+  // Simple security headers to avoid crashes
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+
+  return response;
 }
 
 export const config = {
