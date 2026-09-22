@@ -14,6 +14,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { DashboardEntrance } from "./dashboard-entrance";
 import { LogoutButton } from "@/components/logout-button";
+import { OnboardingWizard } from "./_components/onboarding-wizard";
 
 /**
  * Trainer dashboard — server component com dados reais do Supabase.
@@ -90,8 +91,18 @@ export default async function TrainerDashboard() {
     .select("user_id", { count: "exact", head: true })
     .eq("trainer_id", user.id);
 
+  // Wizard de onboarding — mostra se nunca terminou (onboarding_completed_at é NULL)
+  const { data: trainerOnboarding } = await supabase
+    .from("trainer_profiles")
+    .select("onboarding_completed_at")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const showOnboarding = !trainerOnboarding?.onboarding_completed_at;
+
   return (
     <div className="min-h-screen">
+      {showOnboarding && <OnboardingWizard />}
+
       <header className="border-b border-white/10 sticky top-0 z-30 bg-background/85 backdrop-blur-md">
         <div className="px-6 h-16 flex items-center justify-between gap-3">
           <div className="min-w-0">
