@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       paid_at: new Date().toISOString(),
     })
     .eq("external_id", externalId)
-    .select("trainer_id")
+    .select("trainer_id, id")
     .maybeSingle();
 
   if (error) {
@@ -82,24 +82,26 @@ export async function POST(request: NextRequest) {
   }
 
   // 5.1) DESTRAVAR O TRAINER: Marca como pago no perfil para remover lockout do trial
-  if (payment?.trainer_id) {
+  if (payment && "trainer_id" in payment && payment.trainer_id) {
     await supabase
       .from("trainer_profiles")
       .update({ 
-        plan_tier: "start", // Default para quem paga o primeiro plano
-        trial_ends_at: null   // Remove a data de trial pois agora é assinante
+        plan_tier: "start", 
+        trial_ends_at: null 
       })
       .eq("user_id", payment.trainer_id);
   }
 
   // 6) Audit
   await auditLog({
-    userId: payment?.trainer_id ?? null,
+    userId: payment && "trainer_id" in payment ? payment.trainer_id : null,
     action: "webhook_mp",
     resourceType: "payment",
-    resourceId: payment?.id ?? null,
+    resourceId: payment && "id" in payment ? payment.id : null,
     metadata: { external_id: externalId, live: isLive },
   });
+
+
 
   return NextResponse.json({ ok: true, payment_id: payment?.id ?? null });
 }
