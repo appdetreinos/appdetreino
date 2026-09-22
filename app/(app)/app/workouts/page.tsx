@@ -32,7 +32,12 @@ export default async function WorkoutsPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: workouts, error } = await supabase
+  // Tenta ordenar por updated_at (precisa migration 0029 aplicada).
+  // Se a coluna não existir, faz fallback pra created_at.
+  let workouts: unknown[] | null = null;
+  let error: { message: string } | null = null;
+
+  const tryUpdated = await supabase
     .from("workouts")
     .select(
       "id, title, goal, student_id, updated_at, workout_days(id, day_of_week), student_profiles(full_name)",
@@ -40,6 +45,27 @@ export default async function WorkoutsPage() {
     .eq("trainer_id", user.id)
     .order("updated_at", { ascending: false, nullsFirst: false })
     .limit(100);
+
+  if (!tryUpdated.error) {
+    workouts = tryUpdated.data;
+  } else if (
+    tryUpdated.error.message?.includes("updated_at") &&
+    tryUpdated.error.message?.includes("does not exist")
+  ) {
+    // Fallback: ordena por created_at (sempre existe)
+    const fallback = await supabase
+      .from("workouts")
+      .select(
+        "id, title, goal, student_id, workout_days(id, day_of_week), student_profiles(full_name)",
+      )
+      .eq("trainer_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    workouts = fallback.data;
+    if (fallback.error) error = { message: fallback.error.message };
+  } else {
+    error = { message: tryUpdated.error.message };
+  }
 
   const { count: globalTemplatesCount } = await supabase
     .from("workout_templates")
