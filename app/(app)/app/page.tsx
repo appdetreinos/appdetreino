@@ -12,7 +12,9 @@ import {
   UserPlus,
   CalendarCheck2,
   Receipt,
-  MessageCircle
+  MessageCircle,
+  Dumbbell,
+  Salad
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
@@ -45,9 +47,7 @@ export default async function TrainerDashboard() {
 
     const firstName = (profile?.full_name ?? user.email?.split("@")[0] ?? "Treinador");
 
-    // --- DATA FETCHING (Optimized & Safe) ---
-    
-    // 1. Total Students (Accurate count)
+    // --- DATA FETCHING ---
     let totalAlunos = 0;
     try {
       const { count, error } = await supabase
@@ -57,7 +57,6 @@ export default async function TrainerDashboard() {
       if (!error) totalAlunos = count ?? 0;
     } catch (e) { console.error("KPI Alunos error:", e); }
 
-    // 2. Monthly Revenue (Confirmed payments)
     let receitaMes = 0;
     try {
       const { data: payments } = await supabase
@@ -70,7 +69,6 @@ export default async function TrainerDashboard() {
       }
     } catch (e) { console.error("KPI Receita error:", e); }
 
-    // 3. Recent Students for the "Who is waiting" section
     let studentsList: StudentSummary[] = [];
     try {
       const { data: students, error: sErr } = await supabase
@@ -93,15 +91,12 @@ export default async function TrainerDashboard() {
 
     return (
       <div className="min-h-screen p-6 space-y-8 max-w-7xl mx-auto animate-in fade-in duration-500">
-        {/* Header Section */}
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">
               Olá, <span className="text-primary">{firstName}</span>! 👋
             </h1>
-            <p className="text-muted-foreground">
-              Aqui está o resumo da sua consultoria hoje.
-            </p>
+            <p className="text-muted-foreground">Bem-vindo ao seu centro de comando.</p>
           </div>
           <div className="flex items-center gap-3">
             <ButtonLink href="/app/students/new" className="shadow-lg shadow-primary/20">
@@ -111,7 +106,7 @@ export default async function TrainerDashboard() {
           </div>
         </header>
 
-        {/* KPI Grid */}
+        {/* KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard 
             icon={Users} 
@@ -132,7 +127,7 @@ export default async function TrainerDashboard() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Content - Student Focus */}
+          {/* Main Section */}
           <div className="lg:col-span-2 space-y-6">
             {studentsList.length > 0 ? (
               <DashboardEntrance
@@ -148,7 +143,7 @@ export default async function TrainerDashboard() {
                 </div>
                 <h3 className="text-xl font-bold mb-2">Nenhum aluno encontrado</h3>
                 <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-                  Você ainda não tem alunos vinculados ao seu perfil. Comece convidando seu primeiro aluno!
+                  Comece convidando seu primeiro aluno para gerenciar aqui!
                 </p>
                 <ButtonLink href="/app/students/new" className="mx-auto">
                   Adicionar primeiro aluno
@@ -157,24 +152,25 @@ export default async function TrainerDashboard() {
             )}
           </div>
 
-          {/* Side Content - Quick Actions */}
+          {/* Quick Actions Section */}
           <div className="space-y-6">
             <Card className="p-6 bg-card/50 border-white/10">
               <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <Plus className="size-5 text-primary" /> Atalhos Rápidos
+                <Plus className="size-5 text-primary" /> Ações Rápidas
               </h2>
               <div className="grid grid-cols-1 gap-3">
                 <QuickAction icon={UserPlus} label="Novo Aluno" href="/app/students/new" />
-                <QuickAction icon={CalendarCheck2} label="Enviar Treino" href="/app/workouts" />
-                <QuickAction icon={Receipt} label="Cobranças" href="/app/finance" />
+                <QuickAction icon={Dumbbell} label="Montar Treino" href="/app/workouts" />
+                <QuickAction icon={Salad} label="Montar Dieta" href="/app/diets" />
+                <QuickAction icon={Receipt} label="Financeiro" href="/app/finance" />
                 <QuickAction icon={MessageCircle} label="WhatsApp" href="/app/whatsapp" />
               </div>
             </Card>
 
             <Card className="p-6 bg-primary/10 border-primary/20">
-              <h2 className="text-lg font-bold mb-2 text-primary">Dica do Dia 💡</h2>
+              <h2 className="text-lg font-bold mb-2 text-primary">Dica de Gestão 💡</h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Mantenha os treinos atualizados semanalmente para aumentar a aderência dos seus alunos em até 40%.
+                Use os atalhos acima para agilizar a entrega de treinos e dietas para seus alunos.
               </p>
             </Card>
           </div>
