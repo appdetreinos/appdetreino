@@ -1,20 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Lock, Loader2 } from "lucide-react";
 import { formatBRL } from "@/lib/types/billing";
 import { safeLog } from "@/lib/log/safe";
 
-/**
- * Métodos de pagamento suportados no checkout (Viva FIT APP).
- * Cada um mapeia pra um `id` do Mercado Pago Checkout Pro:
- *  - pix    → PIX instantâneo
- *  - card   → cartão de crédito (parcelado conforme conta MP)
- *  - boleto → boleto bancário
- *
- * Default é `card` porque é o que mais converte em SaaS no Brasil.
- */
 export type PaymentMethod = "pix" | "card" | "boleto";
 
 const METHODS: Array<{ id: PaymentMethod; label: string }> = [
@@ -29,12 +20,32 @@ type Props = {
   amountCents: number;
 };
 
+declare global {
+  interface Window {
+    MercadoPago: any;
+  }
+}
+
 export function CheckoutClient({ planId, planName, amountCents }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [method, setMethod] = useState<PaymentMethod>("card");
+  const [mpLoaded, setMpLoaded] = useState(false);
 
-  async function goToCheckout() {
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://sdk.mercadopago.com/js/v2";
+    script.async = true;
+    script.onload = () => setMpLoaded(true);
+    document.head.appendChild(script);
+    return () => {
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
+    };
+  }, []);
+
+  async function renderPaymentBrick() {
     setError(null);
     startTransition(async () => {
       try {
@@ -58,32 +69,57 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
             payment_method: method,
           }),
         });
+
         if (!res.ok) {
           const body = await res.json().catch(() => null);
-          setError(body?.error ?? "Erro ao gerar link de pagamento");
+          setError(body?.error ?? "Erro ao gerar preferência");
           return;
         }
-        const data = (await res.json()) as { init_point: string };
-        if (typeof window !== "undefined") {
-          window.open(data.init_point, "_blank");
+
+        const data = (await res.json()) as { preference_id: string };
+        
+        if (!window.MercadoPago) {
+          setError("SDK do Mercado Pago não carregou");
+          return;
         }
+
+        const mp = new window.MercadoPago(process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY || "");
+        const bricksBuilder = mp.bricks();
+        
+        await bricksBuilder.create("payment", "payment-brick", {
+          initialization: {
+            preferenceId: data.preference_id,
+            paymentMethods: {
+              essentials: true,
+              paymentMethods: [method === "pix" ? "pix" : method === "boleto" ? "ticket" : "credit_card"],
+            },
+          },
+          customization: {
+            visual: {
+              style: { theme: "default" },
+            },
+          },
+          callbacks: {
+            onPaymentIsReady: () => {
+              console.log("Payment ready");
+            },
+            onSubmit: (payment_id: string) => {
+              console.log("Payment submitted", payment_id);
+              window.location.href = "/app/settings?upgrade=pending";
+            },
+          },
+        });
+
       } catch (e) {
-        safeLog.error("[checkout] failed", e instanceof Error ? e.message : "unknown");
-        setError("Falha de conexão");
+        safeLog.error("[checkout-bricks] failed", e instanceof Error ? e.message : "unknown");
+        setError("Falha ao carregar formulário de pagamento");
       }
     });
   }
 
-
-
   return (
     <div className="mt-6">
-      {/* Seletor de método de pagamento — funciona como radio group de fato */}
-      <div
-        role="radiogroup"
-        aria-label="Forma de pagamento"
-        className="grid grid-cols-3 gap-2"
-      >
+      <div role="radiogroup" aria-label="Forma de pagamento" className="grid grid-cols-3 gap-2">
         {METHODS.map((m) => {
           const active = m.id === method;
           return (
@@ -109,32 +145,32 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
 
       {error && (
         <div className="mt-4 rounded-md border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-500">
-          {error === "mercadopago_not_configured"
-            ? "Pagamento temporariamente indisponível. Configure MERCADOPAGO_ACCESS_TOKEN."
-            : error}
+          {error}
         </div>
       )}
 
-      <Button
-        size="lg"
-        className="mt-6 w-full font-bold h-12"
-        onClick={goToCheckout}
-        disabled={pending}
-      >
-        {pending ? (
-          <>
-            <Loader2 className="size-4 animate-spin" />
-            Gerando link...
-          </>
-        ) : (
-          <>
-            <Lock className="size-4" />
-            Pagar {formatBRL(amountCents / 100)} no {METHODS.find((m) => m.id === method)?.label}
-          </>
-        )}
-      </Button>
+      {!pending && (
+        <Button
+          size="lg"
+          className="mt-6 w-full font-bold h-12"
+          onClick={renderPaymentBrick}
+        >
+          <Lock className="size-4 mr-2" />
+          Pagar {formatBRL(amountCents / 100)} via {METHODS.find((m) => m.id === method)?.label}
+        </Button>
+      )}
+
+      {pending && (
+        <div className="mt-6 flex items-center justify-center p-4 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin mr-2" />
+          Carregando formulário seguro...
+        </div>
+      )}
+
+      <div id="payment-brick" className="mt-6" />
+
       <p className="mt-3 text-center text-xs text-muted-foreground">
-        Pagamento seguro via Mercado Pago. Pix, cartão e boleto.
+        Pagamento seguro via Mercado Pago Bricks.
       </p>
     </div>
   );
