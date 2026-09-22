@@ -47,32 +47,25 @@ export default async function TrainerLayout({
   } = await supabase.auth.getUser();
 
   if (user) {
-    const trial = await getTrainerTrialState(user.id);
+    // DESATIVADO PARA DIAGNÓSTICO: const trial = await getTrainerTrialState(user.id);
     const hdrs = await headers();
-    // `x-pathname` é setado pelo proxy.ts. Fallback vazio significa
-    // "rota não identificada" — nesse caso, lockout por segurança (não
-    // exime o redirect mesmo que seja checkout, mas se cair em /app/checkout
-    // o proxy/setSecurityHeaders garante que ele aparece corretamente).
     const pathname = hdrs.get("x-pathname") ?? "";
 
-    if (trial.locked && !isLockoutExempt(pathname)) {
-      // Trial expirou sem pagamento → força checkout. O layout cobre QUALQUER
-      // outra rota /app/* (workouts, diets, students…) sem duplicar checagem.
-      redirect("/app/checkout?reason=trial_expired");
-    }
+    // Comentado para testar se o layout é o culpado
+    // if (trial.locked && !isLockoutExempt(pathname)) {
+    //   redirect("/app/checkout?reason=trial_expired");
+    // }
 
     return (
       <SidebarProvider>
         <AppSidebar role="trainer" />
         <SidebarInset className="bg-background">
-          {trial.inTrial && <TrialBanner daysLeft={trial.daysLeft} />}
           {children}
         </SidebarInset>
       </SidebarProvider>
     );
   }
 
-  // Sem user — deixa o children renderizar; o proxy.ts já redireciona pra /login.
   return (
     <SidebarProvider>
       <AppSidebar role="trainer" />
