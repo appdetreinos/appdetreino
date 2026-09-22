@@ -6,7 +6,6 @@ export default async function TrainerLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Devolvendo a Sidebar, mas mantendo a simplicidade
   return (
     <SidebarProvider>
       <AppSidebar role="trainer" />

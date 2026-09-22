@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
-  // RESET TOTAL: Apenas deixa passar.
-  // Se o site crashar com isso, o erro está no layout.tsx ou no bundle do Next.js.
+  // Simplified to the absolute minimum. No headers, no complex logic.
   return NextResponse.next();
 }
 
