@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { safeLog } from "@/lib/log/safe";
+import { unstable_rethrow } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -30,6 +31,8 @@ export default async function WorkoutsPage() {
   try {
     return await WorkoutsPageInner();
   } catch (err) {
+    // Não capturar erros internos do Next.js (redirect/notFound/etc.).
+    unstable_rethrow(err);
     safeLog.error("[workouts] render failed", String(err));
     return (
       <div className="p-6 max-w-6xl mx-auto">

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -49,8 +49,10 @@ export default async function TrainerDashboard() {
   try {
     return await TrainerDashboardInner();
   } catch (err) {
-    // Não deixa uma query quebrar o dashboard inteiro — loga e renderiza
-    // versão "degradada" só com o básico (header + atalhos).
+    // ⚠️ NÃO capturar erros internos do Next.js (redirect/notFound/cookies
+    // etc.) — eles PRECISAM subir pro framework funcionar. Só engolir
+    // erros de aplicação real e renderizar o fallback degradado.
+    unstable_rethrow(err);
     safeLog.error("[dashboard] render failed", String(err));
     return <DashboardDegraded />;
   }
