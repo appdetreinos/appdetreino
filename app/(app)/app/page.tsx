@@ -17,6 +17,14 @@ import { DashboardEntrance } from "./dashboard-entrance";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+interface StudentSummary {
+  id: string;
+  nome: string;
+  letra: string;
+  oque: string;
+  quando: string;
+}
+
 export default async function TrainerDashboard() {
   try {
     const supabase = await createClient();
@@ -34,7 +42,7 @@ export default async function TrainerDashboard() {
 
     // Alunos - Query simples e segura
     let totalAlunos = 0;
-    let studentsList = [];
+    let studentsList: StudentSummary[] = [];
     try {
       const { data: students, error: sErr } = await supabase
         .from("student_profiles")
