@@ -1,5 +1,5 @@
 -- Migration 0005 — RLS policies que faltavam
--- Idempotente: roda múltiplas vezes sem erro
+-- Idempotente: roda múltiplas vezes sem erro (usa DROP POLICY IF EXISTS + CREATE)
 --
 -- Estas tabelas estão com RLS ON (em 0001/0002) mas NÃO tinham policy nenhuma,
 -- o que tornava-as invisíveis via REST API / supabase-js.
@@ -14,7 +14,8 @@
 -- ============================================================
 
 -- workout_days — sempre via workout_id
-CREATE POLICY IF NOT EXISTS workout_days_via_workout ON public.workout_days
+DROP POLICY IF EXISTS workout_days_via_workout ON public.workout_days;
+CREATE POLICY workout_days_via_workout ON public.workout_days
   FOR ALL TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.workouts w WHERE w.id = workout_days.workout_id
@@ -26,7 +27,8 @@ CREATE POLICY IF NOT EXISTS workout_days_via_workout ON public.workout_days
   );
 
 -- workout_items — via workout_days → workouts
-CREATE POLICY IF NOT EXISTS workout_items_via_workout ON public.workout_items
+DROP POLICY IF EXISTS workout_items_via_workout ON public.workout_items;
+CREATE POLICY workout_items_via_workout ON public.workout_items
   FOR ALL TO authenticated
   USING (
     EXISTS (
@@ -46,7 +48,8 @@ CREATE POLICY IF NOT EXISTS workout_items_via_workout ON public.workout_items
   );
 
 -- workout_sessions — trainer lê sessões dos seus alunos; aluno lê/escreve as próprias
-CREATE POLICY IF NOT EXISTS workout_sessions_trainer_all ON public.workout_sessions
+DROP POLICY IF EXISTS workout_sessions_trainer_all ON public.workout_sessions;
+CREATE POLICY workout_sessions_trainer_all ON public.workout_sessions
   FOR ALL TO authenticated
   USING (
     EXISTS (
@@ -61,7 +64,8 @@ CREATE POLICY IF NOT EXISTS workout_sessions_trainer_all ON public.workout_sessi
     )
   );
 
-CREATE POLICY IF NOT EXISTS workout_sessions_student_all ON public.workout_sessions
+DROP POLICY IF EXISTS workout_sessions_student_all ON public.workout_sessions;
+CREATE POLICY workout_sessions_student_all ON public.workout_sessions
   FOR ALL TO authenticated
   USING (student_id = auth.uid())
   WITH CHECK (student_id = auth.uid());
@@ -70,7 +74,8 @@ CREATE POLICY IF NOT EXISTS workout_sessions_student_all ON public.workout_sessi
 -- 2. Dietas — meals + meal_items filhas
 -- ============================================================
 
-CREATE POLICY IF NOT EXISTS meals_via_diet ON public.meals
+DROP POLICY IF EXISTS meals_via_diet ON public.meals;
+CREATE POLICY meals_via_diet ON public.meals
   FOR ALL TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.diets d WHERE d.id = meals.diet_id
@@ -81,7 +86,8 @@ CREATE POLICY IF NOT EXISTS meals_via_diet ON public.meals
             AND d.trainer_id = auth.uid())
   );
 
-CREATE POLICY IF NOT EXISTS meal_items_via_meal ON public.meal_items
+DROP POLICY IF EXISTS meal_items_via_meal ON public.meal_items;
+CREATE POLICY meal_items_via_meal ON public.meal_items
   FOR ALL TO authenticated
   USING (
     EXISTS (
@@ -104,19 +110,22 @@ CREATE POLICY IF NOT EXISTS meal_items_via_meal ON public.meal_items
 -- 3. foods (catálogo global — leitura ampla)
 -- ============================================================
 
-CREATE POLICY IF NOT EXISTS foods_read_all ON public.foods
+DROP POLICY IF EXISTS foods_read_all ON public.foods;
+CREATE POLICY foods_read_all ON public.foods
   FOR SELECT TO authenticated USING (true);
 
 -- ============================================================
 -- 4. measurements — aluno escreve as próprias, trainer lê dos seus alunos
 -- ============================================================
 
-CREATE POLICY IF NOT EXISTS measurements_student_all ON public.measurements
+DROP POLICY IF EXISTS measurements_student_all ON public.measurements;
+CREATE POLICY measurements_student_all ON public.measurements
   FOR ALL TO authenticated
   USING (student_id = auth.uid())
   WITH CHECK (student_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS measurements_trainer_select ON public.measurements
+DROP POLICY IF EXISTS measurements_trainer_select ON public.measurements;
+CREATE POLICY measurements_trainer_select ON public.measurements
   FOR SELECT TO authenticated USING (
     EXISTS (
       SELECT 1 FROM public.student_profiles sp
@@ -128,12 +137,14 @@ CREATE POLICY IF NOT EXISTS measurements_trainer_select ON public.measurements
 -- 5. Community: likes, comments (já tem community_posts)
 -- ============================================================
 
-CREATE POLICY IF NOT EXISTS community_likes_all ON public.community_likes
+DROP POLICY IF EXISTS community_likes_all ON public.community_likes;
+CREATE POLICY community_likes_all ON public.community_likes
   FOR ALL TO authenticated
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS community_likes_visible ON public.community_likes
+DROP POLICY IF EXISTS community_likes_visible ON public.community_likes;
+CREATE POLICY community_likes_visible ON public.community_likes
   FOR SELECT TO authenticated USING (
     EXISTS (
       SELECT 1 FROM public.community_posts p
@@ -148,7 +159,8 @@ CREATE POLICY IF NOT EXISTS community_likes_visible ON public.community_likes
     )
   );
 
-CREATE POLICY IF NOT EXISTS community_comments_all ON public.community_comments
+DROP POLICY IF EXISTS community_comments_all ON public.community_comments;
+CREATE POLICY community_comments_all ON public.community_comments
   FOR ALL TO authenticated
   USING (
     author_id = auth.uid()
@@ -169,13 +181,16 @@ CREATE POLICY IF NOT EXISTS community_comments_all ON public.community_comments
 -- 6. Badges + student_badges + challenges
 -- ============================================================
 
-CREATE POLICY IF NOT EXISTS badges_read_all ON public.badges
+DROP POLICY IF EXISTS badges_read_all ON public.badges;
+CREATE POLICY badges_read_all ON public.badges
   FOR SELECT TO authenticated USING (true);
 
-CREATE POLICY IF NOT EXISTS student_badges_student_select ON public.student_badges
+DROP POLICY IF EXISTS student_badges_student_select ON public.student_badges;
+CREATE POLICY student_badges_student_select ON public.student_badges
   FOR SELECT TO authenticated USING (student_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS student_badges_trainer_select ON public.student_badges
+DROP POLICY IF EXISTS student_badges_trainer_select ON public.student_badges;
+CREATE POLICY student_badges_trainer_select ON public.student_badges
   FOR SELECT TO authenticated USING (
     EXISTS (
       SELECT 1 FROM public.student_profiles sp
@@ -184,24 +199,28 @@ CREATE POLICY IF NOT EXISTS student_badges_trainer_select ON public.student_badg
   );
 
 -- Trainer gerencia seus desafios; aluno lê os desafios ativos
-CREATE POLICY IF NOT EXISTS challenges_trainer_all ON public.challenges
+DROP POLICY IF EXISTS challenges_trainer_all ON public.challenges;
+CREATE POLICY challenges_trainer_all ON public.challenges
   FOR ALL TO authenticated
   USING (trainer_id = auth.uid())
   WITH CHECK (trainer_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS challenges_student_select ON public.challenges
+DROP POLICY IF EXISTS challenges_student_select ON public.challenges;
+CREATE POLICY challenges_student_select ON public.challenges
   FOR SELECT TO authenticated USING (
     trainer_id IN (
       SELECT trainer_id FROM public.student_profiles WHERE user_id = auth.uid()
     )
   );
 
-CREATE POLICY IF NOT EXISTS challenge_participants_student_all ON public.challenge_participants
+DROP POLICY IF EXISTS challenge_participants_student_all ON public.challenge_participants;
+CREATE POLICY challenge_participants_student_all ON public.challenge_participants
   FOR ALL TO authenticated
   USING (student_id = auth.uid())
   WITH CHECK (student_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS challenge_participants_trainer_select ON public.challenge_participants
+DROP POLICY IF EXISTS challenge_participants_trainer_select ON public.challenge_participants;
+CREATE POLICY challenge_participants_trainer_select ON public.challenge_participants
   FOR SELECT TO authenticated USING (
     EXISTS (
       SELECT 1 FROM public.challenges c
@@ -213,7 +232,8 @@ CREATE POLICY IF NOT EXISTS challenge_participants_trainer_select ON public.chal
 -- 7. payment_templates (trainer cria modelos recorrentes)
 -- ============================================================
 
-CREATE POLICY IF NOT EXISTS payment_templates_trainer_all ON public.payment_templates
+DROP POLICY IF EXISTS payment_templates_trainer_all ON public.payment_templates;
+CREATE POLICY payment_templates_trainer_all ON public.payment_templates
   FOR ALL TO authenticated
   USING (trainer_id = auth.uid())
   WITH CHECK (trainer_id = auth.uid());
@@ -222,14 +242,16 @@ CREATE POLICY IF NOT EXISTS payment_templates_trainer_all ON public.payment_temp
 -- 8. workout_recurrences — aluno lê o próprio
 -- ============================================================
 
-CREATE POLICY IF NOT EXISTS workout_recurrences_student_select ON public.workout_recurrences
+DROP POLICY IF EXISTS workout_recurrences_student_select ON public.workout_recurrences;
+CREATE POLICY workout_recurrences_student_select ON public.workout_recurrences
   FOR SELECT TO authenticated USING (student_id = auth.uid());
 
 -- ============================================================
 -- 9. push_subscriptions — usuário gerencia as próprias
 -- ============================================================
 
-CREATE POLICY IF NOT EXISTS push_subscriptions_self_all ON public.push_subscriptions
+DROP POLICY IF EXISTS push_subscriptions_self_all ON public.push_subscriptions;
+CREATE POLICY push_subscriptions_self_all ON public.push_subscriptions
   FOR ALL TO authenticated
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
@@ -245,10 +267,12 @@ CREATE POLICY IF NOT EXISTS push_subscriptions_self_all ON public.push_subscript
 -- 11. exercises — biblioteca global + exercícios do trainer
 -- ============================================================
 
-CREATE POLICY IF NOT EXISTS exercises_read_all ON public.exercises
+DROP POLICY IF EXISTS exercises_read_all ON public.exercises;
+CREATE POLICY exercises_read_all ON public.exercises
   FOR SELECT TO authenticated USING (trainer_id IS NULL OR trainer_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS exercises_trainer_all ON public.exercises
+DROP POLICY IF EXISTS exercises_trainer_all ON public.exercises;
+CREATE POLICY exercises_trainer_all ON public.exercises
   FOR ALL TO authenticated
   USING (trainer_id = auth.uid())
   WITH CHECK (trainer_id = auth.uid());

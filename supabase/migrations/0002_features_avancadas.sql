@@ -226,11 +226,12 @@ BEGIN
   FOR t IN
     SELECT unnest(ARRAY[
       'appointment_types','appointments','trainer_availability',
-      'habits','wods','workout_recurrences','payment_links','anamnesis_templates'
+      'habits','wods','payment_links','anamnesis_templates'
     ])
   LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I_trainer_all ON public.%I', t, t);
     EXECUTE format('
-      CREATE POLICY IF NOT EXISTS %I_trainer_all ON public.%I
+      CREATE POLICY %I_trainer_all ON public.%I
       FOR ALL TO authenticated
       USING (trainer_id = auth.uid())
       WITH CHECK (trainer_id = auth.uid())',
@@ -238,46 +239,76 @@ BEGIN
   END LOOP;
 END $$;
 
+-- workout_recurrences NÃO tem trainer_id (só student_id + workout_id).
+-- Trainer acessa via workout → trainer_id; aluno é o student_id direto.
+DROP POLICY IF EXISTS workout_recurrences_trainer_all ON public.workout_recurrences;
+CREATE POLICY workout_recurrences_trainer_all ON public.workout_recurrences
+  FOR ALL TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.workouts w
+      WHERE w.id = workout_recurrences.workout_id
+        AND w.trainer_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.workouts w
+      WHERE w.id = workout_recurrences.workout_id
+        AND w.trainer_id = auth.uid()
+    )
+  );
+
 -- Aluno lê seus próprios dados
-CREATE POLICY IF NOT EXISTS appointments_student_select ON public.appointments
+DROP POLICY IF EXISTS appointments_student_select ON public.appointments;
+CREATE POLICY appointments_student_select ON public.appointments
   FOR SELECT TO authenticated USING (student_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS habits_student_all ON public.habits
+DROP POLICY IF EXISTS habits_student_all ON public.habits;
+CREATE POLICY habits_student_all ON public.habits
   FOR ALL TO authenticated
   USING (student_id = auth.uid())
   WITH CHECK (student_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS habit_logs_student_all ON public.habit_logs
+DROP POLICY IF EXISTS habit_logs_student_all ON public.habit_logs;
+CREATE POLICY habit_logs_student_all ON public.habit_logs
   FOR ALL TO authenticated
   USING (student_id = auth.uid())
   WITH CHECK (student_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS wods_student_select ON public.wods
+DROP POLICY IF EXISTS wods_student_select ON public.wods;
+CREATE POLICY wods_student_select ON public.wods
   FOR SELECT TO authenticated USING (trainer_id IN (
     SELECT trainer_id FROM public.student_profiles WHERE user_id = auth.uid()
   ));
 
-CREATE POLICY IF NOT EXISTS wod_participants_student_all ON public.wod_participants
+DROP POLICY IF EXISTS wod_participants_student_all ON public.wod_participants;
+CREATE POLICY wod_participants_student_all ON public.wod_participants
   FOR ALL TO authenticated
   USING (student_id = auth.uid())
   WITH CHECK (student_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS shopping_lists_student_select ON public.shopping_lists
+DROP POLICY IF EXISTS shopping_lists_student_select ON public.shopping_lists;
+CREATE POLICY shopping_lists_student_select ON public.shopping_lists
   FOR SELECT TO authenticated USING (student_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS shopping_list_items_student_select ON public.shopping_list_items
+DROP POLICY IF EXISTS shopping_list_items_student_select ON public.shopping_list_items;
+CREATE POLICY shopping_list_items_student_select ON public.shopping_list_items
   FOR SELECT TO authenticated USING (shopping_list_id IN (
     SELECT id FROM public.shopping_lists WHERE student_id = auth.uid()
   ));
 
-CREATE POLICY IF NOT EXISTS payment_links_student_select ON public.payment_links
+DROP POLICY IF EXISTS payment_links_student_select ON public.payment_links;
+CREATE POLICY payment_links_student_select ON public.payment_links
   FOR SELECT TO authenticated USING (student_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS anamnesis_student_all ON public.anamnesis
+DROP POLICY IF EXISTS anamnesis_student_all ON public.anamnesis;
+CREATE POLICY anamnesis_student_all ON public.anamnesis
   FOR ALL TO authenticated
   USING (student_id = auth.uid())
   WITH CHECK (student_id = auth.uid());
 
 -- Trainer lê anamnese dos seus alunos
-CREATE POLICY IF NOT EXISTS anamnesis_trainer_select ON public.anamnesis
+DROP POLICY IF EXISTS anamnesis_trainer_select ON public.anamnesis;
+CREATE POLICY anamnesis_trainer_select ON public.anamnesis
   FOR SELECT TO authenticated USING (trainer_id = auth.uid());

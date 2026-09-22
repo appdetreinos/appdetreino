@@ -388,37 +388,46 @@ ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 -- ============================================================
 
 -- profiles: cada um lê o próprio; trainer lê profiles dos seus alunos
+DROP POLICY IF EXISTS "profiles_self_read" ON public.profiles;
 CREATE POLICY "profiles_self_read" ON public.profiles
   FOR SELECT USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "profiles_self_update" ON public.profiles;
 CREATE POLICY "profiles_self_update" ON public.profiles
   FOR UPDATE USING (auth.uid() = id);
 
 -- trainer_profiles: próprio trainer lê; admin lê tudo
+DROP POLICY IF EXISTS "trainer_self_read" ON public.trainer_profiles;
 CREATE POLICY "trainer_self_read" ON public.trainer_profiles
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "trainer_self_update" ON public.trainer_profiles;
 CREATE POLICY "trainer_self_update" ON public.trainer_profiles
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "trainer_self_insert" ON public.trainer_profiles;
 CREATE POLICY "trainer_self_insert" ON public.trainer_profiles
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- student_profiles: trainer lê seus alunos; aluno lê o próprio
+DROP POLICY IF EXISTS "student_trainer_read" ON public.student_profiles;
 CREATE POLICY "student_trainer_read" ON public.student_profiles
   FOR SELECT USING (
     trainer_id = auth.uid() OR user_id = auth.uid()
   );
 
+DROP POLICY IF EXISTS "student_self_update" ON public.student_profiles;
 CREATE POLICY "student_self_update" ON public.student_profiles
   FOR UPDATE USING (user_id = auth.uid() OR trainer_id = auth.uid());
 
+DROP POLICY IF EXISTS "trainer_insert_student" ON public.student_profiles;
 CREATE POLICY "trainer_insert_student" ON public.student_profiles
   FOR INSERT WITH CHECK (trainer_id = auth.uid());
 
 -- workouts/diets/payments/evolution_messages: trainer escopa por trainer_id
 -- aluno só lê o que tem student_id = auth.uid()
 
+DROP POLICY IF EXISTS "workouts_trainer_all" ON public.workouts;
 CREATE POLICY "workouts_trainer_all" ON public.workouts
   FOR ALL USING (
     trainer_id = auth.uid()
@@ -427,11 +436,13 @@ CREATE POLICY "workouts_trainer_all" ON public.workouts
     ))
   );
 
+DROP POLICY IF EXISTS "workouts_student_read" ON public.workouts;
 CREATE POLICY "workouts_student_read" ON public.workouts
   FOR SELECT USING (
     student_id = auth.uid()
   );
 
+DROP POLICY IF EXISTS "diets_trainer_all" ON public.diets;
 CREATE POLICY "diets_trainer_all" ON public.diets
   FOR ALL USING (
     trainer_id = auth.uid()
@@ -439,21 +450,26 @@ CREATE POLICY "diets_trainer_all" ON public.diets
     OR student_id IN (SELECT user_id FROM public.student_profiles WHERE trainer_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "payments_trainer_all" ON public.payments;
 CREATE POLICY "payments_trainer_all" ON public.payments
   FOR ALL USING (
     trainer_id = auth.uid()
     OR student_id = auth.uid()
   );
 
+DROP POLICY IF EXISTS "evolution_trainer_all" ON public.evolution_instances;
 CREATE POLICY "evolution_trainer_all" ON public.evolution_instances
   FOR ALL USING (trainer_id = auth.uid());
 
+DROP POLICY IF EXISTS "evolution_tpl_trainer_all" ON public.evolution_templates;
 CREATE POLICY "evolution_tpl_trainer_all" ON public.evolution_templates
   FOR ALL USING (trainer_id = auth.uid());
 
+DROP POLICY IF EXISTS "evolution_msg_trainer_all" ON public.evolution_messages;
 CREATE POLICY "evolution_msg_trainer_all" ON public.evolution_messages
   FOR ALL USING (trainer_id = auth.uid());
 
+DROP POLICY IF EXISTS "community_post_read" ON public.community_posts;
 CREATE POLICY "community_post_read" ON public.community_posts
   FOR SELECT USING (
     trainer_id = auth.uid()
@@ -467,9 +483,11 @@ CREATE POLICY "community_post_read" ON public.community_posts
     )
   );
 
+DROP POLICY IF EXISTS "community_post_insert" ON public.community_posts;
 CREATE POLICY "community_post_insert" ON public.community_posts
   FOR INSERT WITH CHECK (trainer_id = auth.uid() OR author_id = auth.uid());
 
+DROP POLICY IF EXISTS "audit_self_read" ON public.audit_log;
 CREATE POLICY "audit_self_read" ON public.audit_log
   FOR SELECT USING (user_id = auth.uid());
 

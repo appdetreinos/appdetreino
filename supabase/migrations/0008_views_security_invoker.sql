@@ -8,10 +8,9 @@ SELECT
   si.id,
   si.trainer_id,
   si.code,
-  si.email,
   si.status,
-  si.expires_at,
-  si.used_at,
+  si.accepted_at,
+  si.accepted_by,
   si.created_at
 FROM public.student_invites si;
 
@@ -24,8 +23,8 @@ SELECT
   ts.pix_beneficiary_name,
   ts.default_charge_message,
   ts.default_overdue_message,
-  ts.created_at,
   ts.updated_at,
+  ts.onboarding_completed_at,
   -- pix_key liberado só via SECURITY DEFINER ou função dedicada; aqui fica null.
   NULL::text AS pix_key_masked
 FROM public.trainer_settings ts;

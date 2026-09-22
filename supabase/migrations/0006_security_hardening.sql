@@ -55,6 +55,7 @@ CREATE OR REPLACE VIEW public.student_invites_safe AS
   WHERE status = 'pending' AND (expires_at IS NULL OR expires_at > now());
 
 DROP POLICY IF EXISTS invites_public_read ON public.student_invites;
+DROP POLICY IF EXISTS invites_authenticated_read ON public.student_invites;
 CREATE POLICY invites_authenticated_read ON public.student_invites
   FOR SELECT TO authenticated
   USING (
@@ -197,7 +198,7 @@ CREATE POLICY profiles_self_update ON public.profiles
 -- 4. payments — trainer não pode mudar student_id/amount
 -- ============================================================
 
-DROP POLICY IF EXISTS payments_trainer_all ON public.payments;
+DROP POLICY IF EXISTS payments_trainer_insert ON public.payments;
 CREATE POLICY payments_trainer_insert ON public.payments
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -207,6 +208,7 @@ CREATE POLICY payments_trainer_insert ON public.payments
     )
   );
 
+DROP POLICY IF EXISTS payments_trainer_select ON public.payments;
 CREATE POLICY payments_trainer_select ON public.payments
   FOR SELECT TO authenticated USING (
     trainer_id = auth.uid()
@@ -214,6 +216,7 @@ CREATE POLICY payments_trainer_select ON public.payments
   );
 
 -- Trainer pode atualizar SÓ status / paid_at / notes
+DROP POLICY IF EXISTS payments_trainer_update_safe ON public.payments;
 CREATE POLICY payments_trainer_update_safe ON public.payments
   FOR UPDATE TO authenticated
   USING (trainer_id = auth.uid())
@@ -225,6 +228,7 @@ CREATE POLICY payments_trainer_update_safe ON public.payments
     AND trainer_id = (SELECT trainer_id FROM public.payments WHERE id = payments.id)
   );
 
+DROP POLICY IF EXISTS payments_student_select ON public.payments;
 CREATE POLICY payments_student_select ON public.payments
   FOR SELECT TO authenticated USING (student_id = auth.uid());
 
