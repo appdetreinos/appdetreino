@@ -1,46 +1,107 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
-import { Plus } from "lucide-react";
+import { 
+  Plus, 
+  Users, 
+  Wallet, 
+  CalendarDays, 
+  Flame 
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
+import { KpiCard } from "./_components/kpi-card";
+import { DashboardEntrance } from "./dashboard-entrance";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function TrainerDashboard() {
-  // REMOVEMOS TUDO. SEM SUPABASE. SEM QUERIES. SEM NADA.
-  // Se isso crashar, o erro está no LAYOUT ou no PROXY.
-  
-  return (
-    <div className="min-h-screen p-6 bg-slate-900 text-white">
-      <header className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold">TESTE DE ISOLAMENTO TOTAL 🚨</h1>
-        <div className="flex gap-2">
-           <ButtonLink href="/app/students/new" className="font-semibold bg-blue-600 text-white p-2 rounded">
-            <Plus className="size-4 inline mr-1" /> Novo aluno
-          </ButtonLink>
-          <LogoutButton variant="ghost" label="" />
-        </div>
-      </header>
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return <div className="p-10 text-center">Autenticação necessária.</div>;
 
-      <div className="space-y-4">
-        <Card className="p-6 bg-white text-black border-4 border-red-600">
-          <h2 className="text-xl font-bold mb-2">SE VOCÊ ESTÁ VENDO ISSO:</h2>
-          <p className="text-lg">
-            O problema NÃO está na página <code>/app/page.tsx</code>.
-          </p>
-          <p className="text-lg font-bold mt-4">
-            O erro está no <code>proxy.ts</code> ou no <code>layout.tsx</code>.
-          </p>
-        </Card>
-        
-        <div className="p-4 bg-slate-800 rounded border border-slate-700">
-          <p className="text-sm opacity-70">
-            Nenhuma query ao banco de dados foi feita nesta versão.
-          </p>
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const firstName = (profile?.full_name ?? user.email ?? "Treinador").split(" ")[0];
+
+    // Alunos - Query simples e segura
+    let totalAlunos = 0;
+    let studentsList = [];
+    try {
+      const { data: students, error: sErr } = await supabase
+        .from("student_profiles")
+        .select("user_id, full_name, status, goal")
+        .eq("trainer_id", user.id)
+        .limit(5);
+      
+      if (!sErr && students) {
+        totalAlunos = students.length;
+        studentsList = students.map(s => ({
+          id: s.user_id,
+          nome: s.full_name ?? "Aluno",
+          letra: s.full_name?.[0]?.toUpperCase() ?? "?",
+          oque: s.goal || "Sem objetivo definido",
+          quando: s.status === "active" ? "Ativo" : "Inativo",
+        }));
+      }
+    } catch (e) {
+      console.error("Erro alunos:", e);
+    }
+
+    // Receita - Query simples e segura
+    let receitaMes = 0;
+    try {
+      const { data: payments } = await supabase
+        .from("payment_links")
+        .select("amount_cents")
+        .eq("trainer_id", user.id)
+        .not("paid_at", "is", null);
+      if (payments) {
+        receitaMes = payments.reduce((acc, p) => acc + (p.amount_cents / 100), 0);
+      }
+    } catch (e) {
+      console.error("Erro receita:", e);
+    }
+
+    return (
+      <div className="min-h-screen p-6">
+        <header className="flex items-center justify-between mb-8">
+          <h1 className="text-2xl font-bold">Olá, {firstName}! 👋</h1>
+          <div className="flex gap-2">
+             <ButtonLink href="/app/students/new" className="font-semibold">
+              <Plus className="size-4" /> Novo aluno
+            </ButtonLink>
+            <LogoutButton variant="ghost" label="" />
+          </div>
+        </header>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <KpiCard icon={Users} label="Alunos ativos" value={totalAlunos} hint="Total de alunos" />
+          <KpiCard icon={Wallet} label="Receita do mês" value={receitaMes} formatKind="currency" hint="Soma total" />
+          <KpiCard icon={CalendarDays} label="Sessões (7d)" value={0} hint="Em breve" />
+          <KpiCard icon={Flame} label="Aderência" value={0} formatKind="percent" hint="Em breve" />
         </div>
+
+        {studentsList.length > 0 && (
+          <DashboardEntrance
+            focus={{ pergunta: "Quem tá esperando você hoje?", itens: studentsList }}
+            recentes={[]}
+            totalAlunos={totalAlunos}
+            temAluno={true}
+          />
+        )}
       </div>
-    </div>
-  );
+    );
+  } catch (err) {
+    console.error("CRASH NO RETURN:", err);
+    return <div className="p-10 text-red-500">Erro ao carregar Dashboard: {String(err)}</div>;
+  }
 }
