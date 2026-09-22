@@ -15,6 +15,7 @@ import {
   Flame,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { safeLog } from "@/lib/log/safe";
 import { LogoutButton } from "@/components/logout-button";
 import { DashboardEntrance } from "./dashboard-entrance";
 import { KpiCard } from "./_components/kpi-card";
@@ -26,27 +27,40 @@ export default async function TrainerDashboard() {
   try {
     return await TrainerDashboardInner();
   } catch (err) {
-    console.error("[DASHBOARD_FATAL]:", err);
-    return (
-      <div className="min-h-screen p-10 flex items-center justify-center">
-        <Card className="p-6 text-center border-red-500">
-          <h1 className="text-red-500 font-bold">Erro Crítico no Servidor</h1>
-          <p className="text-sm opacity-70">{String(err)}</p>
-        </Card>
-      </div>
-    );
+    console.error("[DASHBOARD_CRASH]:", err);
+    safeLog.error("[dashboard] fatal crash", String(err));
+    return <DashboardDegraded />;
   }
+}
+
+function DashboardDegraded() {
+  return (
+    <div className="min-h-screen p-6 flex items-center justify-center">
+      <Card className="max-w-md border-red-500/50 bg-red-500/5 p-6 text-center">
+        <h2 className="text-lg font-bold text-red-500 mb-2">Ops! Algo deu errado</h2>
+        <p className="text-sm text-muted-foreground">
+          Estamos trabalhando para estabilizar seu painel. Tente recarregar a página.
+        </p>
+      </Card>
+    </div>
+  );
 }
 
 async function TrainerDashboardInner() {
   const supabase = await createClient();
-  
-  // 1. Autenticação básica
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr || !user) return null;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
   const userId = user.id;
 
-  // 2. Perfil (Sem forçar .single() para evitar erro 406/404)
+  async function safe<T>(label: string, fallback: T, fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (e) {
+      safeLog.warn(`[dashboard] ${label} falhou`, String(e));
+      return fallback;
+    }
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("full_name")
@@ -55,46 +69,47 @@ async function TrainerDashboardInner() {
 
   const firstName = (profile?.full_name ?? user.email ?? "Treinador").split(" ")[0];
 
-  // 3. Alunos - Busca simplificada para evitar crash
-  let totalAlunos = 0;
-  let studentsList = [];
-
-  try {
-    const { data: students, error: sErr } = await supabase
+  // 1. Dados de Alunos
+  const studentsRaw = await safe("students.list", [] as any[], async () => {
+    const { data, error } = await supabase
       .from("student_profiles")
-      .select("user_id, full_name, status, goal")
+      .select("user_id, full_name, status, joined_at, goal")
       .eq("trainer_id", userId)
-      .limit(5);
-    
-    if (!sErr && students) {
-      totalAlunos = students.length; // Usando o tamanho do array para evitar a query de count
-      studentsList = students.map(s => ({
-        id: s.user_id,
-        nome: s.full_name ?? "Aluno",
-        letra: s.full_name?.[0]?.toUpperCase() ?? "?",
-        oque: s.goal || "Sem objetivo definido",
-        quando: s.status === "active" ? "Ativo" : "Inativo",
-      }));
-    }
-  } catch (e) {
-    console.error("Erro ao buscar alunos:", e);
-  }
+      .order("joined_at", { ascending: false })
+      .limit(3);
+    if (error) throw error;
+    return data ?? [];
+  });
 
-  // 4. Financeiro - Query ultra simples
-  let receitaMes = 0;
-  try {
+  const focusStudents = studentsRaw.map((s) => ({
+    id: s.user_id,
+    nome: s.full_name ?? "Aluno",
+    letra: s.full_name?.[0]?.toUpperCase() ?? "?",
+    oque: s.goal || "Sem objetivo definido",
+    quando: s.status === "active" ? "Ativo" : "Inativo",
+  }));
+
+  const totalAlunosCount = await safe("students.count", 0, async () => {
+    const { count, error } = await supabase
+      .from("student_profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("trainer_id", userId);
+    if (error) throw error;
+    return count ?? 0;
+  });
+
+  const temAluno = totalAlunosCount > 0;
+
+  // 2. Receita Mensal
+  const receitaMes = await safe("receita.mes", 0, async () => {
     const { data: payments } = await supabase
       .from("payment_links")
       .select("amount_cents")
       .eq("trainer_id", userId)
-      .not("paid_at", "is", null);
-    
-    if (payments) {
-      receitaMes = payments.reduce((acc, p) => acc + (p.amount_cents / 100), 0);
-    }
-  } catch (e) {
-    console.error("Erro ao buscar receita:", e);
-  }
+      .not("paid_at", "is", null)
+      .gte("paid_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
+    return payments ? payments.reduce((acc, p) => acc + (p.amount_cents / 100), 0) : 0;
+  });
 
   return (
     <div className="min-h-screen">
@@ -103,9 +118,9 @@ async function TrainerDashboardInner() {
           <div className="min-w-0">
             <h1 className="text-xl font-bold truncate">Bom dia, <span className="text-primary">{firstName}</span> 🔥</h1>
             <p className="text-xs text-foreground/65">
-              {totalAlunos > 0 
-                ? `${totalAlunos} aluno${totalAlunos === 1 ? "" : "s"} ativo${totalAlunos === 1 ? "" : "s"}`
-                : "Convide seu primeiro aluno!"}
+              {temAluno
+                ? `${totalAlunosCount} aluno${totalAlunosCount === 1 ? "" : "s"} ativo${totalAlunosCount === 1 ? "" : "s"}`
+                : "Convide seu primeiro aluno para começar!"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -122,8 +137,20 @@ async function TrainerDashboardInner() {
 
       <div className="p-6 space-y-6 max-w-5xl mx-auto animate-fade-in">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiCard icon={Users} label="Alunos ativos" value={totalAlunos} badge={totalAlunos > 0 ? <Badge variant="outline" className="border-emerald-500/30 text-emerald-500">Sincronizado</Badge> : null} hint="Total de alunos" />
-          <KpiCard icon={Wallet} label="Receita do mês" value={receitaMes} formatKind="currency" hint="Soma total" />
+          <KpiCard 
+            icon={Users} 
+            label="Alunos ativos" 
+            value={totalAlunosCount} 
+            badge={totalAlunosCount > 0 ? <Badge variant="outline" className="border-emerald-500/30 text-emerald-500">Sincronizado</Badge> : null} 
+            hint="Total de alunos vinculados" 
+          />
+          <KpiCard 
+            icon={Wallet} 
+            label="Receita do mês" 
+            value={receitaMes} 
+            formatKind="currency" 
+            hint="Soma de pagamentos confirmados" 
+          />
           <KpiCard icon={CalendarDays} label="Sessões (7d)" value={0} hint="Em breve" />
           <KpiCard icon={Flame} label="Aderência" value={0} formatKind="percent" hint="Em breve" />
         </div>
@@ -138,11 +165,11 @@ async function TrainerDashboardInner() {
           </div>
         </Card>
 
-        {studentsList.length > 0 && (
+        {focusStudents.length > 0 && (
           <DashboardEntrance
-            focus={{ pergunta: "Quem tá esperando você hoje?", itens: studentsList }}
+            focus={{ pergunta: "Quem tá esperando você hoje?", itens: focusStudents }}
             recentes={[]}
-            totalAlunos={totalAlunos}
+            totalAlunos={totalAlunosCount}
             temAluno={true}
           />
         )}
