@@ -90,13 +90,17 @@ function RegisterFormInner() {
         // Não bloqueia — usuário entra, mas sem vínculo. Mostra erro leve.
         console.error("accept_invite error:", rpcError);
       }
-      router.push("/aluno");
+      router.push(
+        `/boas-vindas?name=${encodeURIComponent(fullName)}&email=${encodeURIComponent(email)}&role=student`
+      );
       router.refresh();
       return;
     }
 
-    // Trainer novo → questionário
-    router.push("/app/questionario?step=1");
+    // Trainer novo → tela de boas-vindas com credenciais + CTA pro painel
+    router.push(
+      `/boas-vindas?name=${encodeURIComponent(fullName)}&email=${encodeURIComponent(email)}&role=trainer`
+    );
     router.refresh();
   }
 

@@ -15,7 +15,13 @@ export default function RegisterPage() {
         {/* Formulário */}
         <section className="flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-md">
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+            {/* Badge que deixa claro que é conta de profissional */}
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-primary">
+              <span className="size-1.5 rounded-full bg-primary" />
+              Conta de profissional
+            </span>
+
+            <h1 className="mt-4 text-3xl md:text-4xl font-extrabold tracking-tight">
               Cria sua conta grátis.
             </h1>
             <p className="mt-2 text-muted-foreground">
@@ -30,6 +36,14 @@ export default function RegisterPage() {
                 Entrar
               </Link>
             </p>
+
+            {/* Nota: alunos entram pelo link de convite */}
+            <div className="mt-6 rounded-lg border border-white/5 bg-background/40 px-4 py-3 text-xs text-muted-foreground">
+              <strong className="text-foreground/85">Você é aluno?</strong> Você não cria conta por aqui.{" "}
+              <span className="text-foreground/75">
+                Seu personal te envia um link de convite — abre ele pra começar.
+              </span>
+            </div>
           </div>
         </section>
 

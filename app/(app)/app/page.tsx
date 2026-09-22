@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 import { DashboardEntrance } from "./dashboard-entrance";
 import { LogoutButton } from "@/components/logout-button";
 import { OnboardingWizard } from "./_components/onboarding-wizard";
+import { OnboardingChecklist } from "./_components/onboarding-checklist";
 
 /**
  * Trainer dashboard — server component com dados reais do Supabase.
@@ -94,10 +95,20 @@ export default async function TrainerDashboard() {
   // Wizard de onboarding — mostra se nunca terminou (onboarding_completed_at é NULL)
   const { data: trainerOnboarding } = await supabase
     .from("trainer_profiles")
-    .select("onboarding_completed_at")
+    .select(
+      "onboarding_completed_at, onboarding_checklist_completed_at, checklist_invited_student_at, checklist_sent_workout_at, checklist_sent_diet_at, checklist_configured_pay_at"
+    )
     .eq("user_id", user.id)
     .maybeSingle();
   const showOnboarding = !trainerOnboarding?.onboarding_completed_at;
+
+  const checklistState = {
+    invited_student: !!trainerOnboarding?.checklist_invited_student_at,
+    sent_workout: !!trainerOnboarding?.checklist_sent_workout_at,
+    sent_diet: !!trainerOnboarding?.checklist_sent_diet_at,
+    configured_pay: !!trainerOnboarding?.checklist_configured_pay_at,
+  };
+  const showChecklist = !trainerOnboarding?.onboarding_checklist_completed_at;
 
   return (
     <div className="min-h-screen">
@@ -126,6 +137,7 @@ export default async function TrainerDashboard() {
       </header>
 
       <main className="p-6 space-y-6 max-w-5xl mx-auto">
+        {showChecklist && <OnboardingChecklist initial={checklistState} />}
         <DashboardEntrance
           focus={{ pergunta: "Quem tá esperando você hoje?", itens: focusStudents }}
           recentes={recentes}
