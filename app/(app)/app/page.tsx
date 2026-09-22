@@ -12,9 +12,7 @@ import {
   UserPlus,
   CalendarCheck2,
   Receipt,
-  MessageCircle,
-  Dumbbell,
-  Salad
+  MessageCircle
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
@@ -35,46 +33,51 @@ interface StudentSummary {
 export default async function TrainerDashboard() {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    if (!user) return <div className="p-10 text-center">Autenticação necessária.</div>;
+    if (authError || !user) return <div className="p-10 text-center">Autenticação necessária.</div>;
+
+    // USANDO O ID DO USUÁRIO LOGADO (Dinâmico para múltiplos treinadores)
+    const currentTrainerId = user.id;
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("full_name")
-      .eq("id", user.id)
+      .eq("id", currentTrainerId)
       .maybeSingle();
 
     const firstName = (profile?.full_name ?? user.email?.split("@")[0] ?? "Treinador");
 
-    // --- DATA FETCHING ---
+    // 1. Total Students - Busca dinâmica baseada no usuário logado
     let totalAlunos = 0;
     try {
       const { count, error } = await supabase
         .from("student_profiles")
         .select("user_id", { count: "exact", head: true })
-        .eq("trainer_id", user.id);
+        .eq("trainer_id", currentTrainerId);
       if (!error) totalAlunos = count ?? 0;
     } catch (e) { console.error("KPI Alunos error:", e); }
 
+    // 2. Monthly Revenue - Busca dinâmica
     let receitaMes = 0;
     try {
       const { data: payments } = await supabase
         .from("payment_links")
         .select("amount_cents")
-        .eq("trainer_id", user.id)
+        .eq("trainer_id", currentTrainerId)
         .not("paid_at", "is", null);
       if (payments) {
         receitaMes = payments.reduce((acc, p) => acc + (p.amount_cents / 100), 0);
       }
     } catch (e) { console.error("KPI Receita error:", e); }
 
+    // 3. Recent Students - Busca dinâmica
     let studentsList: StudentSummary[] = [];
     try {
       const { data: students, error: sErr } = await supabase
         .from("student_profiles")
         .select("user_id, full_name, status, goal")
-        .eq("trainer_id", user.id)
+        .eq("trainer_id", currentTrainerId)
         .order("created_at", { ascending: false })
         .limit(6);
       
@@ -96,7 +99,7 @@ export default async function TrainerDashboard() {
             <h1 className="text-3xl font-extrabold tracking-tight">
               Olá, <span className="text-primary">{firstName}</span>! 👋
             </h1>
-            <p className="text-muted-foreground">Bem-vindo ao seu centro de comando.</p>
+            <p className="text-muted-foreground">Seu painel de gestão de alunos.</p>
           </div>
           <div className="flex items-center gap-3">
             <ButtonLink href="/app/students/new" className="shadow-lg shadow-primary/20">
@@ -106,7 +109,6 @@ export default async function TrainerDashboard() {
           </div>
         </header>
 
-        {/* KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard 
             icon={Users} 
@@ -127,7 +129,6 @@ export default async function TrainerDashboard() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Section */}
           <div className="lg:col-span-2 space-y-6">
             {studentsList.length > 0 ? (
               <DashboardEntrance
@@ -143,7 +144,7 @@ export default async function TrainerDashboard() {
                 </div>
                 <h3 className="text-xl font-bold mb-2">Nenhum aluno encontrado</h3>
                 <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-                  Comece convidando seu primeiro aluno para gerenciar aqui!
+                  Você ainda não tem alunos vinculados. Comece convidando seu primeiro aluno!
                 </p>
                 <ButtonLink href="/app/students/new" className="mx-auto">
                   Adicionar primeiro aluno
@@ -152,7 +153,6 @@ export default async function TrainerDashboard() {
             )}
           </div>
 
-          {/* Quick Actions Section */}
           <div className="space-y-6">
             <Card className="p-6 bg-card/50 border-white/10">
               <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
@@ -160,18 +160,10 @@ export default async function TrainerDashboard() {
               </h2>
               <div className="grid grid-cols-1 gap-3">
                 <QuickAction icon={UserPlus} label="Novo Aluno" href="/app/students/new" />
-                <QuickAction icon={Dumbbell} label="Montar Treino" href="/app/workouts" />
-                <QuickAction icon={Salad} label="Montar Dieta" href="/app/diets" />
+                <QuickAction icon={CalendarCheck2} label="Montar Treino" href="/app/workouts" />
                 <QuickAction icon={Receipt} label="Financeiro" href="/app/finance" />
                 <QuickAction icon={MessageCircle} label="WhatsApp" href="/app/whatsapp" />
               </div>
-            </Card>
-
-            <Card className="p-6 bg-primary/10 border-primary/20">
-              <h2 className="text-lg font-bold mb-2 text-primary">Dica de Gestão 💡</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Use os atalhos acima para agilizar a entrega de treinos e dietas para seus alunos.
-              </p>
             </Card>
           </div>
         </div>
@@ -179,12 +171,7 @@ export default async function TrainerDashboard() {
     );
   } catch (err) {
     console.error("DASHBOARD CRITICAL ERROR:", err);
-    return (
-      <div className="p-10 text-center">
-        <h2 className="text-2xl font-bold text-red-500">Erro no Painel</h2>
-        <p className="text-muted-foreground">{String(err)}</p>
-      </div>
-    );
+    return <div className="p-10 text-center text-red-500">Erro ao carregar painel.</div>;
   }
 }
 
