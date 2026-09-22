@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatBRL } from "@/lib/types/billing";
 import { relativeTime } from "@/lib/utils/date";
 import { PixCobrarButton } from "./pix-cobrar-button";
+import { MarkPaidButton } from "./mark-paid-button";
 
 /**
  * Financeiro — server component.
@@ -54,12 +55,12 @@ export default async function FinancePage() {
 
   const temPix = Boolean(settings?.pix_key);
 
-  // Cobranças do trainer (com join no aluno)
+  // Cobranças do trainer (com join no aluno — phone fica em profiles, não student_profiles)
   const { data: paymentsRaw } = await supabase
     .from("payments")
     .select(`
-      id, amount, status, due_date, paid_at, billing_type,
-      student_profiles!inner(full_name, phone, trainer_id)
+      id, amount, status, due_date, paid_at, billing_type, description,
+      student_profiles!inner(user_id, full_name, trainer_id, profiles:profiles!inner(phone))
     `)
     .eq("student_profiles.trainer_id", user.id)
     .order("due_date", { ascending: false })
@@ -67,11 +68,14 @@ export default async function FinancePage() {
 
   const payments = (paymentsRaw ?? []).map((p) => {
     const sp = Array.isArray(p.student_profiles) ? p.student_profiles[0] : p.student_profiles;
+    const pr = sp?.profiles
+      ? (Array.isArray(sp.profiles) ? sp.profiles[0] : sp.profiles)
+      : null;
     return {
       id: p.id,
       aluno: sp?.full_name ?? "Aluno",
       letra: (sp?.full_name ?? "?")[0]?.toUpperCase(),
-      telefone: sp?.phone ?? null,
+      telefone: pr?.phone ?? null,
       valor: p.amount,
       status: p.status as keyof typeof statusMap,
       vencimento: p.due_date ? new Date(p.due_date).toLocaleDateString("pt-BR") : "—",
@@ -186,6 +190,7 @@ export default async function FinancePage() {
                         valor={p.valor}
                       />
                     )}
+                    {podeCobrar && <MarkPaidButton paymentId={p.id} />}
                   </div>
                 );
               })}

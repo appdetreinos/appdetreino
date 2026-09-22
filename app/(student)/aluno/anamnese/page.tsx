@@ -70,6 +70,7 @@ export default async function AnamnesePage() {
   }
 
   const useWizard = (template.questions ?? []).length >= WIZARD_THRESHOLD;
+  const alreadyCompleted = !!existing?.completed_at;
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
@@ -78,7 +79,7 @@ export default async function AnamnesePage() {
         <p className="text-sm text-muted-foreground">{template.title}</p>
       </header>
 
-      {existing?.completed_at && !useWizard && (
+      {alreadyCompleted && (
         <Card className="bg-emerald-500/10 border-emerald-500/30 p-4 flex items-center gap-3">
           <Check className="size-5 text-emerald-500 shrink-0" />
           <div className="text-sm">

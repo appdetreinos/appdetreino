@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { safeLog } from "@/lib/log/safe";
+import { csrfFetch } from "@/lib/security/client";
 
 type Question = {
   key: string;
@@ -28,11 +29,13 @@ const PER_STEP = 3;
 export function AnamnesisWizard({ template, existingAnswers }: Props) {
   const questions = (template.questions ?? []) as Question[];
   const totalSteps = Math.max(1, Math.ceil(questions.length / PER_STEP));
-  const [step, setStep] = useState(0); // 0-indexed
+  const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, unknown>>(existingAnswers);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  // Modo edição: depois de salvar, some a barra verde e libera editar de novo
+  const [editing, setEditing] = useState(false);
 
   const start = step * PER_STEP;
   const end = Math.min(start + PER_STEP, questions.length);
@@ -80,9 +83,11 @@ export function AnamnesisWizard({ template, existingAnswers }: Props) {
   }
 
   function submit() {
+    setEditing(false);
+    setSuccess(false);
     startTransition(async () => {
       try {
-        const res = await fetch("/api/me/anamnesis", {
+        const res = await csrfFetch("/api/me/anamnesis", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ answers }),
@@ -101,6 +106,27 @@ export function AnamnesisWizard({ template, existingAnswers }: Props) {
   }
 
   const progressValue = ((step + 1) / totalSteps) * 100;
+
+  // Depois de salvar: mostra card verde + botão "Atualizar"
+  if (success && !editing) {
+    return (
+      <div className="space-y-4">
+        <Card className="bg-emerald-500/10 border-emerald-500/30 p-4 flex items-center gap-3">
+          <Check className="size-5 text-emerald-500 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm">
+              <strong>Anamnese salva.</strong> Suas respostas foram enviadas para o personal.
+            </p>
+          </div>
+        </Card>
+        <div className="flex justify-end">
+          <Button variant="outline" onClick={() => setEditing(true)}>
+            Atualizar respostas
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -202,35 +228,25 @@ export function AnamnesisWizard({ template, existingAnswers }: Props) {
       })}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
-      {success && (
-        <Card className="bg-emerald-500/10 border-emerald-500/30 p-4 flex items-center gap-3">
-          <Check className="size-5 text-emerald-500 shrink-0" />
-          <p className="text-sm">
-            <strong>Anamnese salva.</strong> Suas respostas foram enviadas para o personal.
-          </p>
-        </Card>
-      )}
 
-      {!success && (
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" onClick={back} disabled={step === 0 || pending}>
-            <ArrowLeft className="size-4" />
-            Voltar
-          </Button>
-          <Button onClick={next} disabled={pending}>
-            {pending
-              ? "Salvando..."
-              : step < totalSteps - 1
-              ? "Continuar"
-              : "Enviar respostas"}
-            {step < totalSteps - 1 ? (
-              <ArrowRight className="size-4" />
-            ) : (
-              <Check className="size-4" />
-            )}
-          </Button>
-        </div>
-      )}
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" onClick={back} disabled={step === 0 || pending}>
+          <ArrowLeft className="size-4" />
+          Voltar
+        </Button>
+        <Button onClick={next} disabled={pending}>
+          {pending
+            ? "Salvando..."
+            : step < totalSteps - 1
+            ? "Continuar"
+            : "Enviar respostas"}
+          {step < totalSteps - 1 ? (
+            <ArrowRight className="size-4" />
+          ) : (
+            <Check className="size-4" />
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

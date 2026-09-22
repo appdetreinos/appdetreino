@@ -9,8 +9,12 @@ import { todayBR } from "@/lib/utils/date";
  * WOD do dia — workout of the day, gera ranking entre alunos.
  *
  * Schema:
- *   wods(id, trainer_id, scheduled_for, title, type, description)
+ *   wods(id, trainer_id, scheduled_for, title, description)
  *   wod_participants(wod_id, student_id, result_time_seconds, result_rounds, completed_at)
+ *
+ * Tipo (AMRAP vs For Time) é inferido a partir dos resultados:
+ *   - tem result_rounds → AMRAP
+ *   - tem result_time_seconds → For Time
  */
 
 function fmtTime(seconds: number | null | undefined): string {
@@ -20,6 +24,12 @@ function fmtTime(seconds: number | null | undefined): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+function inferType(parts: Array<{ result_time_seconds: number | null; result_rounds: number | null }>): "amrap" | "for_time" {
+  // Se tem rounds preenchidos, é AMRAP; se tem tempo, é For Time.
+  const hasRounds = parts.some((p) => p.result_rounds != null);
+  return hasRounds ? "amrap" : "for_time";
+}
+
 export default async function WODPage() {
   const supabase = await createClient();
   const {
@@ -27,22 +37,22 @@ export default async function WODPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const todayIso = new Date().toISOString();
+  // scheduled_for é DATE — comparar com data BR (YYYY-MM-DD), não com ISO timestamp
   const todayDate = todayBR();
 
   const [{ data: todayWods }, { data: pastWods }] = await Promise.all([
     supabase
       .from("wods")
-      .select("id, title, type, description, scheduled_for")
+      .select("id, title, description, scheduled_for")
       .eq("trainer_id", user.id)
-      .gte("scheduled_for", todayIso)
+      .gte("scheduled_for", todayDate)
       .order("scheduled_for", { ascending: true })
       .limit(5),
     supabase
       .from("wods")
       .select("id, title, scheduled_for")
       .eq("trainer_id", user.id)
-      .lt("scheduled_for", todayIso)
+      .lt("scheduled_for", todayDate)
       .order("scheduled_for", { ascending: false })
       .limit(7),
   ]);
@@ -59,6 +69,7 @@ export default async function WODPage() {
 
   let totalRounds = 0;
   let avgTime: number | null = null;
+  let todayType: "amrap" | "for_time" = "for_time";
 
   if (today) {
     const { data: parts } = await supabase
@@ -97,17 +108,20 @@ export default async function WODPage() {
           completed_at: p.completed_at,
           student_name: prRel?.full_name ?? "Aluno",
         };
-      })
-      // Ordena: WODs "for time" = menor tempo vence; AMRAP = mais rounds vence.
-      .sort((a, b) => {
-        if (today.type === "amrap") {
-          return (b.result_rounds ?? 0) - (a.result_rounds ?? 0);
-        }
-        // for_time / chipper: menor tempo vence
-        const at = a.result_time_seconds ?? Number.MAX_SAFE_INTEGER;
-        const bt = b.result_time_seconds ?? Number.MAX_SAFE_INTEGER;
-        return at - bt;
       });
+
+    todayType = inferType(participants);
+
+    // Ordena após inferir o tipo
+    participants.sort((a, b) => {
+      if (todayType === "amrap") {
+        return (b.result_rounds ?? 0) - (a.result_rounds ?? 0);
+      }
+      // for_time / chipper: menor tempo vence
+      const at = a.result_time_seconds ?? Number.MAX_SAFE_INTEGER;
+      const bt = b.result_time_seconds ?? Number.MAX_SAFE_INTEGER;
+      return at - bt;
+    });
 
     if (participants.length > 0) {
       totalRounds = participants.reduce(
@@ -132,7 +146,7 @@ export default async function WODPage() {
             Crie um desafio, a turma treina junto e o ranking sai no WhatsApp
           </p>
         </div>
-        <ButtonLink href="/app/wod/novo" className="font-semibold">
+        <ButtonLink href="/app/wod/new" className="font-semibold">
           <Plus className="size-4" />
           Criar WOD
         </ButtonLink>
@@ -144,7 +158,7 @@ export default async function WODPage() {
             <div className="flex items-center justify-between flex-wrap gap-2">
               <Badge className="bg-primary text-primary-foreground border-0">
                 <Trophy className="size-3 mr-1" />
-                {today.type}
+                {todayType.toUpperCase()}
               </Badge>
               <span className="text-xs text-muted-foreground">
                 {new Date(today.scheduled_for).toLocaleDateString("pt-BR", {
@@ -173,7 +187,7 @@ export default async function WODPage() {
                 <span className="font-bold truncate">{participants[0]?.student_name ?? "—"}</span>
               </div>
               <div className="num text-2xl font-extrabold mt-1">
-                {today.type === "amrap"
+                {todayType === "amrap"
                   ? `${participants[0]?.result_rounds ?? 0} rounds`
                   : fmtTime(participants[0]?.result_time_seconds)}
               </div>
@@ -201,7 +215,7 @@ export default async function WODPage() {
           <Timer className="size-12 text-muted-foreground mx-auto" />
           <h3 className="mt-4 font-semibold">Nenhum WOD pra hoje</h3>
           <p className="mt-1 text-sm text-muted-foreground">Crie um novo WOD e chame a turma.</p>
-          <ButtonLink href="/app/wod/novo" className="mt-4 inline-flex">
+          <ButtonLink href="/app/wod/new" className="mt-4 inline-flex">
             Criar o primeiro WOD
           </ButtonLink>
         </Card>
@@ -246,7 +260,7 @@ export default async function WODPage() {
                     <div className="font-semibold truncate">{r.student_name}</div>
                   </div>
                   <div className="num text-base font-bold tabular-nums">
-                    {today?.type === "amrap"
+                    {todayType === "amrap"
                       ? `${r.result_rounds ?? 0} rounds`
                       : fmtTime(r.result_time_seconds)}
                   </div>
@@ -283,11 +297,6 @@ export default async function WODPage() {
           </Card>
         </div>
       )}
-
-      {/* não usamos todayDate atualmente */}
-      <span className="hidden" aria-hidden>
-        {todayDate}
-      </span>
     </div>
   );
 }

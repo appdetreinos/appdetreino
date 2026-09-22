@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { WodResultForm } from "./wod-result-form";
 import { Timer, Flame } from "lucide-react";
+import { todayBR } from "@/lib/utils/date";
 
 export default async function WodAlunoPage() {
   const supabase = await createClient();
@@ -10,11 +11,11 @@ export default async function WodAlunoPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // WOD de hoje (e próximos 7 dias)
-  const today = new Date().toISOString().split("T")[0];
-  const weekFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .split("T")[0];
+  // WOD de hoje (compara com data BR, não UTC)
+  const today = todayBR();
+  // Próximos: começa amanhã (não hoje — o de hoje já aparece no topo)
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    .toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 
   const { data: wods, error } = await supabase
     .from("wods")
@@ -28,11 +29,12 @@ export default async function WodAlunoPage() {
     .order("created_at", { ascending: false })
     .limit(5);
 
-  // Próximos (calendário)
+  // Próximos (calendário) — começa amanhã, não pula dias (era weekFromNow = 7 dias à frente,
+  // invisibilizava 1-6 dias)
   const { data: upcomingWods } = await supabase
     .from("wods")
     .select("id, title, scheduled_for")
-    .gte("scheduled_for", weekFromNow)
+    .gte("scheduled_for", tomorrow)
     .order("scheduled_for", { ascending: true })
     .limit(10);
 

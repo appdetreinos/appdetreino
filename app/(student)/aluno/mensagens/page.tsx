@@ -10,12 +10,21 @@ export default async function MensagensPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // Pega trainer do aluno
+  // Pega trainer do aluno + telefone DO TRAINER (não do aluno — o link wa.me precisa
+  // abrir conversa com o personal, não consigo mesmo)
   const { data: studentProfile } = await supabase
     .from("student_profiles")
     .select("trainer_id, phone")
     .eq("user_id", user.id)
     .maybeSingle();
+
+  const { data: trainerProfile } = studentProfile?.trainer_id
+    ? await supabase
+        .from("profiles")
+        .select("phone, full_name")
+        .eq("id", studentProfile.trainer_id)
+        .maybeSingle()
+    : { data: null };
 
   // Mensagens do trainer do aluno onde to_phone ou from_phone = telefone do aluno
   const messages: Array<{
@@ -75,13 +84,17 @@ export default async function MensagensPage() {
           <p className="text-sm text-muted-foreground mt-1">
             A integração WhatsApp chega em breve. Seu personal já tem seus dados de contato.
           </p>
-          <a
-            href={`https://wa.me/${studentProfile?.phone ?? ""}`}
-            className="inline-flex items-center gap-2 mt-4 text-sm text-primary hover:underline"
-          >
-            <Phone className="size-4" />
-            Abrir WhatsApp do personal
-          </a>
+          {trainerProfile?.phone ? (
+            <a
+              href={`https://wa.me/55${trainerProfile.phone.replace(/\D/g, "")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 mt-4 text-sm text-primary hover:underline"
+            >
+              <Phone className="size-4" />
+              Abrir WhatsApp do {trainerProfile.full_name?.split(" ")[0] ?? "personal"}
+            </a>
+          ) : null}
         </Card>
       ) : (
         <div className="space-y-2">

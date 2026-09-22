@@ -16,7 +16,7 @@ export default async function DietaPage() {
        meals:meals(
          id, name, time, position,
          meal_items:meal_items(
-           id, grams,
+           id, grams, position,
            foods:food_id(name)
          )
        )`,
@@ -73,10 +73,14 @@ export default async function DietaPage() {
           meal_items: Array<{
             id: string;
             grams: number;
+            position: number;
             foods: { name: string } | { name: string }[] | null;
           }> | null;
         }) => {
-          const items = (meal.meal_items ?? []).sort((a, b) => a.id.localeCompare(b.id));
+          // Ordena por `position` (não por UUID lexicográfico — era aleatório)
+          const items = (meal.meal_items ?? []).sort(
+            (a, b) => (a.position ?? 0) - (b.position ?? 0),
+          );
           return (
             <Card key={meal.id} className="bg-card border-white/5 p-4">
               <div className="flex items-center justify-between mb-3">

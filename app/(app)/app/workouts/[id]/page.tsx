@@ -18,7 +18,7 @@ export default async function WorkoutDetailPage({ params }: PageProps) {
 
   const { data: workout } = await supabase
     .from("workouts")
-    .select("id, title, goal, student_id, created_at, workout_days(id, title, day_of_week, workout_items(id, sets, reps, load, exercises(name)))")
+    .select("id, title, goal, student_id, created_at, workout_days(id, title, day_of_week, workout_items(id, sets, reps, load, position, exercises(name)))")
     .eq("id", id)
     .eq("trainer_id", user.id)
     .maybeSingle();
@@ -38,7 +38,7 @@ export default async function WorkoutDetailPage({ params }: PageProps) {
     id: string;
     title: string | null;
     day_of_week: number;
-    workout_items: Array<{ id: string; sets: number; reps: string; load: string | null; exercises: { name: string } | { name: string }[] | null }>;
+    workout_items: Array<{ id: string; sets: number; reps: string; load: string | null; position: number; exercises: { name: string } | { name: string }[] | null }>;
   }>;
 
   days.sort((a, b) => a.day_of_week - b.day_of_week);
@@ -77,7 +77,8 @@ export default async function WorkoutDetailPage({ params }: PageProps) {
             ) : (
               <ol className="space-y-2">
                 {day.workout_items
-                  .sort((a, b) => Number(a.id) - Number(b.id))
+                  // Ordena por `position` (não por UUID — Number(uuid) = NaN, ordem aleatória)
+                  .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
                   .map((item, idx) => (
                     <li
                       key={item.id}

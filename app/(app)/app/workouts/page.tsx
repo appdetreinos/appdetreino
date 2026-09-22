@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button-link";
-import { Plus, Dumbbell, ChevronRight, Sparkles } from "lucide-react";
+import { Plus, Dumbbell, ChevronRight, Sparkles, Library } from "lucide-react";
 
 type WorkoutListItem = {
   id: string;
@@ -26,6 +26,12 @@ export default async function WorkoutsPage() {
     .eq("trainer_id", user.id)
     .order("created_at", { ascending: false })
     .limit(100);
+
+  // Conta templates globais disponíveis (pra mostrar CTA "X templates prontos")
+  const { count: globalTemplatesCount } = await supabase
+    .from("workout_templates")
+    .select("id", { count: "exact", head: true })
+    .eq("is_global", true);
 
   if (error) {
     return (
@@ -61,15 +67,34 @@ export default async function WorkoutsPage() {
         </div>
       </header>
 
+      {/* CTA biblioteca de templates — sempre visível no topo */}
+      <Card className="bg-card border-white/10 p-5">
+        <div className="flex items-start gap-4">
+          <div className="grid size-12 place-items-center rounded-xl bg-primary/15 text-primary shrink-0">
+            <Library className="size-6" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="font-bold">Biblioteca de templates</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {globalTemplatesCount ?? 0} templates prontos (Full Body A/B, Upper A, Lower B). Aplica em 1 clique a qualquer aluno.
+            </p>
+          </div>
+          <ButtonLink href="/app/workouts/templates" variant="outline" className="shrink-0">
+            Ver biblioteca
+            <ChevronRight className="size-4" />
+          </ButtonLink>
+        </div>
+      </Card>
+
       {/* Templates do trainer */}
       <section>
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Templates
+          Meus templates
         </h2>
         {templates.length === 0 ? (
           <EmptyState
             icon={<Dumbbell className="size-6" />}
-            title="Nenhum template ainda"
+            title="Nenhum template seu ainda"
             description="Cria um treino reutilizável que você atribui pra vários alunos."
             cta={{ href: "/app/workouts/new", label: "Criar primeiro treino" }}
           />
@@ -86,7 +111,7 @@ export default async function WorkoutsPage() {
       {assigned.length > 0 && (
         <section>
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            Atribuídos
+            Atribuídos a alunos
           </h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {assigned.map((w) => (

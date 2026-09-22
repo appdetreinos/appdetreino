@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { csrfFetch } from "@/lib/security/client";
 import { safeLog } from "@/lib/log/safe";
 
 export function PostComposer() {
+  const router = useRouter();
   const [content, setContent] = useState("");
   const [audience, setAudience] = useState<"students" | "all">("students");
   const [pending, startTransition] = useTransition();
@@ -19,7 +22,7 @@ export function PostComposer() {
     setError(null);
     startTransition(async () => {
       try {
-        const res = await fetch("/api/me/community-post", {
+        const res = await csrfFetch("/api/me/community-post", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content: content.trim(), audience }),
@@ -30,7 +33,7 @@ export function PostComposer() {
           return;
         }
         setContent("");
-        if (typeof window !== "undefined") window.location.reload();
+        router.refresh();
       } catch (e) {
         safeLog.error("[post-composer] submit failed", e instanceof Error ? e.message : "unknown");
         setError("Falha de conexão");

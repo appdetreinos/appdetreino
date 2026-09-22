@@ -63,7 +63,7 @@ export default async function AgendaAlunoPage() {
             {upList.length} agendamento{upList.length === 1 ? "" : "s"} futuro{upList.length === 1 ? "" : "s"}
           </p>
         </div>
-        <ButtonLink href="#" className="font-semibold" variant="outline">
+        <ButtonLink href="/aluno/agenda/novo" className="font-semibold">
           <Calendar className="size-4" />
           Agendar
         </ButtonLink>

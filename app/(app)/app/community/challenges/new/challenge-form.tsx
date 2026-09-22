@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { csrfFetch } from "@/lib/security/client";
 import { safeLog } from "@/lib/log/safe";
 
 export function ChallengeForm() {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +36,7 @@ export function ChallengeForm() {
 
     startTransition(async () => {
       try {
-        const res = await fetch("/api/me/challenges", {
+        const res = await csrfFetch("/api/me/challenges", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title, description, starts_at, ends_at, reward_xp }),
@@ -43,7 +46,8 @@ export function ChallengeForm() {
           setError(body?.error ?? "Erro ao criar");
           return;
         }
-        if (typeof window !== "undefined") window.location.href = "/app/community";
+        router.push("/app/community");
+        router.refresh();
       } catch (e) {
         safeLog.error("[challenge-form] submit failed", e instanceof Error ? e.message : "unknown");
         setError("Falha de conexão");

@@ -28,9 +28,18 @@ export default function NewChargePage() {
   useEffect(() => {
     (async () => {
       const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setLoadingStudents(false);
+        return;
+      }
+      // FILTRA por trainer_id — sem isso, trainer vê alunos de outros treinadores (privacy leak)
       const { data } = await supabase
         .from("student_profiles")
         .select("user_id, full_name")
+        .eq("trainer_id", user.id)
         .eq("status", "active")
         .order("full_name");
       setStudents(

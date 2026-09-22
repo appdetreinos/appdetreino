@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { notFound } from "next/navigation";
 import { Phone, Mail, Calendar, Dumbbell, Salad } from "lucide-react";
+import { MeasurementForm } from "./measurement-form";
 
 export default async function StudentDetailPage({
   params,
@@ -131,12 +132,13 @@ export default async function StudentDetailPage({
         {/* Medições */}
         <Card className="bg-card border-white/5 p-5">
           <h2 className="font-semibold mb-3">Últimas medições</h2>
+          <MeasurementForm studentId={id} />
           {(!measurements || measurements.length === 0) ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mt-3">
               Nenhuma medição registrada.
             </p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-2 mt-4">
               {measurements.map((m) => (
                 <li key={m.id} className="text-sm border-b border-white/5 last:border-0 pb-2 last:pb-0">
                   <div className="flex justify-between">

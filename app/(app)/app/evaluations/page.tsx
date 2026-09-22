@@ -11,21 +11,21 @@ export default async function EvaluationsPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // Alunos do trainer + última medição
+  // Alunos do trainer + última medição (PK de student_profiles = user_id)
   const { data: students } = await supabase
     .from("student_profiles")
-    .select("id, full_name, status")
+    .select("user_id, full_name, status")
     .eq("trainer_id", user.id)
     .neq("status", "cancelled")
     .order("full_name", { ascending: true });
 
-  // Última medição por aluno (best-effort — pega as últimas 10 e agrupa)
+  // Última medição por aluno
   const { data: measurements } = await supabase
     .from("measurements")
     .select("id, student_id, date, weight_kg, body_fat_pct, waist_cm")
     .in(
       "student_id",
-      (students ?? []).map((s) => s.id),
+      (students ?? []).map((s) => s.user_id),
     )
     .order("date", { ascending: false })
     .limit((students?.length ?? 0) * 5);
@@ -68,7 +68,7 @@ export default async function EvaluationsPage() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {(students ?? []).map((s) => {
-            const measurements = byStudent.get(s.id) ?? [];
+            const measurements = byStudent.get(s.user_id) ?? [];
             const latest = measurements[0];
             const previous = measurements[1];
             const weightDelta =
@@ -77,7 +77,7 @@ export default async function EvaluationsPage() {
                 : null;
 
             return (
-              <Link key={s.id} href={`/app/students/${s.id}`} className="block group">
+              <Link key={s.user_id} href={`/app/students/${s.user_id}`} className="block group">
                 <Card className="bg-card border-white/5 p-5 hover:border-primary/40 transition-colors">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="size-10 rounded-full bg-primary/10 text-primary grid place-items-center text-sm font-bold">

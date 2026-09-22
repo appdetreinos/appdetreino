@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { safeLog } from "@/lib/log/safe";
+import { csrfFetch } from "@/lib/security/client";
 
 type Question = {
   key: string;
@@ -60,7 +61,7 @@ export function AnamnesisForm({ template, existingAnswers }: Props) {
 
     startTransition(async () => {
       try {
-        const res = await fetch("/api/me/anamnesis", {
+        const res = await csrfFetch("/api/me/anamnesis", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ answers }),

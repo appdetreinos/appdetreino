@@ -1,8 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { HabitCounter } from "./habit-counter";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Flame } from "lucide-react";
+import { todayBR } from "@/lib/utils/date";
 
+const DAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"]; // dom-sáb (compacto)
+
+/**
+ * Página de hábitos do aluno.
+ * Mostra:
+ *   1. Progresso geral HOJE.
+ *   2. Cards de cada hábito (contador HOJE).
+ *   3. Visão SEMANAL — grid 7 dias pra cada hábito (qual dia bateu a meta).
+ *   4. Streak atual (dias consecutivos batendo a meta).
+ */
 export default async function HabitosAlunoPage() {
   const supabase = await createClient();
   const {
@@ -10,8 +21,9 @@ export default async function HabitosAlunoPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // Hábitos do aluno + log de hoje (single query com join)
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayBR(); // YYYY-MM-DD em São Paulo
+
+  // Hábitos + todos os logs (limitando aos últimos 14 dias pra UI)
   const { data: habits, error } = await supabase
     .from("habits")
     .select(
@@ -31,7 +43,14 @@ export default async function HabitosAlunoPage() {
     );
   }
 
-  // Extrai log de hoje de cada hábito
+  // Calcula últimos 7 dias (hoje inclusivo)
+  const last7: string[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    last7.push(d.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }));
+  }
+
   type HabitRow = {
     id: string;
     name: string;
@@ -41,8 +60,24 @@ export default async function HabitosAlunoPage() {
     frequency: string;
     logs: { count: number; logged_at: string }[] | null;
   };
+
   const list = ((habits ?? []) as HabitRow[]).map((h) => {
-    const log = (h.logs ?? []).find((l) => l.logged_at === today);
+    // Mapa: data → count
+    const byDate = new Map<string, number>();
+    for (const l of h.logs ?? []) byDate.set(l.logged_at, l.count);
+
+    const todayCount = byDate.get(today) ?? 0;
+
+    // Array de booleanos pros últimos 7 dias: bateu a meta naquele dia?
+    const week = last7.map((d) => (byDate.get(d) ?? 0) >= h.target_count);
+
+    // Streak = dias consecutivos (de trás pra frente) batendo a meta
+    let streak = 0;
+    for (let i = week.length - 1; i >= 0; i--) {
+      if (week[i]) streak++;
+      else break;
+    }
+
     return {
       id: h.id,
       name: h.name,
@@ -50,7 +85,9 @@ export default async function HabitosAlunoPage() {
       target: h.target_count,
       unit: h.unit ?? "",
       frequency: h.frequency,
-      current: log?.count ?? 0,
+      current: todayCount,
+      week,
+      streak,
     };
   });
 
@@ -65,11 +102,11 @@ export default async function HabitosAlunoPage() {
       <header>
         <h1 className="text-2xl font-extrabold tracking-tight">Meus hábitos</h1>
         <p className="text-sm text-muted-foreground">
-          Marque o que você fez hoje
+          Marque o que você fez hoje e veja sua sequência da semana.
         </p>
       </header>
 
-      {/* Progresso geral */}
+      {/* Progresso geral HOJE */}
       {list.length > 0 && (
         <Card className="bg-card border-white/5 p-5">
           <div className="flex items-center justify-between mb-3">
@@ -98,15 +135,70 @@ export default async function HabitosAlunoPage() {
       ) : (
         <div className="space-y-3">
           {list.map((h) => (
-            <HabitCounter
-              key={h.id}
-              habitId={h.id}
-              name={h.name}
-              icon={h.icon}
-              target={h.target}
-              unit={h.unit}
-              current={h.current}
-            />
+            <Card key={h.id} className="bg-card border-white/5 p-5 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold truncate">{h.name}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Meta: {h.target} {h.unit || "x"} por dia
+                  </div>
+                </div>
+                {h.streak >= 2 && (
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-orange-500/15 text-orange-500 px-2.5 py-1 text-xs font-semibold">
+                    <Flame className="size-3" />
+                    {h.streak} {h.streak === 1 ? "dia" : "dias"}
+                  </span>
+                )}
+              </div>
+
+              {/* Contador de hoje */}
+              <HabitCounter
+                habitId={h.id}
+                name={h.name}
+                icon={h.icon}
+                target={h.target}
+                unit={h.unit}
+                current={h.current}
+              />
+
+              {/* Visão semanal */}
+              <div>
+                <div className="text-xs uppercase tracking-wider text-foreground/55 mb-2">
+                  Semana
+                </div>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {h.week.map((done, idx) => {
+                    const dayDate = last7[idx];
+                    const isToday = dayDate === today;
+                    const dow = new Date(dayDate + "T12:00:00").getDay();
+                    return (
+                      <div
+                        key={idx}
+                        className="flex flex-col items-center gap-1"
+                        title={`${done ? "Bateu a meta" : "Não bateu"} em ${dayDate}`}
+                      >
+                        <span
+                          className={`text-[10px] uppercase ${
+                            isToday ? "text-primary font-bold" : "text-foreground/45"
+                          }`}
+                        >
+                          {DAY_LABELS[dow]}
+                        </span>
+                        <div
+                          className={`size-7 rounded-md border-2 ${
+                            done
+                              ? "bg-primary border-primary"
+                              : isToday
+                                ? "border-primary/40 bg-primary/5"
+                                : "border-white/10 bg-background/40"
+                          }`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </Card>
           ))}
         </div>
       )}

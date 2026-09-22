@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
@@ -9,15 +9,27 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/client";
 
 type Student = { id: string; full_name: string };
+type ExerciseOption = {
+  id: string;
+  name: string;
+  muscle_group: string | null;
+  equipment: string | null;
+};
 type ExerciseDraft = { name: string; sets: string; reps: string; load: string };
 
 const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
-export function WorkoutForm({ students }: { students: Student[] }) {
+export function WorkoutForm({
+  students,
+  exercises,
+}: {
+  students: Student[];
+  exercises: ExerciseOption[];
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [submitting, setSubmitting] = useState(false);
@@ -27,7 +39,7 @@ export function WorkoutForm({ students }: { students: Student[] }) {
   const [goal, setGoal] = useState("");
   const [studentId, setStudentId] = useState<string>(""); // "" = template (sem aluno)
   const [days, setDays] = useState<number[]>([1, 3, 5]); // seg/qua/sex default
-  const [exercises, setExercises] = useState<ExerciseDraft[]>([
+  const [exerciseRows, setExerciseRows] = useState<ExerciseDraft[]>([
     { name: "", sets: "3", reps: "10-12", load: "" },
   ]);
 
@@ -38,15 +50,15 @@ export function WorkoutForm({ students }: { students: Student[] }) {
   }
 
   function addExercise() {
-    setExercises((prev) => [...prev, { name: "", sets: "3", reps: "10-12", load: "" }]);
+    setExerciseRows((prev) => [...prev, { name: "", sets: "3", reps: "10-12", load: "" }]);
   }
 
   function removeExercise(i: number) {
-    setExercises((prev) => prev.filter((_, idx) => idx !== i));
+    setExerciseRows((prev) => prev.filter((_, idx) => idx !== i));
   }
 
   function updateExercise(i: number, patch: Partial<ExerciseDraft>) {
-    setExercises((prev) => prev.map((e, idx) => (idx === i ? { ...e, ...patch } : e)));
+    setExerciseRows((prev) => prev.map((e, idx) => (idx === i ? { ...e, ...patch } : e)));
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -57,7 +69,7 @@ export function WorkoutForm({ students }: { students: Student[] }) {
       setError("Título é obrigatório.");
       return;
     }
-    const validExercises = exercises.filter((e) => e.name.trim().length > 0);
+    const validExercises = exerciseRows.filter((ex) => ex.name.trim().length > 0);
     if (validExercises.length === 0) {
       setError("Adicione pelo menos 1 exercício com nome.");
       return;
@@ -189,7 +201,7 @@ export function WorkoutForm({ students }: { students: Student[] }) {
               </Button>
             </div>
 
-            {exercises.map((ex, i) => (
+            {exerciseRows.map((ex, i) => (
               <div
                 key={i}
                 className="rounded-lg border border-white/10 bg-background/40 p-4 space-y-3"
@@ -198,7 +210,7 @@ export function WorkoutForm({ students }: { students: Student[] }) {
                   <Label className="text-xs uppercase tracking-wider text-foreground/65">
                     Exercício {i + 1}
                   </Label>
-                  {exercises.length > 1 && (
+                  {exerciseRows.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeExercise(i)}
@@ -208,10 +220,10 @@ export function WorkoutForm({ students }: { students: Student[] }) {
                     </button>
                   )}
                 </div>
-                <Input
+                <ExercisePicker
                   value={ex.name}
-                  onChange={(e) => updateExercise(i, { name: e.target.value })}
-                  placeholder="Supino reto com barra"
+                  onChange={(name) => updateExercise(i, { name })}
+                  options={exercises}
                 />
                 <div className="grid grid-cols-3 gap-2">
                   <div>
@@ -267,6 +279,97 @@ export function WorkoutForm({ students }: { students: Student[] }) {
           </div>
         </form>
       </main>
+    </div>
+  );
+}
+
+/**
+ * Picker de exercício com autocomplete na biblioteca (30+ exercícios globais + do trainer).
+ * Aceita nome digitado também (fallback pra exercícios custom não cadastrados).
+ */
+function ExercisePicker({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (name: string) => void;
+  options: ExerciseOption[];
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Fecha dropdown ao clicar fora
+  useState(() => {
+    if (typeof window === "undefined") return;
+    function onDocClick(e: MouseEvent) {
+      if (!containerRef.current) return;
+      if (!containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    window.addEventListener("mousedown", onDocClick);
+    return () => window.removeEventListener("mousedown", onDocClick);
+  });
+
+  const filtered = useMemo(() => {
+    const q = value.trim().toLowerCase();
+    if (!q) return options.slice(0, 30);
+    return options
+      .filter((o) =>
+        o.name.toLowerCase().includes(q) ||
+        (o.muscle_group ?? "").toLowerCase().includes(q) ||
+        (o.equipment ?? "").toLowerCase().includes(q),
+      )
+      .slice(0, 30);
+  }, [value, options]);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="relative">
+        <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" />
+        <Input
+          value={value}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder="Buscar exercício (ex: supino, agachamento)"
+          className="pl-9"
+          autoComplete="off"
+        />
+      </div>
+
+      {open && filtered.length > 0 && (
+        <div className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-md border border-white/10 bg-card shadow-lg">
+          {filtered.map((o) => {
+            const selected = o.name === value;
+            return (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => {
+                  onChange(o.name);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-primary/10 ${
+                  selected ? "bg-primary/5" : ""
+                }`}
+              >
+                <span className="truncate">{o.name}</span>
+                <span className="shrink-0 text-[10px] uppercase tracking-wider text-foreground/55">
+                  {[o.muscle_group, o.equipment].filter(Boolean).join(" · ")}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {open && filtered.length === 0 && value.trim().length > 0 && (
+        <div className="absolute z-20 mt-1 w-full rounded-md border border-white/10 bg-card p-3 text-xs text-foreground/60 shadow-lg">
+          Nenhum exercício na biblioteca. O nome "{value}" será criado ao salvar.
+        </div>
+      )}
     </div>
   );
 }

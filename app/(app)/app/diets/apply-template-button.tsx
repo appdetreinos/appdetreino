@@ -12,10 +12,9 @@ interface StudentOption {
 }
 
 /**
- * Botão "Usar template" — abre dropdown de seleção de aluno,
- * chama a RPC `clone_workout_template`, redireciona pro treino criado.
+ * Botão "Aplicar a um aluno" — chama RPC clone_diet_template via API.
  */
-export function TemplateUseButton({
+export function ApplyTemplateButton({
   templateId,
   templateTitle,
   students,
@@ -31,19 +30,19 @@ export function TemplateUseButton({
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
 
-  async function handleUse() {
+  async function handleApply() {
     if (!picked) return;
     setError(null);
     setSubmitting(true);
 
     try {
-      const res = await csrfFetch("/api/workouts/from-template", {
+      const res = await csrfFetch("/api/diets/from-template", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ templateId, studentId: picked }),
       });
 
-      const json = (await res.json()) as { ok?: boolean; workoutId?: string; error?: string };
+      const json = (await res.json()) as { ok?: boolean; dietId?: string; error?: string };
 
       if (!res.ok || !json.ok) {
         setError(json.error ?? "Não deu pra aplicar o template.");
@@ -51,8 +50,7 @@ export function TemplateUseButton({
         return;
       }
 
-      // Sucesso → vai pro treino criado
-      startTransition(() => router.push(`/app/workouts/${json.workoutId}`));
+      startTransition(() => router.push(`/app/diets/${json.dietId}`));
     } catch {
       setError("Erro de rede. Tenta de novo.");
       setSubmitting(false);
@@ -69,19 +67,17 @@ export function TemplateUseButton({
 
   return (
     <>
-      <Button
-        onClick={() => setOpen(true)}
-        className="font-semibold"
-        size="sm"
-      >
+      <Button onClick={() => setOpen(true)} size="sm" className="font-semibold">
         <Send className="size-4" />
-        Usar template
+        Aplicar a um aluno
       </Button>
 
       {open && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-sm p-5"
           onClick={() => !submitting && setOpen(false)}
+          role="dialog"
+          aria-modal="true"
         >
           <div
             className="w-full max-w-md rounded-2xl border border-white/10 bg-card p-6 shadow-2xl"
@@ -91,7 +87,7 @@ export function TemplateUseButton({
               <div>
                 <h3 className="font-bold text-lg">Aplicar template</h3>
                 <p className="text-sm text-foreground/65 mt-1">
-                  <strong className="text-foreground">{templateTitle}</strong> será criado e atribuído pro aluno escolhido.
+                  <strong className="text-foreground">{templateTitle}</strong> será atribuído pro aluno escolhido.
                 </p>
               </div>
               <button
@@ -150,14 +146,14 @@ export function TemplateUseButton({
               </Button>
               <Button
                 type="button"
-                onClick={handleUse}
+                onClick={handleApply}
                 disabled={!picked || submitting || pending}
                 className="font-semibold"
               >
                 {submitting || pending ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Criando treino…
+                    Criando…
                   </>
                 ) : (
                   <>
