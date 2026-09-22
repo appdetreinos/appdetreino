@@ -32,11 +32,11 @@ const bodySchema = z
  *
  * Trainer cria convite pra aluno entrar.
  *
- * Blindagem: se o trainer logado não tem `trainer_profiles` (por bug em
- * migrações antigas), cria antes pra evitar FK violation em `student_invites`.
+ * Blindagem em 2 níveis (resolvendo FK violations em cascata):
+ *   Nível 1 — Garante `profiles` existe pro auth.uid() (auth.users ≠ profiles)
+ *   Nível 2 — Garante `trainer_profiles` existe (FK target de student_invites)
  *
- * O trigger `student_invites_auto_code` (migration 0007) gera o `code`
- * automaticamente se omitido.
+ * Se já existir perfil, atualiza trial_ends_at se estiver NULL.
  */
 export async function POST(request: NextRequest) {
   const auth = await requireAuthenticated(request);
@@ -45,45 +45,22 @@ export async function POST(request: NextRequest) {
   const body = await parseJsonBody(request, bodySchema);
   if (!body.ok) return body.response;
 
-  // Garante que o trainer tem trainer_profiles (FK target)
-  const { data: tp, error: tpError } = await auth.supabase
-    .from("trainer_profiles")
-    .select("user_id, plan_tier, trial_ends_at")
-    .eq("user_id", auth.user.id)
-    .maybeSingle();
-
-  if (tpError) {
-    safeLog.error("[student-invites] trainer_profile fetch failed", tpError.message);
-    return NextResponse.json({ ok: false, error: tpError.message }, { status: 500 });
+  // Nível 1+2 — Chama RPC SECURITY DEFINER que garante profile + trainer_profile
+  // (bypass RLS, idempotente, segura contra trainer órfão)
+  const { data: ready, error: readyError } = await auth.supabase.rpc("ensure_trainer_ready");
+  if (readyError) {
+    safeLog.error("[student-invites] ensure_trainer_ready failed", readyError.message);
+    return NextResponse.json(
+      { ok: false, error: `Falha ao configurar perfil: ${readyError.message}` },
+      { status: 500 },
+    );
   }
-
-  if (!tp) {
-    // Trainer órfão (não tem trainer_profiles) — cria on-demand com trial de 3 dias
-    safeLog.warn("[student-invites] trainer_profile ausente, criando on-demand", {
-      user_id: auth.user.id,
-    });
-    const { error: createTpError } = await auth.supabase
-      .from("trainer_profiles")
-      .insert({
-        user_id: auth.user.id,
-        plan_tier: "start",
-        trial_ends_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-      });
-    if (createTpError) {
-      safeLog.error("[student-invites] trainer_profile create failed", createTpError.message);
-      return NextResponse.json(
-        { ok: false, error: `Falha ao configurar perfil de profissional: ${createTpError.message}` },
-        { status: 500 },
-      );
-    }
-  } else if (!tp.trial_ends_at) {
-    // Tem perfil mas sem trial — garante
-    await auth.supabase
-      .from("trainer_profiles")
-      .update({
-        trial_ends_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-      })
-      .eq("user_id", auth.user.id);
+  if (!ready || (typeof ready === "object" && "ok" in ready && ready.ok === false)) {
+    const msg =
+      typeof ready === "object" && ready && "error" in ready
+        ? String((ready as { error?: string }).error)
+        : "Falha desconhecida";
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 
   // Cria o convite (trigger gera code automaticamente)
@@ -106,14 +83,14 @@ export async function POST(request: NextRequest) {
     let friendly = "Não deu pra criar o convite. Tenta de novo.";
     if (raw.includes("foreign key") && raw.includes("trainer_profiles")) {
       friendly =
-        "Tua conta de profissional não tá totalmente configurada ainda. Sai e entra de novo.";
+        "Tua conta de profissional não tá totalmente configurada. Sai e entra de novo.";
     } else if (raw.includes("foreign key") && raw.includes("profiles")) {
       friendly = "Tua conta de usuário não tá totalmente configurada. Sai e entra de novo.";
     } else if (raw.includes("foreign key")) {
       friendly = `Erro de chave estrangeira: ${insertError?.message}`;
     } else if (raw.includes("duplicate")) {
       friendly = "Já existe um convite com esses dados.";
-    } else if (raw.includes("row-level security") || raw.includes("rls") || raw.includes("policy")) {
+    } else if (raw.includes("row-level security") || raw.includes("policy")) {
       friendly = "Sem permissão pra criar convite.";
     } else if (insertError?.message) {
       friendly = `Erro: ${insertError.message}`;
