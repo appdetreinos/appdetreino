@@ -80,7 +80,13 @@ export function ExercisePicker({
   const term = query.trim();
   const byChip = useMemo(() => {
     if (category === "all") return exercises;
-    return exercises.filter((ex) => ex.category === category);
+    // Match por category (v2) OU por muscle_group (v1) — assim o filtro
+    // funciona mesmo pra exercícios cujo `category` ainda não foi backfill.
+    // Migration 0033 preenche category, mas essa defesa cobre trainer-scoped.
+    return exercises.filter((ex) => {
+      const exCat = ex.category ?? ex.muscle_group ?? null;
+      return exCat === category;
+    });
   }, [exercises, category]);
 
   const filtered = useMemo(() => {
@@ -240,7 +246,7 @@ export function ExercisePicker({
                   {grouped.get(group)?.length ?? 0} exercícios
                 </span>
               </h3>
-              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <ul className="grid grid-cols-1 gap-3">
                 {grouped.get(group)?.map((ex) => {
                   const isSelected = selectedIds.includes(ex.id);
                   return (

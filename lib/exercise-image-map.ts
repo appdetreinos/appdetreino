@@ -526,6 +526,122 @@ const M: Record<string, ExerciseImageEntry> = {
   "assisted nordic ham": { url: "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20256%20256%22%20width%3D%22256%22%20height%3D%22256%22%3E%3Crect%20width%3D%22256%22%20height%3D%22256%22%20fill%3D%22%23F7F5F0%22/%3E%3Ctext%20x%3D%22128%22%20y%3D%22244%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2C%20sans-serif%22%20font-size%3D%2213%22%20font-weight%3D%22600%22%20fill%3D%22%231A1A1A%22%3Eassisted%20nordic%20ham%3C/text%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%236C757D%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%22128%22%20cy%3D%2248%22%20r%3D%2218%22%20fill%3D%22%23E76F51%22/%3E%3Cline%20x1%3D%22128%22%20y1%3D%2268%22%20x2%3D%22128%22%20y2%3D%22148%22/%3E%3Cline%20x1%3D%22128%22%20y1%3D%2280%22%20x2%3D%2288%22%20y2%3D%22120%22/%3E%3Cline%20x1%3D%22128%22%20y1%3D%2280%22%20x2%3D%22168%22%20y2%3D%22120%22/%3E%3Cline%20x1%3D%22128%22%20y1%3D%22148%22%20x2%3D%22108%22%20y2%3D%22220%22/%3E%3Cline%20x1%3D%22128%22%20y1%3D%22148%22%20x2%3D%22148%22%20y2%3D%22220%22/%3E%3C/g%3E%3C/svg%3E" },
   "barra fixa": { url: "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20256%20256%22%20width%3D%22256%22%20height%3D%22256%22%3E%3Crect%20width%3D%22256%22%20height%3D%22256%22%20fill%3D%22%23F7F5F0%22/%3E%3Ctext%20x%3D%22128%22%20y%3D%22244%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2C%20sans-serif%22%20font-size%3D%2213%22%20font-weight%3D%22600%22%20fill%3D%22%231A1A1A%22%3Ebarra%20fixa%3C/text%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%236C757D%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%22128%22%20cy%3D%2248%22%20r%3D%2218%22%20fill%3D%22%23E76F51%22/%3E%3Cline%20x1%3D%22128%22%20y1%3D%2268%22%20x2%3D%22128%22%20y2%3D%22148%22/%3E%3Cline%20x1%3D%22128%22%20y1%3D%2280%22%20x2%3D%2288%22%20y2%3D%22120%22/%3E%3Cline%20x1%3D%22128%22%20y1%3D%2280%22%20x2%3D%22168%22%20y2%3D%22120%22/%3E%3Cline%20x1%3D%22128%22%20y1%3D%22148%22%20x2%3D%22108%22%20y2%3D%22220%22/%3E%3Cline%20x1%3D%22128%22%20y1%3D%22148%22%20x2%3D%22148%22%20y2%3D%22220%22/%3E%3C/g%3E%3C/svg%3E" },
   "tibia dorsi-flexion machine": { url: "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20256%20256%22%20width%3D%22256%22%20height%3D%22256%22%3E%3Crect%20width%3D%22256%22%20height%3D%22256%22%20fill%3D%22%23F7F5F0%22/%3E%3Ctext%20x%3D%22128%22%20y%3D%22244%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2C%20sans-serif%22%20font-size%3D%2213%22%20font-weight%3D%22600%22%20fill%3D%22%231A1A1A%22%3Etibia%20dorsi-flexion%20machine%3C/text%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%236C757D%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%22128%22%20cy%3D%2248%22%20r%3D%2218%22%20fill%3D%22%23E76F51%22/%3E%3Cline%20x1%3D%22128%22%20y1%3D%2268%22%20x2%3D%22128%22%20y2%3D%22148%22/%3E%3Cline%20x1%3D%22128%22%20y1%3D%2280%22%20x2%3D%2288%22%20y2%3D%22120%22/%3E%3Cline%20x1%3D%22128%22%20y1%3D%2280%22%20x2%3D%22168%22%20y2%3D%22120%22/%3E%3Cline%20x1%3D%22128%22%20y1%3D%22148%22%20x2%3D%22108%22%20y2%3D%22220%22/%3E%3Cline%20x1%3D%22128%22%20y1%3D%22148%22%20x2%3D%22148%22%20y2%3D%22220%22/%3E%3C/g%3E%3C/svg%3E" },
+
+  // ───── SEED (migration 0018) — exercícios da biblioteca global ─────
+  // Silhuetas padronizadas via makeSilhoueta(), agrupadas por grupo muscular.
+  // Garantem que toda seed tenha mídia visível no picker e nas execuções.
+
+  // QUADRÍCEPS (pernas #264653)
+  "agachamento goblet": {
+    url: makeSilhoueta({
+      name: "agachamento goblet",
+      stroke: "pernas",
+      body: `<circle cx="128" cy="48" r="18" fill="#E76F51"/><line x1="128" y1="68" x2="128" y2="148"/><line x1="128" y1="80" x2="98" y2="120"/><line x1="128" y1="80" x2="158" y2="120"/><line x1="128" y1="148" x2="108" y2="220"/><line x1="128" y1="148" x2="148" y2="220"/><line x1="128" y1="105" x2="108" y2="95"/><line x1="128" y1="105" x2="148" y2="95"/><rect x="118" y="92" width="40" height="20" fill="#264653" rx="3"/>`,
+    }),
+  },
+  "leg press 45°": {
+    url: makeSilhoueta({
+      name: "leg press 45°",
+      stroke: "pernas",
+      body: `<circle cx="60" cy="128" r="18" fill="#E76F51"/><line x1="78" y1="128" x2="140" y2="148"/><line x1="100" y1="128" x2="100" y2="100"/><line x1="140" y1="148" x2="180" y2="100"/><line x1="180" y1="100" x2="220" y2="60"/><line x1="140" y1="148" x2="160" y2="200"/><line x1="140" y1="148" x2="120" y2="200"/><line x1="20" y1="200" x2="236" y2="200" stroke-width="3" stroke="#999"/>`,
+    }),
+  },
+  "avanço búlgaro": {
+    url: makeSilhoueta({
+      name: "avanço búlgaro",
+      stroke: "pernas",
+      body: `<circle cx="128" cy="48" r="18" fill="#E76F51"/><line x1="128" y1="68" x2="128" y2="148"/><line x1="128" y1="80" x2="98" y2="120"/><line x1="128" y1="80" x2="158" y2="120"/><line x1="128" y1="148" x2="108" y2="220"/><line x1="128" y1="148" x2="180" y2="148"/><line x1="180" y1="148" x2="180" y2="220"/><rect x="160" y="138" width="40" height="16" fill="#264653" rx="2"/>`,
+    }),
+  },
+
+  // PEITO (pernas / outro — silhueta neutra com halteres)
+  "supino reto barra": {
+    url: makeSilhoueta({
+      name: "supino reto barra",
+      stroke: "pernas",
+      body: `<circle cx="60" cy="128" r="18" fill="#E76F51"/><line x1="78" y1="128" x2="200" y2="128"/><line x1="100" y1="128" x2="100" y2="80"/><line x1="100" y1="80" x2="180" y2="80"/><line x1="180" y1="80" x2="180" y2="60"/><line x1="200" y1="128" x2="220" y2="180"/><line x1="200" y1="128" x2="200" y2="180"/><line x1="60" y1="60" x2="220" y2="60" stroke-width="4"/><rect x="70" y="50" width="30" height="20" fill="#264653" rx="2"/><rect x="180" y="50" width="30" height="20" fill="#264653" rx="2"/><line x1="20" y1="200" x2="236" y2="200" stroke-width="3" stroke="#999"/>`,
+    }),
+  },
+  "supino inclinado halteres": {
+    url: makeSilhoueta({
+      name: "supino inclinado halteres",
+      stroke: "pernas",
+      body: `<circle cx="80" cy="100" r="18" fill="#E76F51"/><line x1="98" y1="100" x2="200" y2="148"/><line x1="120" y1="100" x2="120" y2="60"/><line x1="120" y1="60" x2="160" y2="40"/><line x1="200" y1="148" x2="220" y2="200"/><line x1="80" y1="80" x2="180" y2="160" stroke-width="3" stroke="#999"/><rect x="110" y="40" width="30" height="22" fill="#264653" rx="2"/><rect x="160" y="60" width="30" height="22" fill="#264653" rx="2"/><line x1="20" y1="200" x2="236" y2="200" stroke-width="3" stroke="#999"/>`,
+    }),
+  },
+  "flexão de braços": {
+    url: makeSilhoueta({
+      name: "flexão de braços",
+      stroke: "pernas",
+      body: `<circle cx="180" cy="160" r="14" fill="#E76F51"/><line x1="40" y1="140" x2="200" y2="160"/><line x1="120" y1="160" x2="120" y2="120"/><line x1="120" y1="120" x2="160" y2="160"/><line x1="40" y1="140" x2="60" y2="180"/><line x1="200" y1="160" x2="220" y2="180"/><line x1="20" y1="200" x2="236" y2="200" stroke-width="3" stroke="#999"/>`,
+    }),
+  },
+
+  // COSTAS
+  "remada unilateral halter": {
+    url: makeSilhoueta({
+      name: "remada unilateral halter",
+      stroke: "costas",
+      body: `<circle cx="80" cy="80" r="18" fill="#E76F51"/><line x1="80" y1="100" x2="160" y2="148"/><line x1="120" y1="120" x2="60" y2="100"/><line x1="120" y1="120" x2="180" y2="100"/><line x1="160" y1="148" x2="160" y2="220"/><line x1="160" y1="148" x2="220" y2="220"/><line x1="120" y1="120" x2="80" y2="180"/><rect x="40" y="90" width="20" height="30" fill="#264653" rx="2"/><line x1="20" y1="220" x2="236" y2="220" stroke-width="3" stroke="#999"/>`,
+    }),
+  },
+
+  // OMBROS
+  "desenvolvimento militar": {
+    url: makeSilhoueta({
+      name: "desenvolvimento militar",
+      stroke: "costas",
+      body: `<circle cx="128" cy="40" r="18" fill="#E76F51"/><line x1="128" y1="60" x2="128" y2="148"/><line x1="128" y1="72" x2="98" y2="100"/><line x1="128" y1="72" x2="158" y2="100"/><line x1="128" y1="148" x2="108" y2="220"/><line x1="128" y1="148" x2="148" y2="220"/><line x1="80" y1="70" x2="176" y2="70" stroke-width="4"/><rect x="70" y="60" width="20" height="20" fill="#264653" rx="2"/><rect x="166" y="60" width="20" height="20" fill="#264653" rx="2"/>`,
+    }),
+  },
+
+  // TRÍCEPS
+  "tríceps pulley": {
+    url: makeSilhoueta({
+      name: "tríceps pulley",
+      stroke: "bracos",
+      body: `<circle cx="128" cy="40" r="18" fill="#E76F51"/><line x1="128" y1="60" x2="128" y2="148"/><line x1="128" y1="72" x2="128" y2="120"/><line x1="128" y1="120" x2="100" y2="170"/><line x1="128" y1="120" x2="156" y2="170"/><line x1="128" y1="148" x2="108" y2="220"/><line x1="128" y1="148" x2="148" y2="220"/><line x1="200" y1="40" x2="200" y2="170" stroke-width="2" stroke-dasharray="4,3"/><rect x="190" y="170" width="20" height="12" fill="#264653" rx="2"/>`,
+    }),
+  },
+
+  // CORE / ABDÔMEN
+  "prancha frontal": {
+    url: makeSilhoueta({
+      name: "prancha frontal",
+      stroke: "abdomen",
+      body: `<line x1="40" y1="140" x2="216" y2="140"/><line x1="216" y1="140" x2="216" y2="100"/><line x1="216" y1="100" x2="216" y2="76"/><circle cx="216" cy="60" r="14" fill="#E76F51"/><line x1="216" y1="140" x2="200" y2="180"/><line x1="40" y1="140" x2="60" y2="180"/><line x1="20" y1="200" x2="236" y2="200" stroke-width="3" stroke="#999"/>`,
+    }),
+  },
+  "abdominal roda": {
+    url: makeSilhoueta({
+      name: "abdominal roda",
+      stroke: "abdomen",
+      body: `<circle cx="60" cy="140" r="10" fill="#264653"/><line x1="70" y1="140" x2="180" y2="140"/><line x1="180" y1="140" x2="220" y2="100"/><line x1="220" y1="100" x2="220" y2="76"/><circle cx="220" cy="60" r="14" fill="#E76F51"/><line x1="180" y1="140" x2="180" y2="200"/><line x1="180" y1="140" x2="220" y2="200"/><line x1="20" y1="220" x2="236" y2="220" stroke-width="3" stroke="#999"/>`,
+    }),
+  },
+
+  // CARDIO
+  "esteira corrida": {
+    url: makeSilhoueta({
+      name: "esteira corrida",
+      stroke: "cardio",
+      body: `<circle cx="128" cy="48" r="18" fill="#E76F51"/><line x1="128" y1="68" x2="138" y2="130"/><line x1="138" y1="130" x2="178" y2="170"/><line x1="138" y1="130" x2="98" y2="180"/><line x1="128" y1="78" x2="78" y2="110"/><line x1="128" y1="78" x2="178" y2="100"/><line x1="128" y1="78" x2="100" y2="60"/><line x1="40" y1="200" x2="216" y2="200" stroke-width="4"/><line x1="40" y1="208" x2="216" y2="208" stroke-width="2" stroke-dasharray="6,4"/>`,
+    }),
+  },
+  "bike ergométrica": {
+    url: makeSilhoueta({
+      name: "bike ergométrica",
+      stroke: "cardio",
+      body: `<circle cx="128" cy="48" r="18" fill="#E76F51"/><line x1="128" y1="68" x2="138" y2="130"/><line x1="138" y1="130" x2="178" y2="170"/><line x1="138" y1="130" x2="98" y2="180"/><line x1="128" y1="78" x2="78" y2="110"/><line x1="128" y1="78" x2="178" y2="100"/><circle cx="128" cy="190" r="28" fill="none"/><circle cx="128" cy="190" r="6" fill="#264653"/><line x1="100" y1="190" x2="156" y2="190"/><line x1="40" y1="220" x2="216" y2="220" stroke-width="3" stroke="#999"/>`,
+    }),
+  },
+  "burpee": {
+    url: makeSilhoueta({
+      name: "burpee",
+      stroke: "cardio",
+      body: `<circle cx="180" cy="80" r="16" fill="#E76F51"/><line x1="180" y1="98" x2="180" y2="148"/><line x1="180" y1="110" x2="140" y2="130"/><line x1="180" y1="110" x2="220" y2="130"/><line x1="180" y1="148" x2="160" y2="200"/><line x1="180" y1="148" x2="200" y2="200"/><path d="M40 180 Q60 130 100 180" fill="none"/><circle cx="100" cy="180" r="10" fill="#264653"/><line x1="40" y1="220" x2="236" y2="220" stroke-width="3" stroke="#999"/>`,
+    }),
+  },
 };
 
 /**

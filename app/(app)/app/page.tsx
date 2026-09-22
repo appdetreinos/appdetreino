@@ -23,6 +23,7 @@ import { OnboardingWizard } from "./_components/onboarding-wizard";
 import { OnboardingChecklist } from "./_components/onboarding-checklist";
 import { Sparkline } from "@/components/ui/sparkline";
 import { ProgressRing } from "@/components/ui/progress-ring";
+import { KpiCard } from "./_components/kpi-card";
 
 /**
  * Trainer dashboard — versão SEM motion/react.
@@ -30,12 +31,11 @@ import { ProgressRing } from "@/components/ui/progress-ring";
  * Suspeita: motion v13.4.0 (fork de framer-motion) quebra com Next 16
  * + React 19. Aqui eu:
  *  - Removi import de motion/react
- *  - Removi <Stagger>, <StaggerItem>, <AnimatedNumber>
+ *  - Removi <Stagger>, <StaggerItem> (mantive <AnimatedNumber> via CSS+JS)
  *  - Animations via CSS puro (animate-fade-in, animate-pulse do Tailwind)
- *  - Números renderizados diretamente (sem AnimatedNumber)
+ *  - <AnimatedNumber> agora é requestAnimationFrame vanilla (sem motion)
  *
  * Build tag: NO-MOTION-2026-09-22T13:45
- * Se carregar, o vilão é motion/react e reescrevo AnimatePresence/Stagger.
  */
 
 export const dynamic = "force-dynamic";
@@ -283,9 +283,9 @@ async function TrainerDashboardInner() {
       </header>
 
       <div className="p-6 space-y-6 max-w-5xl mx-auto animate-fade-in">
-        {/* KPIs SEM AnimatedNumber */}
+        {/* KPIs com count-up (CSS + vanilla JS, sem motion) */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Kpi
+          <KpiCard
             icon={Users}
             label="Alunos ativos"
             value={totalAlunosCountValue}
@@ -298,7 +298,7 @@ async function TrainerDashboardInner() {
             }
             hint={`${activeStudents} treinaram nos últimos 7 dias`}
           />
-          <Kpi
+          <KpiCard
             icon={Wallet}
             label="Receita do mês"
             value={receitaMes}
@@ -320,13 +320,13 @@ async function TrainerDashboardInner() {
               ) : null
             }
           />
-          <Kpi
+          <KpiCard
             icon={CalendarDays}
             label="Sessões (7d)"
             value={sessionsLast7Days}
             hint="treinos iniciados/concluídos"
           />
-          <Kpi
+          <KpiCard
             icon={Flame}
             label="Streak da consultoria"
             value={activeRate}
@@ -412,38 +412,6 @@ async function TrainerDashboardInner() {
         </Card>
       </div>
     </div>
-  );
-}
-
-function Kpi({
-  icon: Icon,
-  label,
-  value,
-  format,
-  badge,
-  hint,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: number;
-  format?: (n: number) => string;
-  badge?: React.ReactNode;
-  hint?: string;
-}) {
-  return (
-    <Card className="bg-card/80 border-white/10 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="grid size-9 place-items-center rounded-xl bg-primary/15 text-primary">
-          <Icon className="size-4" />
-        </div>
-        {badge}
-      </div>
-      <div className="mt-3 text-2xl font-extrabold tracking-tight tabular-nums">
-        {format ? format(value) : value}
-      </div>
-      <div className="text-xs text-foreground/65">{label}</div>
-      {hint && <div className="mt-2 text-[11px] text-foreground/55">{hint}</div>}
-    </Card>
   );
 }
 
