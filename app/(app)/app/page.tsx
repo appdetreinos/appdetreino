@@ -39,7 +39,7 @@ async function TrainerDashboardInner() {
       <header className="border-b border-white/10 sticky top-0 z-30 bg-background/85 backdrop-blur-md">
         <div className="px-6 h-16 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-xl font-bold truncate">Bom dia, <span className="text-primary">{firstName}</span> 🔥</h1>
+            <h1 className="text-xl font-bold truncate">BEM VINDO AO VIVA FIT 🚀</h1>
             <p className="text-xs text-foreground/65">Sessão Ativa</p>
           </div>
           <div className="flex items-center gap-2">
