@@ -24,7 +24,7 @@ export function MarketingFooter() {
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Conta</h4>
             <ul className="mt-4 space-y-2 text-sm text-foreground/70">
-              <li><Link href="/login" className="hover:text-foreground transition-colors">Entrar</Link></li>
+              <li><Link href="/entrar" className="hover:text-foreground transition-colors">Entrar</Link></li>
               <li><Link href="/register" className="hover:text-foreground transition-colors">Criar conta</Link></li>
             </ul>
           </div>
