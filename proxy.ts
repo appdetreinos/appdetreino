@@ -57,7 +57,10 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 0) Aplica security headers em qualquer rota que chegue até aqui
-  let response = NextResponse.next({ request });
+  let response = NextResponse.next({
+    request,
+    headers: { "x-pathname": pathname },
+  });
   setSecurityHeaders(response);
 
   // 0b) /app é server-rendered dinâmico — NUNCA cachear.

@@ -302,7 +302,7 @@ async function TrainerDashboardInner() {
             icon={Wallet}
             label="Receita do mês"
             value={receitaMes}
-            format={(v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
+            formatKind="currency"
             badge={
               variacaoMes !== 0 ? (
                 <Badge
@@ -330,7 +330,7 @@ async function TrainerDashboardInner() {
             icon={Flame}
             label="Streak da consultoria"
             value={activeRate}
-            format={(v) => `${Math.round(v)}%`}
+            formatKind="percent"
             hint="aderência média semanal"
           />
         </div>
