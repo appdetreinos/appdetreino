@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MailCheck, Lock, ArrowRight, Sparkles } from "lucide-react";
+import { MailCheck, ArrowRight, Sparkles } from "lucide-react";
 import { Logo } from "../_components/logo";
 
 /**
@@ -9,7 +9,6 @@ import { Logo } from "../_components/logo";
  *  - Mostra o nome do usuário recém-cadastrado
  *  - Mostra o e-mail cadastrado (pra ele não esquecer)
  *  - Botão "Acessar plataforma" → /login
- *  - Botão "Definir senha agora" → /recuperar?email=X (manda link de reset)
  *  - Texto humanizado (tom próprio, não copia da Prime)
  *
  * Rota pública (acessível sem login). Recebe dados via query string:
@@ -101,42 +100,20 @@ export default async function BoasVindasPage({
                 Senha
               </dt>
               <dd className="mt-0.5 text-sm text-foreground/85">
-                A senha que você definiu agora.{" "}
-                <Link
-                  href={`/recuperar${email ? `?email=${encodeURIComponent(email)}` : ""}`}
-                  className="font-semibold text-primary hover:underline"
-                >
-                  Esqueceu? Redefine aqui
-                </Link>
-                .
+                A senha que você definiu agora. Guarde ela em algum lugar seguro. Se
+                esquecer, dá pra redefinir em <span className="font-mono">/recuperar</span>.
               </dd>
             </div>
           </dl>
 
-          {/* CTAs */}
-          <div className="mt-6 flex flex-col gap-2.5">
-            <Link
-              href="/login"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition-all hover:bg-primary/90"
-            >
-              Acessar plataforma
-              <ArrowRight className="size-4" />
-            </Link>
-
-            <Link
-              href={`/recuperar${email ? `?email=${encodeURIComponent(email)}` : ""}`}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/15 bg-background/40 px-5 py-3 text-sm font-semibold transition-colors hover:bg-white/5"
-            >
-              <Lock className="size-4" />
-              Definir uma senha nova (recomendado)
-            </Link>
-          </div>
-
-          <p className="mt-4 text-[11px] text-muted-foreground">
-            <strong className="text-foreground/80">Lembrete:</strong> você pode trocar
-            sua senha a qualquer momento no seu perfil, em{" "}
-            <span className="font-mono">Configurações → Segurança</span>.
-          </p>
+          {/* CTA único — foco em entrar */}
+          <Link
+            href="/login"
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition-all hover:bg-primary/90"
+          >
+            Acessar plataforma
+            <ArrowRight className="size-4" />
+          </Link>
         </div>
 
         {/* Próximos passos */}

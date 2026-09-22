@@ -28,10 +28,53 @@ export default async function InvitePage({ params }: PageProps) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Lê o invite (RLS permite SELECT público)
+  // Se já logado como trainer/admin, bloqueia: aceita_invite não pode
+  // rebaixar o role. Mostra mensagem clara + opção de fazer logout.
+  if (user) {
+    const { data: meProfile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (meProfile && (meProfile.role === "trainer" || meProfile.role === "admin")) {
+      return (
+        <Shell>
+          <Card className="bg-card/80 border-white/10 p-8 text-center max-w-md w-full">
+            <div className="grid size-14 place-items-center rounded-full bg-amber-500/15 text-amber-500 mx-auto">
+              <UserPlus className="size-7" />
+            </div>
+            <h1 className="mt-4 text-xl font-bold">Você já tem conta de profissional</h1>
+            <p className="mt-2 text-sm text-foreground/65">
+              Pra aceitar um convite de aluno, você precisa estar logado com uma conta
+              de aluno. Se você quer testar como aluno, crie uma conta separada
+              (com outro e-mail) ou faça logout aqui:
+            </p>
+            <div className="mt-6 flex flex-col gap-2">
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:opacity-90 transition-opacity"
+              >
+                Trocar de conta
+              </Link>
+              <Link
+                href="/app"
+                className="inline-flex items-center justify-center gap-2 rounded-md border border-white/15 bg-background/40 px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5"
+              >
+                Voltar pro meu painel
+              </Link>
+            </div>
+          </Card>
+        </Shell>
+      );
+    }
+  }
+
+  // Lê o invite via view pública `student_invites_safe` (mascara phone).
+  // Isso destrava o caso "Convite não encontrado" quando o user clica
+  // no link do WhatsApp sem estar logado — antes a RLS bloqueava.
   const { data: invite, error } = await supabase
-    .from("student_invites")
-    .select("id, full_name, code, status, trainer_id")
+    .from("student_invites_safe")
+    .select("id, full_name, code, status, trainer_id, expires_at")
     .eq("code", normalizedCode)
     .maybeSingle();
 

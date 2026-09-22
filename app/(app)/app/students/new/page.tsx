@@ -123,27 +123,21 @@ export default function NewStudentPage() {
               <p className="mt-3 text-xs text-foreground/65 break-all">{inviteUrl}</p>
             </div>
 
-            <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="mt-6 flex flex-col gap-3">
               {result.phone && (
                 <a
                   href={`https://wa.me/55${result.phone.replace(/\D/g, "")}?text=${whatsappMessage}`}
                   target="_blank"
-                  className="inline-flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700 transition-colors"
                 >
                   <MessageCircle className="size-4" />
                   Mandar no WhatsApp
                 </a>
               )}
-              <Link
-                href="/app/students"
-                className="inline-flex items-center justify-center gap-2 rounded-md border border-white/10 px-4 py-2.5 text-sm font-semibold hover:border-primary/40 transition-colors"
-              >
-                Ver todos os alunos
-              </Link>
               <button
                 type="button"
                 onClick={() => setResult(null)}
-                className="inline-flex items-center justify-center gap-2 rounded-md border border-white/10 px-4 py-2.5 text-sm font-semibold text-foreground/70 hover:border-primary/40 hover:text-foreground transition-colors"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/10 px-4 py-3 text-sm font-semibold text-foreground/70 hover:border-primary/40 hover:text-foreground transition-colors"
               >
                 Convidar outro
               </button>
