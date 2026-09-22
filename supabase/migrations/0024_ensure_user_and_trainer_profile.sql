@@ -31,7 +31,6 @@ SET search_path = public
 AS $$
 DECLARE
   v_user_id UUID := auth.uid();
-  v_user_email TEXT;
   v_user_full_name TEXT;
   v_profile_id UUID;
 BEGIN
@@ -42,13 +41,13 @@ BEGIN
   -- 1. Garante profile existe
   SELECT id INTO v_profile_id FROM public.profiles WHERE id = v_user_id;
   IF v_profile_id IS NULL THEN
-    -- Pega email/full_name do auth.users
-    SELECT email, COALESCE(raw_user_meta_data->>'full_name', split_part(email, '@', 1))
-      INTO v_user_email, v_user_full_name
+    -- Pega full_name do auth.users raw_user_meta_data (profiles não tem coluna email)
+    SELECT COALESCE(raw_user_meta_data->>'full_name', split_part(email, '@', 1))
+      INTO v_user_full_name
     FROM auth.users WHERE id = v_user_id;
 
-    INSERT INTO public.profiles (id, full_name, email, role)
-    VALUES (v_user_id, COALESCE(v_user_full_name, 'Profissional'), v_user_email, 'trainer')
+    INSERT INTO public.profiles (id, full_name, role)
+    VALUES (v_user_id, COALESCE(v_user_full_name, 'Profissional'), 'trainer')
     ON CONFLICT (id) DO NOTHING;
   ELSE
     -- Se profile existe mas role não é trainer, atualiza
