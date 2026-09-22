@@ -5,6 +5,7 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Plus, ArrowUpRight, UserPlus, CheckCircle2, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { DeleteInviteButton } from "./delete-invite-button";
 
 /**
  * Lista de alunos do trainer.
@@ -117,6 +118,7 @@ export default async function StudentsPage() {
                       >
                         {inv.status === "accepted" ? "Aceito" : "Aguardando"}
                       </Badge>
+                      {inv.status !== "accepted" && <DeleteInviteButton inviteId={inv.id} />}
                     </div>
                   ))}
                 </div>
