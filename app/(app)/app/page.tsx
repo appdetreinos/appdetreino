@@ -63,7 +63,7 @@ async function TrainerDashboardInner() {
 
   // 2. Dados de Alunos (Com proteção individual)
   let totalAlunosCount = 0;
-  let focusStudents = [];
+  let focusStudents: any[] = [];
 
   try {
     const { count, error: countErr } = await supabase
@@ -88,6 +88,10 @@ async function TrainerDashboardInner() {
         quando: s.status === "active" ? "Ativo" : "Inativo",
       }));
     }
+  } catch (e) {
+    safeLog.warn("[dashboard] students_data_fail", String(e));
+  }
+
   } catch (e) {
     safeLog.warn("[dashboard] students_data_fail", String(e));
   }

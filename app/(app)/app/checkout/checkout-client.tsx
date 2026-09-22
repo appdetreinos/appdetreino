@@ -41,14 +41,19 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
     const script = document.createElement("script");
     script.src = "https://sdk.mercadopago.com/js/v2";
     script.async = true;
-    script.onload = () => setSdkLoaded(true);
+    script.onload = () => {
+      console.log("MP SDK Loaded");
+      setSdkLoaded(true);
+    };
+    script.onerror = () => setError("Erro ao carregar o sistema de pagamentos.");
     document.head.appendChild(script);
   }, []);
 
   async function renderPaymentBrick() {
     setError(null);
-    if (!sdkLoaded) {
-      setError("O sistema de pagamentos ainda está carregando. Tente novamente em 2 segundos.");
+    
+    if (!window.MercadoPago && !sdkLoaded) {
+      setError("O sistema de pagamentos está carregando. Tente novamente em instantes.");
       return;
     }
 
@@ -83,6 +88,11 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
 
         const data = (await res.json()) as { preference_id: string };
         
+        if (!window.MercadoPago) {
+          setError("Erro técnico: SDK do Mercado Pago não detectado.");
+          return;
+        }
+
         const mp = new window.MercadoPago(process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY || "");
         const bricksBuilder = mp.bricks();
         
@@ -130,7 +140,7 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
               aria-checked={active}
               onClick={() => {
                 setMethod(m.id);
-                setBrickRendered(false); // Reseta o brick se mudar o método
+                setBrickRendered(false);
               }}
               disabled={pending}
               className={
@@ -173,7 +183,6 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
         </Button>
       )}
 
-      {/* O formulário do Mercado Pago será injetado aqui */}
       <div id="payment-brick" className="mt-6" />
 
       <p className="mt-3 text-center text-xs text-muted-foreground">
