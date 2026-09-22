@@ -19,8 +19,10 @@ import { LogoutButton } from "@/components/logout-button";
 import { KpiCard } from "./_components/kpi-card";
 import { DashboardEntrance } from "./dashboard-entrance";
 
+// FORÇAR DINAMISMO TOTAL
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 interface StudentSummary {
   id: string;
@@ -37,9 +39,9 @@ export default async function TrainerDashboard() {
     
     if (authError || !user) return <div className="p-10 text-center">Autenticação necessária.</div>;
 
-    // USANDO O ID DO USUÁRIO LOGADO (Dinâmico para múltiplos treinadores)
     const currentTrainerId = user.id;
 
+    // 1. Profile
     const { data: profile } = await supabase
       .from("profiles")
       .select("full_name")
@@ -48,17 +50,30 @@ export default async function TrainerDashboard() {
 
     const firstName = (profile?.full_name ?? user.email?.split("@")[0] ?? "Treinador");
 
-    // 1. Total Students - Busca dinâmica baseada no usuário logado
+    // 2. Alunos - Query com cache desativado explicitamente
     let totalAlunos = 0;
+    let studentsList: StudentSummary[] = [];
     try {
-      const { count, error } = await supabase
+      const { data: students, error: sErr } = await supabase
         .from("student_profiles")
-        .select("user_id", { count: "exact", head: true })
-        .eq("trainer_id", currentTrainerId);
-      if (!error) totalAlunos = count ?? 0;
-    } catch (e) { console.error("KPI Alunos error:", e); }
+        .select("user_id, full_// a la l'ancien code, on a:
+        .select("user_id, full_name, status, goal")
+        .eq("trainer_id", currentTrainerId)
+        .order("created_at", { ascending: false });
+      
+      if (!sErr && students) {
+        totalAlunos = students.length;
+        studentsList = students.map(s => ({
+          id: s.user_id,
+          nome: s.full_name ?? "Aluno",
+          letra: s.full_name?.[0]?.toUpperCase() ?? "?",
+          oque: s.goal || "Sem objetivo",
+          quando: s.status === "active" ? "Ativo" : "Inativo",
+        }));
+      }
+    } catch (e) { console.error("Error fetching students:", e); }
 
-    // 2. Monthly Revenue - Busca dinâmica
+    // 3. Receita
     let receitaMes = 0;
     try {
       const { data: payments } = await supabase
@@ -69,31 +84,10 @@ export default async function TrainerDashboard() {
       if (payments) {
         receitaMes = payments.reduce((acc, p) => acc + (p.amount_cents / 100), 0);
       }
-    } catch (e) { console.error("KPI Receita error:", e); }
-
-    // 3. Recent Students - Busca dinâmica
-    let studentsList: StudentSummary[] = [];
-    try {
-      const { data: students, error: sErr } = await supabase
-        .from("student_profiles")
-        .select("user_id, full_name, status, goal")
-        .eq("trainer_id", currentTrainerId)
-        .order("created_at", { ascending: false })
-        .limit(6);
-      
-      if (!sErr && students) {
-        studentsList = students.map(s => ({
-          id: s.user_id,
-          nome: s.full_name ?? "Aluno",
-          letra: s.full_name?.[0]?.toUpperCase() ?? "?",
-          oque: s.goal || "Sem objetivo",
-          quando: s.status === "active" ? "Ativo" : "Inativo",
-        }));
-      }
-    } catch (e) { console.error("Students list error:", e); }
+    } catch (e) { console.error("Error fetching revenue:", e); }
 
     return (
-      <div className="min-h-screen p-6 space-y-8 max-w-7xl mx-auto animate-in fade-in duration-500">
+      <div className="min-h-screen p-6 space-y-8 max-w-7xl mx-auto">
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">
@@ -144,7 +138,7 @@ export default async function TrainerDashboard() {
                 </div>
                 <h3 className="text-xl font-bold mb-2">Nenhum aluno encontrado</h3>
                 <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-                  Você ainda não tem alunos vinculados. Comece convidando seu primeiro aluno!
+                  Você ainda não tem alunos vinculados ao seu perfil.
                 </p>
                 <ButtonLink href="/app/students/new" className="mx-auto">
                   Adicionar primeiro aluno
@@ -170,7 +164,7 @@ export default async function TrainerDashboard() {
       </div>
     );
   } catch (err) {
-    console.error("DASHBOARD CRITICAL ERROR:", err);
+    console.error("DASHBOARD ERROR:", err);
     return <div className="p-10 text-center text-red-500">Erro ao carregar painel.</div>;
   }
 }
