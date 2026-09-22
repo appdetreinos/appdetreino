@@ -9,15 +9,19 @@ import { ArrowRight, Activity, DollarSign, Users, CheckCircle2, Check } from "lu
  * Hero "Viva FIT APP".
  *
  * Headline (2 linhas):
- *   "Sua consultoria, no piloto automático."
- *   "Alunos, treino, dieta e Pix — tudo num painel só."
+ *   "Sua consultoria,"
+ *   "organizada de verdade."        ← laranja
  *
- * Subtítulo: foco em "tempo recuperado" e "sair da bagunça".
+ * Subtítulo: foco em ORGANIZAÇÃO + FACILIDADE — vale pros 2 lados
+ * (trainer que controla tudo E aluno que abre o app e já acha o treino).
  * CTAs: "Começar 3 dias grátis" + "Ver planos"
  * Trust line: sem cartão, sem taxa por aluno.
  *
  * Mockup à direita: "Console do Trainer" — diferencial próprio
  * (a gente mostra gestão, não tela de aluno).
+ *
+ * Acima do headline, a faixa dupla "Sou profissional / Sou aluno"
+ * fica num componente separado (EntranceCards) — não é o header.
  */
 
 export function Hero() {
@@ -44,7 +48,7 @@ export function Hero() {
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                 className="block text-foreground"
               >
-                Sua consultoria no
+                Sua consultoria,
               </motion.span>
               <motion.span
                 initial={{ opacity: 0, y: 16 }}
@@ -52,7 +56,7 @@ export function Hero() {
                 transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
                 className="block text-primary mt-1"
               >
-                piloto automático.
+                organizada de verdade.
               </motion.span>
             </h1>
 
@@ -62,10 +66,10 @@ export function Hero() {
               transition={{ duration: 0.5, delay: 0.3 }}
               className="mt-5 sm:mt-6 text-base sm:text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed"
             >
-              Você para de montar planilha, mandar PDF e cobrar aluno um por um. O{" "}
-              <strong className="text-foreground">Viva FIT APP</strong> assume a parte chata —
-              treino, dieta, agenda e Pix recorrente — e devolve pra você o que tava faltando:
-              <strong className="text-foreground"> tempo pra treinar gente, não pra correr atrás</strong>.
+              Treino, dieta, agenda e Pix recorrente num painel só. Pra você{" "}
+              <strong className="text-foreground">parar de organizar planilha</strong> e começar a
+              atender mais alunos com menos esforço — e pro seu aluno{" "}
+              <strong className="text-foreground">abrir o app e achar tudo em 2 segundos</strong>.
             </motion.p>
 
             <motion.div
