@@ -60,6 +60,15 @@ export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
   setSecurityHeaders(response);
 
+  // 0b) /app é server-rendered dinâmico — NUNCA cachear.
+  // Estava servindo página de erro antiga cacheada por CDN mesmo após
+  // deploy novo. Forçar no-store garante que cada request chega ao server.
+  if (pathname.startsWith("/app") || pathname.startsWith("/aluno") || pathname.startsWith("/admin")) {
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
+  }
+
   // 1) Rotas públicas — marketing, auth, webhooks, assets
   const isPublic =
     pathname === "/" ||
