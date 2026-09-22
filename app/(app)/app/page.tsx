@@ -9,7 +9,7 @@ import {
   CalendarDays, 
   Flame 
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { staticSupabase } from "@/lib/supabase/static-client";
 import { LogoutButton } from "@/components/logout-button";
 import { KpiCard } from "./_components/kpi-card";
 
@@ -26,38 +26,38 @@ interface StudentSummary {
 
 export default async function TrainerDashboard() {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // USANDO CLIENTE ESTÁTICO (Sem Cookies) para isolar erro de infra
+    const supabase = staticSupabase;
     
-    if (!user) return <div className="p-10 text-center">Autenticação necessária.</div>;
+    // Como não temos o user do cookie, vamos buscar o seu perfil pelo ID fixo para teste
+    // O ID do seu perfil que vi no banco: 4f30f9c8-3f46-4e1e-88ce-0598941d6528
+    const userId = "4f30f9c8-3f46-4e1e-88ce-0598941d6528";
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("full_name")
-      .eq("id", user.id)
+      .eq("id", userId)
       .maybeSingle();
 
-    const firstName = (profile?.full_name ?? user.email ?? "Treinador").split(" ")[0];
+    const firstName = (profile?.full_name ?? "Treinador").split(" ")[0];
 
-    // Alunos - Busca minimalista para evitar crash
     let totalAlunos = 0;
     try {
       const { count, error } = await supabase
         .from("student_profiles")
         .select("user_id", { count: "exact", head: true })
-        .eq("trainer_id", user.id);
+        .eq("trainer_id", userId);
       if (!error) totalAlunos = count ?? 0;
     } catch (e) {
       console.error("Erro count alunos:", e);
     }
 
-    // Receita - Busca minimalista
     let receitaMes = 0;
     try {
       const { data: payments } = await supabase
         .from("payment_links")
         .select("amount_cents")
-        .eq("trainer_id", user.id)
+        .eq("trainer_id", userId)
         .not("paid_at", "is", null);
       if (payments) {
         receitaMes = payments.reduce((acc, p) => acc + (p.amount_cents / 100), 0);
@@ -85,16 +85,16 @@ export default async function TrainerDashboard() {
           <KpiCard icon={Flame} label="Aderência" value={0} formatKind="percent" hint="Em breve" />
         </div>
 
-        <Card className="p-6 text-center border-emerald-500/20 bg-emerald-500/5">
-          <p className="text-lg font-medium text-emerald-600">Estabilidade Restaurada!</p>
+        <Card className="p-6 text-center border-purple-500/20 bg-purple-500/5">
+          <p className="text-lg font-medium text-purple-600">Modo de Diagnóstico de Cookies Ativo</p>
           <p className="text-sm text-muted-foreground">
-            Painel religado com segurança. A lista de alunos será religada no próximo passo.
+            Estamos ignorando os cookies para testar se o crash é na autenticação.
           </p>
         </Card>
       </div>
     );
   } catch (err) {
-    console.error("DASHBOARD ERROR:", err);
-    return <div className="p-10 text-red-500">Erro ao carregar: {String(err)}</div>;
+    console.error("CRASH FINAL:", err);
+    return <div className="p-10 text-red-500">Erro fatal: {String(err)}</div>;
   }
 }
