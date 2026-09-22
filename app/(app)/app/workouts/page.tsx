@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { safeLog } from "@/lib/log/safe";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -26,6 +27,25 @@ type WorkoutListItem = {
 const DIA_LETRA = ["D", "S", "T", "Q", "Q", "S", "S"]; // dom=0 sab=6
 
 export default async function WorkoutsPage() {
+  try {
+    return await WorkoutsPageInner();
+  } catch (err) {
+    safeLog.error("[workouts] render failed", String(err));
+    return (
+      <div className="p-6 max-w-6xl mx-auto">
+        <h1 className="text-2xl font-extrabold tracking-tight mb-2">Treinos</h1>
+        <Card className="bg-card/80 border-amber-500/30 p-6">
+          <p className="text-sm text-foreground/70">
+            Não conseguimos carregar seus treinos agora. Tenta recarregar em alguns
+            segundos — pode ser migração pendente no banco.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+}
+
+async function WorkoutsPageInner() {
   const supabase = await createClient();
   const {
     data: { user },

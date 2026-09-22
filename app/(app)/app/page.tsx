@@ -17,6 +17,7 @@ import {
   Flame,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { safeLog } from "@/lib/log/safe";
 import { DashboardEntrance } from "./dashboard-entrance";
 import { LogoutButton } from "@/components/logout-button";
 import { OnboardingWizard } from "./_components/onboarding-wizard";
@@ -45,6 +46,51 @@ function monthKey(d: Date): string {
 }
 
 export default async function TrainerDashboard() {
+  try {
+    return await TrainerDashboardInner();
+  } catch (err) {
+    // Não deixa uma query quebrar o dashboard inteiro — loga e renderiza
+    // versão "degradada" só com o básico (header + atalhos).
+    safeLog.error("[dashboard] render failed", String(err));
+    return <DashboardDegraded />;
+  }
+}
+
+function DashboardDegraded() {
+  return (
+    <div className="min-h-screen">
+      <header className="border-b border-white/10 sticky top-0 z-30 bg-background/85 backdrop-blur-md">
+        <div className="px-6 h-16 flex items-center justify-between gap-3">
+          <h1 className="text-xl font-bold truncate">Painel</h1>
+          <ButtonLink href="/app/students/new" className="font-semibold">
+            <Plus className="size-4" />
+            <span className="hidden sm:inline">Novo aluno</span>
+          </ButtonLink>
+        </div>
+      </header>
+      <main className="p-6 max-w-5xl mx-auto space-y-4">
+        <Card className="bg-card/80 border-amber-500/30 p-6">
+          <h2 className="text-lg font-bold">Não conseguimos carregar os dados agora</h2>
+          <p className="mt-2 text-sm text-foreground/65">
+            Tenta recarregar em alguns segundos. Se persistir, fale com a gente no WhatsApp
+            — pode ser migração pendente no banco.
+          </p>
+        </Card>
+        <Card className="bg-card/80 border-white/10 p-6">
+          <h2 className="text-lg font-bold mb-4">Atalhos</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Atalho icon={UserPlus} label="Novo aluno" href="/app/students/new" />
+            <Atalho icon={CalendarCheck2} label="Mandar treino" href="/app/workouts" />
+            <Atalho icon={Receipt} label="Cobrar atrasado" href="/app/finance" />
+            <Atalho icon={MessageCircle} label="Conectar WhatsApp" href="/app/whatsapp" />
+          </div>
+        </Card>
+      </main>
+    </div>
+  );
+}
+
+async function TrainerDashboardInner() {
   const supabase = await createClient();
   const {
     data: { user },
