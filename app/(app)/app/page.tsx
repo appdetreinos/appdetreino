@@ -89,10 +89,17 @@ async function TrainerDashboardInner() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    return null;
+  }
+
+  // Garantia para o TypeScript: user agora é definitivamente não-nulo
+  const userId = user.id;
+
   // 0) Trial Lockout Redundancy
   const trial = await safe("trial.state", { locked: false } as any, async () => {
     const { getTrainerTrialState } = await import("@/lib/billing/trial");
-    return await getTrainerTrialState(user.id);
+    return await getTrainerTrialState(userId);
   });
 
   if (trial.locked) {
@@ -104,8 +111,9 @@ async function TrainerDashboardInner() {
   const { data: profileRole } = await supabase
     .from("profiles")
     .select("role")
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle();
+
 
   if (profileRole?.role === "student") {
     const { redirect } = await import("next/navigation");
@@ -119,8 +127,9 @@ async function TrainerDashboardInner() {
   const { data: profile } = await supabase
     .from("profiles")
     .select("full_name")
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle();
+
 
 
   const firstName = (profile?.full_name ?? user.email ?? "treinador").split(" ")[0];
@@ -172,10 +181,11 @@ async function TrainerDashboardInner() {
     const { count, error } = await supabase
       .from("student_profiles")
       .select("user_id", { count: "exact", head: true })
-      .eq("trainer_id", user.id);
+      .eq("trainer_id", userId);
     if (error) throw error;
     return count ?? 0;
   });
+
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const activeStudentsRaw = await safe("sessions.7d", [] as Array<{ student_id: string | null }>, async () => {
@@ -214,12 +224,13 @@ async function TrainerDashboardInner() {
     const { data, error } = await supabase
       .from("payment_links")
       .select("amount_cents, paid_at")
-      .eq("trainer_id", user.id)
+      .eq("trainer_id", userId)
       .not("paid_at", "is", null)
       .gte("paid_at", twelveMonthsAgo.toISOString());
     if (error) throw error;
     return (data ?? []) as Array<{ amount_cents: number; paid_at: string | null }>;
   });
+
 
   const months: { label: string; total: number; key: string }[] = [];
   for (let i = 11; i >= 0; i--) {
@@ -257,11 +268,12 @@ async function TrainerDashboardInner() {
       .select(
         "onboarding_completed_at, onboarding_checklist_completed_at, checklist_invited_student_at, checklist_sent_workout_at, checklist_sent_diet_at, checklist_configured_pay_at"
       )
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .maybeSingle();
     if (error) throw error;
     return data;
   });
+
   const showOnboarding = !trainerOnboarding?.onboarding_completed_at;
   const checklistState = {
     invited_student: !!trainerOnboarding?.checklist_invited_student_at,
