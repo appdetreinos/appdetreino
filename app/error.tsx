@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card } from "@/components/ui/card";
 import { AlertTriangle, Copy, Check } from "lucide-react";
-import { useState } from "react";
 import { safeLog } from "@/lib/log/safe";
 
 /**
@@ -15,6 +13,10 @@ import { safeLog } from "@/lib/log/safe";
  *
  * Em produção: loga via console (Vercel captura) + mostra ref pro usuário
  * reportar. Stack só aparece em dev.
+ *
+ * Importante: NÃO usa usePathname/useSearchParams aqui — em error boundary
+ * do App Router esses hooks podem suspender ou retornar null, causando
+ * loop de erro.
  */
 export default function GlobalError({
   error,
@@ -23,17 +25,16 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const pathname = usePathname();
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    // Não loga o objeto inteiro pra evitar vazar stack trace gigante em prod
     safeLog.error("[global-error] caught", {
-      pathname,
       message: error.message,
       digest: error.digest,
       name: error.name,
     });
-  }, [error, pathname]);
+  }, [error]);
 
   const refId = error.digest ?? "sem-ref";
 
