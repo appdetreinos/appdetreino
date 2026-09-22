@@ -64,6 +64,38 @@ export async function POST(request: NextRequest) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
+  // 0. Verifica se o convite ainda tá válido (não usado, não expirado)
+  //    Bloqueia ANTES de criar o user pra evitar contas órfãs.
+  const { data: inviteCheck, error: inviteCheckError } = await admin
+    .from("student_invites")
+    .select("id, status, expires_at, trainer_id")
+    .eq("code", body.invite_code)
+    .maybeSingle();
+
+  if (inviteCheckError || !inviteCheck) {
+    return NextResponse.json(
+      { ok: false, error: "Convite não encontrado. Pede um novo pro teu personal." },
+      { status: 404 },
+    );
+  }
+
+  if (inviteCheck.status === "accepted") {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Esse convite já foi usado. Pede um novo pro teu personal.",
+      },
+      { status: 409 },
+    );
+  }
+
+  if (inviteCheck.expires_at && new Date(inviteCheck.expires_at) < new Date()) {
+    return NextResponse.json(
+      { ok: false, error: "Esse convite expirou (7 dias). Pede um novo pro teu personal." },
+      { status: 410 },
+    );
+  }
+
   // 1. Cria user via admin (bypass email confirm)
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email: body.email,
@@ -110,12 +142,52 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 3. Aceita o convite (cria student_profile + vincula ao trainer)
-  const { error: rpcError } = await supabase.rpc("accept_invite", {
+  // 3. Aceita o convite — usa admin client pra bypassar RLS no INSERT em student_profiles.
+  //    (O aluno novo acabou de ser criado, e a RLS de student_profiles exige
+  //    trainer_id = auth.uid() OR user_id = auth.uid(), o que ainda não tá
+  //    configurado. Admin vai direto.)
+  const { error: rpcError } = await admin.rpc("accept_invite", {
     invite_code: body.invite_code,
   });
   if (rpcError) {
     safeLog.error("[student-signup] accept_invite failed", rpcError.message);
+    // Fallback: tenta criar student_profile direto via admin (caso a RPC tenha
+    // falhado em algum edge case)
+    const { data: inviteForFallback } = await admin
+      .from("student_invites")
+      .select("trainer_id, full_name, phone, goal, code")
+      .eq("code", body.invite_code)
+      .maybeSingle();
+
+    if (inviteForFallback) {
+      const { error: spError } = await admin.from("student_profiles").upsert(
+        {
+          user_id: created.user.id,
+          trainer_id: inviteForFallback.trainer_id,
+          full_name: inviteForFallback.full_name,
+          phone: inviteForFallback.phone,
+          goal: inviteForFallback.goal,
+          status: "active",
+          joined_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" },
+      );
+      if (!spError) {
+        // Marca convite como aceito
+        await admin
+          .from("student_invites")
+          .update({
+            status: "accepted",
+            accepted_by: created.user.id,
+            accepted_at: new Date().toISOString(),
+          })
+          .eq("id", inviteCheck.id);
+
+        return NextResponse.json({ ok: true, role: "student" });
+      }
+      safeLog.error("[student-signup] fallback student_profile upsert failed", spError.message);
+    }
+
     return NextResponse.json({
       ok: true,
       warning: `Conta criada, mas o vínculo com o personal falhou: ${rpcError.message}. Fale com seu personal.`,
