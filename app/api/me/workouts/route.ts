@@ -16,6 +16,14 @@ const exerciseSchema = z.object({
   sets: z.number().int().min(1).max(20),
   reps: z.string().min(1).max(40),
   load: z.string().max(40).nullable().optional(),
+  /**
+   * Opcional. Quando vier do catálogo de templates, o frontend já conhece
+   * o `id` da biblioteca global (trainer_id IS NULL). Se for enviado e
+   * bater com a biblioteca, REUSAMOS essa row em vez de duplicar como
+   * trainer-scoped. Sem `exercise_id` (criação manual), o handler cria
+   * trainer-scoped como antes.
+   */
+  exercise_id: z.string().uuid().optional(),
 });
 
 const bodySchema = z
@@ -79,22 +87,48 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 3. Cria os exercises (1 por nome) — trainer-scoped
-  const exerciseRows = exercises.map((ex) => ({
-    trainer_id: auth.user.id,
-    name: ex.name,
-  }));
-  const { data: createdExercises, error: exError } = await auth.supabase
-    .from("exercises")
-    .insert(exerciseRows)
-    .select("id, name");
+  // 3. Cria os exercises (1 por nome) — trainer-scoped.
+  //    EXCEÇÃO: se exercise_id vier do catálogo e bater com a biblioteca
+  //    global (trainer_id IS NULL), REUSAMOS o ID em vez de duplicar.
+  const createdExercises: Array<{ id: string; name: string }> = [];
 
-  if (exError || !createdExercises) {
-    safeLog.error("[workouts] exercises insert failed", exError?.message);
-    return NextResponse.json(
-      { ok: false, error: exError?.message ?? "Erro ao criar exercícios" },
-      { status: 500 },
-    );
+  for (const ex of exercises) {
+    let resolvedId: string | null = null;
+
+    // Tenta reusar biblioteca global (catálogo de templates)
+    if (ex.exercise_id) {
+      const { data: lib } = await auth.supabase
+        .from("exercises")
+        .select("id, trainer_id, name")
+        .eq("id", ex.exercise_id)
+        .maybeSingle();
+
+      // Segurança: só reusa se for da biblioteca global (trainer_id IS NULL)
+      // e o nome bater exatamente (cross-trainer write bloqueado por RLS).
+      if (lib && lib.trainer_id === null && lib.name === ex.name) {
+        resolvedId = lib.id;
+      }
+    }
+
+    // Fallback: cria trainer-scoped
+    if (!resolvedId) {
+      const { data: created, error: exErr } = await auth.supabase
+        .from("exercises")
+        .insert({ trainer_id: auth.user.id, name: ex.name })
+        .select("id, name")
+        .single();
+
+      if (exErr || !created) {
+        safeLog.error("[workouts] exercises insert failed", exErr?.message);
+        return NextResponse.json(
+          { ok: false, error: exErr?.message ?? "Erro ao criar exercícios" },
+          { status: 500 },
+        );
+      }
+      resolvedId = created.id;
+    }
+
+    createdExercises.push({ id: resolvedId as string, name: ex.name });
   }
 
   // 4. Distribui exercícios pelos dias

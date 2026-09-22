@@ -17,6 +17,10 @@ import {
   Trash2,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/client";
+import {
+  TemplateCatalogPicker,
+  type CatalogTemplate,
+} from "./template-catalog-picker";
 
 type Student = { id: string; full_name: string };
 
@@ -45,11 +49,14 @@ export function WorkoutForm({
   students,
   exercises,
   resolvedUrls,
+  templateCatalog,
 }: {
   students: Student[];
   exercises: ExerciseLibraryItem[];
   /** Mapa exerciseId → URL final já resolvida (Wikimedia ou data URI). */
   resolvedUrls: Record<string, string | null>;
+  /** Catálogo hierárquico de templates (Tipo > Grupo > Exercícios). */
+  templateCatalog: CatalogTemplate[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -69,6 +76,28 @@ export function WorkoutForm({
     setDays((prev) =>
       prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort(),
     );
+  }
+
+  /**
+   * Aplica um template ao form: pré-preenche título + exercícios
+   * (com exercise_id pra reuso de biblioteca) e ajusta dias se for full body.
+   * Trainer pode editar qualquer campo depois — não é "wizard" fechado.
+   */
+  function applyTemplate(t: CatalogTemplate) {
+    setTitle(t.title);
+    setExerciseRows(
+      t.exercises.map((ex) => ({
+        exerciseId: ex.exercise_id,
+        name: ex.name,
+        sets: String(ex.sets),
+        reps: ex.reps,
+        load: ex.load ?? "",
+      })),
+    );
+    // Full body = 1 dia; resto mantém seg/qua/sex como antes
+    if (t.template_type === "full_body") {
+      setDays([1]);
+    }
   }
 
   function addExercise() {
@@ -129,6 +158,8 @@ export function WorkoutForm({
             sets: Number(e.sets) || 3,
             reps: e.reps.trim(),
             load: e.load.trim() || null,
+            // Se veio do catálogo, manda o ID pra API reusar a biblioteca global
+            ...(e.exerciseId ? { exercise_id: e.exerciseId } : {}),
           })),
         }),
       });
@@ -164,8 +195,21 @@ export function WorkoutForm({
         </div>
       </header>
 
-      <main className="p-6 max-w-3xl mx-auto">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <main className="p-6 max-w-6xl mx-auto">
+        <div className="lg:grid lg:grid-cols-[320px_1fr] lg:gap-6">
+          {/* Coluna esquerda: catálogo de templates */}
+          <aside className="lg:sticky lg:top-20 lg:self-start mb-6 lg:mb-0">
+            {templateCatalog.length > 0 && (
+              <TemplateCatalogPicker
+                templates={templateCatalog}
+                resolvedUrls={resolvedUrls}
+                onUseTemplate={applyTemplate}
+              />
+            )}
+          </aside>
+
+          {/* Coluna direita: form de criação */}
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl">
           <Card className="bg-card/80 border-white/10 p-6 space-y-5">
             <div>
               <Label htmlFor="title">Título</Label>
@@ -350,6 +394,7 @@ export function WorkoutForm({
             </Button>
           </div>
         </form>
+        </div>
       </main>
 
       <ExercisePicker

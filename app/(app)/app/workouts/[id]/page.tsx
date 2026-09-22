@@ -10,6 +10,11 @@ import {
   PRIMARY_MUSCLE_LABEL,
   EQUIPMENT_LABEL,
 } from "@/lib/workout";
+import {
+  WorkoutExecutionPreview,
+  type ExecutionItem,
+  type ExecutionStep,
+} from "@/components/workouts/workout-execution-preview";
 import { PlayCircle, Dumbbell, Target, ArrowLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -230,7 +235,49 @@ export default async function WorkoutDetailPage({
               </Card>
             </StaggerItem>
           ) : (
-            days.map((day) => (
+            <>
+              <StaggerItem>
+                <WorkoutExecutionPreview
+                  steps={days.map<ExecutionStep>((d) => ({
+                    dayId: d.id,
+                    dayTitle: d.title,
+                    dayOfWeek: d.day_of_week,
+                    items: (d.workout_items ?? [])
+                      .slice()
+                      .sort(
+                        (a, b) => (a.position ?? 0) - (b.position ?? 0),
+                      )
+                      .map<ExecutionItem | null>((it) => {
+                        const ex = Array.isArray(it.exercises)
+                          ? it.exercises[0]
+                          : it.exercises;
+                        if (!ex) return null;
+                        return {
+                          id: it.id,
+                          name: ex.name,
+                          muscle_group: ex.muscle_group ?? null,
+                          equipment: ex.equipment ?? null,
+                          image_url: ex.image_url ?? null,
+                          animation_url: ex.animation_url ?? null,
+                          media_type:
+                            (ex.media_type as
+                              | "gif"
+                              | "video"
+                              | "svg"
+                              | null) ?? null,
+                          sets: it.sets,
+                          reps: it.reps,
+                          load: it.load,
+                          position: it.position,
+                        };
+                      })
+                      .filter((v): v is ExecutionItem => v !== null),
+                  }))}
+                  resolvedUrls={itemMedia}
+                />
+              </StaggerItem>
+              {/* lista detalhada por dia, mantida como secundária */}
+              {days.map((day) => (
               <StaggerItem key={day.id}>
                 <Card className="bg-card/80 border-white/10 p-5">
                   <div className="flex items-center gap-2 mb-3">
@@ -321,7 +368,8 @@ export default async function WorkoutDetailPage({
                   )}
                 </Card>
               </StaggerItem>
-            ))
+            ))}
+          </>
           )}
 
           {ownHistory.length > 0 && (
