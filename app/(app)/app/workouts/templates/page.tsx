@@ -38,12 +38,15 @@ export default async function TemplatesPage() {
     .eq("is_global", true)
     .order("title");
 
-  // Lista de alunos do trainer (pra atribuir)
+  // Lista de alunos do trainer (pra atribuir).
+  // NÃO filtra por status — `/app/students` não filtra, então a definição
+  // canônica de "tem aluno" aqui é qualquer row em `student_profiles`
+  // pra esse trainer. Caso contrário, alunos recém-criados/inativos
+  // fariam o CTA "Convide um aluno primeiro" persistir nos templates.
   const { data: students } = await supabase
     .from("student_profiles")
     .select("user_id, full_name")
     .eq("trainer_id", user.id)
-    .eq("status", "active")
     .order("full_name");
 
   const studentOptions = (students ?? []).map((s) => ({

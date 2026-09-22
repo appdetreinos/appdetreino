@@ -422,7 +422,7 @@ function Step1({
   );
 }
 
-/* ---------- Etapa 2: Quantos clientes ativos ---------- */
+/* ---------- Etapa 2: Quantos alunos ativos ---------- */
 function Step2({
   value,
   onChange,
@@ -431,16 +431,16 @@ function Step2({
   onChange: (v: ClientVolume) => void;
 }) {
   const opcoes: { value: ClientVolume; label: string }[] = [
-    { value: "ate_25", label: "Até 25 clientes" },
-    { value: "26_50", label: "26 a 50 clientes" },
-    { value: "51_100", label: "51 a 100 clientes" },
-    { value: "mais_100", label: "Mais de 100 clientes" },
+    { value: "ate_25", label: "Até 25 alunos" },
+    { value: "26_50", label: "26 a 50 alunos" },
+    { value: "51_100", label: "51 a 100 alunos" },
+    { value: "mais_100", label: "Mais de 100 alunos" },
   ];
   return (
     <StepShell>
       <StepHeader
         icon={Users}
-        title="Quantos clientes ativos você atende hoje?"
+        title="Quantos alunos ativos você atende hoje?"
         subtitle="Isso ajuda a recomendar o plano certo pra você"
       />
       <div className="mt-6 space-y-2.5">
@@ -512,7 +512,7 @@ function Step4({
     {
       id: "start" as const,
       label: "Standard",
-      capacidade: "Até 25 clientes",
+      capacidade: "Até 25 alunos",
       precoMes: 59.9,
       precoAno: 718.8, // 59.9 * 12
       itens: ["Gestão completa de alunos", "Treinos e dietas", "Cobrança recorrente"],
@@ -520,7 +520,7 @@ function Step4({
     {
       id: "pro" as const,
       label: "Premium",
-      capacidade: "Até 50 clientes",
+      capacidade: "Até 50 alunos",
       precoMes: 99.9,
       precoAno: 1198.8,
       itens: ["Tudo do Standard", "IA gerando treinos", "Comunidade e ranking"],
@@ -528,7 +528,7 @@ function Step4({
     {
       id: "top" as const,
       label: "Pro",
-      capacidade: "Clientes ilimitados",
+      capacidade: "Alunos ilimitados",
       precoMes: 189.9,
       precoAno: 2278.8,
       itens: ["Tudo do Premium", "WhatsApp integrado", "Marca personalizada"],
@@ -682,10 +682,10 @@ function suggestPlan(
 function labelVolume(v: ClientVolume): string {
   return (
     {
-      ate_25: "até 25 clientes",
-      "26_50": "26 a 50 clientes",
-      "51_100": "51 a 100 clientes",
-      mais_100: "mais de 100 clientes",
+      ate_25: "até 25 alunos",
+      "26_50": "26 a 50 alunos",
+      "51_100": "51 a 100 alunos",
+      mais_100: "mais de 100 alunos",
     } as const
   )[v];
 }

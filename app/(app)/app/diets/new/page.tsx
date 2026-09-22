@@ -52,7 +52,6 @@ export default function NewDietPage() {
         .from("student_profiles")
         .select("user_id, full_name")
         .eq("trainer_id", user.id)
-        .eq("status", "active")
         .order("full_name");
       setStudents(
         (data ?? []).map((s) => ({ id: s.user_id as string, name: (s.full_name as string) ?? "Aluno" })),

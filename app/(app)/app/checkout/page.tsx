@@ -40,6 +40,31 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
             Paga com Pix, cartão ou boleto via Mercado Pago. Cancela em 1 clique.
           </p>
 
+          {/* Plan switcher — chips que trocam o plano via ?plan= sem JS extra */}
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            {PLANS.map((p) => {
+              const active = p.id === plan.id;
+              return (
+                <Link
+                  key={p.id}
+                  href={`/app/checkout?plan=${p.id}`}
+                  aria-pressed={active}
+                  className={
+                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors " +
+                    (active
+                      ? "border-primary/40 bg-primary/15 text-primary"
+                      : "border-white/10 bg-card text-foreground/80 hover:text-foreground hover:border-white/20")
+                  }
+                >
+                  <span>{p.name}</span>
+                  <span className={"num text-[11px] " + (active ? "text-primary/80" : "text-muted-foreground")}>
+                    {formatBRL(p.priceMonthly)}/mês
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+
           <div className="mt-8 grid md:grid-cols-2 gap-6">
             <Card className="bg-card border-white/5 p-6">
               <h2 className="font-bold">Resumo</h2>
