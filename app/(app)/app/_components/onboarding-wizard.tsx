@@ -45,22 +45,54 @@ export function OnboardingWizard() {
   const [clientVolume, setClientVolume] = useState<ClientVolume | null>(null);
   const [revenue, setRevenue] = useState<Revenue | null>(null);
   const [annual, setAnnual] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Defesa em profundidade: se nesta sessão o user já fechou/pulou,
+  // nem renderiza o modal. A persistência real vem do
+  // `onboarding_completed_at` no banco (controlado pelo servidor em /app).
+  const [initiallyDismissed, setInitiallyDismissed] = useState(false);
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("onboarding_dismissed") === "1") {
+        setInitiallyDismissed(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const totalSteps = 4;
 
-  // Bloqueia scroll do body enquanto o wizard tá aberto
+  // Bloqueia scroll do body enquanto o wizard tá aberto + ESC fecha
   useEffect(() => {
     document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") skip();
+    };
+    document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKey);
     };
   }, []);
 
   // Fecha o wizard quando o user termina (step 5 = fechamento)
+  // OU quando pula — em ambos os casos gravamos flag no sessionStorage
+  // pra que mesmo se o update do banco falhe (ex: trainer_profiles
+  // faltando), o modal não reapareça NA MESMA SESSÃO.
+  // A persistência cross-session vem do `onboarding_completed_at` no banco.
+  function markDismissedLocally() {
+    try {
+      sessionStorage.setItem("onboarding_dismissed", "1");
+    } catch {
+      // ignore
+    }
+  }
   const [done, setDone] = useState(false);
 
   async function saveAndAdvance() {
     setSaving(true);
+    setErrorMsg(null);
     try {
       const supabase = createClient();
       const {
@@ -85,12 +117,16 @@ export function OnboardingWizard() {
         .eq("user_id", user.id);
 
       if (error) {
-        // Não trava o wizard se o banco falhar — só loga
         console.error("[onboarding] save error", error);
+        setErrorMsg(
+          "Não consegui salvar teu progresso. Verifica tua conexão e tenta de novo. " +
+            "Se persistir, dá um F5 que a gente segue.",
+        );
+        // Continua mesmo assim — UX não trava
       }
 
       if (step === 4) {
-        // step 4 → fechar e ir pro dashboard
+        markDismissedLocally();
         setDone(true);
         router.refresh();
         return;
@@ -104,17 +140,24 @@ export function OnboardingWizard() {
 
   async function skip() {
     setSaving(true);
+    setErrorMsg(null);
     try {
       const supabase = createClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
+        // Tenta persistir, mas mesmo se falhar, fecha o modal
+        // e grava cookie pra não voltar. (Defesa em profundidade.)
         await supabase
           .from("trainer_profiles")
           .update({ onboarding_completed_at: new Date().toISOString() })
-          .eq("user_id", user.id);
+          .eq("user_id", user.id)
+          .then(({ error }) => {
+            if (error) console.warn("[onboarding] skip save warn", error.message);
+          });
       }
+      markDismissedLocally();
       setDone(true);
       router.refresh();
     } finally {
@@ -129,7 +172,7 @@ export function OnboardingWizard() {
   // Calcula plano sugerido baseado no volume + faturamento
   const suggestedPlan = suggestPlan(clientVolume, revenue);
 
-  if (done) return null;
+  if (done || initiallyDismissed) return null;
 
   return (
     <div
@@ -250,6 +293,12 @@ export function OnboardingWizard() {
             <ChevronRight className="size-4" />
           </button>
         </div>
+
+        {errorMsg && (
+          <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+            {errorMsg}
+          </div>
+        )}
       </motion.div>
     </div>
   );

@@ -65,7 +65,20 @@ export default function NewStudentPage() {
       .single();
 
     if (insertError || !data) {
-      setError(insertError?.message ?? "Não deu pra criar o convite. Tenta de novo.");
+      // Mensagens em PT-BR pros erros mais comuns — sem expor detalhes técnicos
+      const raw = (insertError?.message ?? "").toLowerCase();
+      let friendly: string;
+      if (raw.includes("foreign key") && raw.includes("trainer_profiles")) {
+        friendly =
+          "Tua conta de profissional não tá totalmente configurada ainda. Sai e entra de novo, ou fala com o suporte se persistir.";
+      } else if (raw.includes("foreign key")) {
+        friendly = "Não deu pra criar o convite. Verifica se teu perfil tá completo.";
+      } else if (raw.includes("duplicate")) {
+        friendly = "Já existe um convite com esses dados.";
+      } else {
+        friendly = "Não deu pra criar o convite. Tenta de novo.";
+      }
+      setError(friendly);
       setSubmitting(false);
       return;
     }
