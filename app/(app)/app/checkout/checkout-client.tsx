@@ -38,9 +38,21 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
     setError(null);
     startTransition(async () => {
       try {
+        // Recupera o token CSRF do cookie para evitar erro 'csrf_invalid'
+        const getCookie = (name: string) => {
+          const value = "; " + document.cookie;
+          const parts = value.split("; " + name + "=");
+          if (parts.length === 2) return parts.pop()?.split(";").shift();
+          return null;
+        };
+        const csrfToken = getCookie("csrf");
+
         const res = await fetch("/api/mercadopago/preference", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "x-csrf-token": csrfToken ?? "",
+          },
           body: JSON.stringify({
             plan_id: planId,
             amount_cents: amountCents,
@@ -62,6 +74,7 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
       }
     });
   }
+
 
   return (
     <div className="mt-6">
