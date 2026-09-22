@@ -1,67 +1,64 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeLog } from "@/lib/log/safe";
 
 /**
- * API route de debug: retorna quem é o user logado + estado de tudo.
+ * GET /api/debug/whoami
  *
- * Mostra o que o servidor vê no momento: cookie JWT, profile role,
- * trainer_profiles, student_profiles. Pra ajudar a entender por que
- * o user tá caindo em /aluno em vez de /app.
- *
- * REMOVER DEPOIS DE RESOLVER O BUG.
+ * Diagnóstico rápido do user logado e seu estado no banco.
  */
-
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) {
+    if (!user) {
+      return NextResponse.json({ ok: false, error: "sem user" }, { status: 401 });
+    }
+
+    // Pega profile + trainer_profile em paralelo
+    const [profileRes, trainerProfileRes, studentProfileRes] = await Promise.all([
+      supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+      supabase.from("trainer_profiles").select("*").eq("user_id", user.id).maybeSingle(),
+      supabase.from("student_profiles").select("*").eq("user_id", user.id).maybeSingle(),
+    ]);
+
+    // Tenta forçar `redirect("/aluno")` se fosse student pra ver se é isso
+    let redirectSimulation = null;
+    if (profileRes.data?.role === "student") {
+      redirectSimulation = "WOULD_REDIRECT_TO_ALUNO";
+    } else if (profileRes.data?.role === "admin") {
+      redirectSimulation = "WOULD_REDIRECT_TO_ADMIN";
+    }
+
     return NextResponse.json({
-      ok: false,
-      msg: "Sem user logado (cookie JWT inválido ou expirado).",
-      user: null,
+      ok: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        created_at: user.created_at,
+        aud: user.aud,
+        role: user.role,
+      },
+      profile: profileRes.data,
+      profile_error: profileRes.error?.message,
+      trainer_profile: trainerProfileRes.data,
+      trainer_profile_error: trainerProfileRes.error?.message,
+      student_profile: studentProfileRes.data,
+      student_profile_error: studentProfileRes.error?.message,
+      redirect_simulation: redirectSimulation,
     });
+  } catch (e) {
+    safeLog.error("[whoami] error", String(e));
+    return NextResponse.json(
+      {
+        ok: false,
+        error: String(e),
+        stack: (e as Error).stack?.split("\n").slice(0, 20),
+      },
+      { status: 500 },
+    );
   }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, role, full_name")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const { data: trainerProfile } = await supabase
-    .from("trainer_profiles")
-    .select("user_id, plan_tier, created_at")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const { data: studentProfile } = await supabase
-    .from("student_profiles")
-    .select("user_id, trainer_id, status, full_name, goal")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  // Decisão: pra qual dashboard o user deveria ir?
-  const destino = profile?.role === "student"
-    ? "/aluno"
-    : profile?.role === "trainer"
-      ? "/app"
-      : profile?.role === "admin"
-        ? "/admin"
-        : "INDEFINIDO";
-
-  return NextResponse.json({
-    ok: true,
-    auth_user: {
-      id: user.id,
-      email: user.email,
-      created_at: user.created_at,
-    },
-    profile,
-    trainerProfile: trainerProfile ?? null,
-    studentProfile: studentProfile ?? null,
-    destino_esperado: destino,
-  });
 }

@@ -119,17 +119,45 @@ async function TrainerDashboardInner() {
 
   const firstName = (profile?.full_name ?? user.email ?? "treinador").split(" ")[0];
 
-  // Alunos ativos do trainer
-  const { data: studentsRaw } = await supabase
-    .from("student_profiles")
-    .select("user_id, full_name, status, joined_at, goal")
-    .eq("trainer_id", user.id)
-    .order("joined_at", { ascending: false })
-    .limit(3);
+  // Helper: cada query é isolada num try/catch individual — se uma falhar
+  // (schema drift, RLS, etc.), as outras continuam funcionando e a página
+  // inteira não cai no error boundary global.
+  async function safe<T>(label: string, fallback: T, fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (e) {
+      safeLog.warn(`[dashboard] ${label} falhou, usando fallback`, String(e));
+      return fallback;
+    }
+  }
 
-  const focusStudents = (studentsRaw ?? []).map((s) => ({
+  // Alunos ativos do trainer
+  const studentsRaw = await safe("students.list", [] as Array<{
+    user_id: string;
+    full_name: string | null;
+    status: string | null;
+    joined_at: string | null;
+    goal: string | null;
+  }>, async () => {
+    const { data, error } = await supabase
+      .from("student_profiles")
+      .select("user_id, full_name, status, joined_at, goal")
+      .eq("trainer_id", user.id)
+      .order("joined_at", { ascending: false })
+      .limit(3);
+    if (error) throw error;
+    return (data ?? []) as Array<{
+      user_id: string;
+      full_name: string | null;
+      status: string | null;
+      joined_at: string | null;
+      goal: string | null;
+    }>;
+  });
+
+  const focusStudents = studentsRaw.map((s) => ({
     id: s.user_id,
-    nome: s.full_name,
+    nome: s.full_name ?? "Aluno",
     letra: s.full_name?.[0]?.toUpperCase() ?? "?",
     oque: s.goal || "Sem objetivo definido ainda",
     quando: s.status === "active" ? "Ativo" : "Inativo",
@@ -139,31 +167,40 @@ async function TrainerDashboardInner() {
   const temAluno = totalAlunos > 0;
 
   // Total de alunos do trainer (count)
-  const totalAlunosCount = await supabase
-    .from("student_profiles")
-    .select("user_id", { count: "exact", head: true })
-    .eq("trainer_id", user.id);
+  const totalAlunosCountResult = await safe("students.count", { count: 0 } as { count: number | null }, async () => {
+    const { count, error } = await supabase
+      .from("student_profiles")
+      .select("user_id", { count: "exact", head: true })
+      .eq("trainer_id", user.id);
+    if (error) throw error;
+    return { count };
+  });
+  const totalAlunosCountValue = totalAlunosCountResult.count ?? 0;
 
   // Alunos ativos nos últimos 7 dias (treinaram)
   // workout_sessions tem coluna `date` (não `created_at`).
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const { data: activeStudentsRaw } = await supabase
-    .from("workout_sessions")
-    .select("student_id, student_profiles!inner(trainer_id)")
-    .eq("student_profiles.trainer_id", user.id)
-    .gte("date", sevenDaysAgo);
+  const activeStudentsRaw = await safe("sessions.7d", [] as Array<{ student_id: string | null }>, async () => {
+    const { data, error } = await supabase
+      .from("workout_sessions")
+      .select("student_id, student_profiles!inner(trainer_id)")
+      .eq("student_profiles.trainer_id", user.id)
+      .gte("date", sevenDaysAgo);
+    if (error) throw error;
+    return (data ?? []) as Array<{ student_id: string | null }>;
+  });
 
   const activeStudentsSet = new Set(
-    (activeStudentsRaw ?? []).map((s) => s.student_id).filter(Boolean),
+    activeStudentsRaw.map((s) => s.student_id).filter(Boolean) as string[],
   );
   const activeStudents = activeStudentsSet.size;
   const activeRate =
-    (totalAlunosCount.count ?? 0) > 0
-      ? Math.round((activeStudents / (totalAlunosCount.count ?? 1)) * 100)
+    totalAlunosCountValue > 0
+      ? Math.round((activeStudents / totalAlunosCountValue) * 100)
       : 0;
 
   // Sessões nos últimos 7 dias (volume)
-  const sessionsLast7Days = (activeStudentsRaw ?? []).length;
+  const sessionsLast7Days = activeStudentsRaw.length;
 
   // Receita últimos 12 meses — soma de payment_links pagos por mês do trainer
   const twelveMonthsAgo = new Date();
@@ -171,12 +208,16 @@ async function TrainerDashboardInner() {
   twelveMonthsAgo.setUTCDate(1);
   twelveMonthsAgo.setUTCHours(0, 0, 0, 0);
 
-  const { data: paymentsRaw } = await supabase
-    .from("payment_links")
-    .select("amount_cents, paid_at")
-    .eq("trainer_id", user.id)
-    .not("paid_at", "is", null)
-    .gte("paid_at", twelveMonthsAgo.toISOString());
+  const paymentsRaw = await safe("payments.12m", [] as Array<{ amount_cents: number; paid_at: string | null }>, async () => {
+    const { data, error } = await supabase
+      .from("payment_links")
+      .select("amount_cents, paid_at")
+      .eq("trainer_id", user.id)
+      .not("paid_at", "is", null)
+      .gte("paid_at", twelveMonthsAgo.toISOString());
+    if (error) throw error;
+    return (data ?? []) as Array<{ amount_cents: number; paid_at: string | null }>;
+  });
 
   // Agrupa por mês
   const months: { label: string; total: number; key: string }[] = [];
@@ -187,7 +228,7 @@ async function TrainerDashboardInner() {
     d.setUTCHours(0, 0, 0, 0);
     months.push({ label: brMonthLabel(d), key: monthKey(d), total: 0 });
   }
-  for (const p of paymentsRaw ?? []) {
+  for (const p of paymentsRaw) {
     if (!p.paid_at) continue;
     const k = monthKey(new Date(p.paid_at));
     const m = months.find((x) => x.key === k);
@@ -204,14 +245,23 @@ async function TrainerDashboardInner() {
 
   // Atividade recente: últimas sessões de treino
   // workout_sessions tem coluna `date` (não `created_at`).
-  const { data: sessionsRaw } = await supabase
-    .from("workout_sessions")
-    .select("date, status, student_profiles!inner(full_name, trainer_id)")
-    .eq("student_profiles.trainer_id", user.id)
-    .order("date", { ascending: false })
-    .limit(3);
+  type SessionRow = {
+    date: string;
+    status: string | null;
+    student_profiles: { full_name: string } | { full_name: string }[] | null;
+  };
+  const sessionsRaw = await safe("sessions.recent", [] as SessionRow[], async () => {
+    const { data, error } = await supabase
+      .from("workout_sessions")
+      .select("date, status, student_profiles!inner(full_name, trainer_id)")
+      .eq("student_profiles.trainer_id", user.id)
+      .order("date", { ascending: false })
+      .limit(3);
+    if (error) throw error;
+    return (data ?? []) as SessionRow[];
+  });
 
-  const recentes = (sessionsRaw ?? []).map((s) => {
+  const recentes = sessionsRaw.map((s) => {
     const sp = Array.isArray(s.student_profiles) ? s.student_profiles[0] : s.student_profiles;
     const nome = sp?.full_name ?? "Aluno";
     return {
@@ -228,13 +278,24 @@ async function TrainerDashboardInner() {
   });
 
   // Wizard / checklist de onboarding
-  const { data: trainerOnboarding } = await supabase
-    .from("trainer_profiles")
-    .select(
-      "onboarding_completed_at, onboarding_checklist_completed_at, checklist_invited_student_at, checklist_sent_workout_at, checklist_sent_diet_at, checklist_configured_pay_at"
-    )
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const trainerOnboarding = await safe("trainer.profile", null as {
+    onboarding_completed_at: string | null;
+    onboarding_checklist_completed_at: string | null;
+    checklist_invited_student_at: string | null;
+    checklist_sent_workout_at: string | null;
+    checklist_sent_diet_at: string | null;
+    checklist_configured_pay_at: string | null;
+  } | null, async () => {
+    const { data, error } = await supabase
+      .from("trainer_profiles")
+      .select(
+        "onboarding_completed_at, onboarding_checklist_completed_at, checklist_invited_student_at, checklist_sent_workout_at, checklist_sent_diet_at, checklist_configured_pay_at"
+      )
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  });
   const showOnboarding = !trainerOnboarding?.onboarding_completed_at;
   const checklistState = {
     invited_student: !!trainerOnboarding?.checklist_invited_student_at,
@@ -256,7 +317,7 @@ async function TrainerDashboardInner() {
             </h1>
             <p className="text-xs text-foreground/65">
               {temAluno
-                ? `${totalAlunosCount.count ?? 0} aluno${(totalAlunosCount.count ?? 0) === 1 ? "" : "s"} ativo${(totalAlunosCount.count ?? 0) === 1 ? "" : "s"} · ${activeStudents} treinaram nos últimos 7 dias`
+                ? `${totalAlunosCountValue} aluno${totalAlunosCountValue === 1 ? "" : "s"} ativo${totalAlunosCountValue === 1 ? "" : "s"} · ${activeStudents} treinaram nos últimos 7 dias`
                 : "Tá esperando você convidar o primeiro aluno"}
             </p>
           </div>
@@ -279,7 +340,7 @@ async function TrainerDashboardInner() {
             <Kpi
               icon={Users}
               label="Alunos ativos"
-              value={totalAlunosCount.count ?? 0}
+              value={totalAlunosCountValue}
               badge={
                 activeRate > 0 ? (
                   <Badge variant="outline" className="border-emerald-500/30 text-emerald-500">
@@ -365,7 +426,7 @@ async function TrainerDashboardInner() {
           <DashboardEntrance
             focus={{ pergunta: "Quem tá esperando você hoje?", itens: focusStudents }}
             recentes={recentes}
-            totalAlunos={totalAlunosCount.count ?? 0}
+            totalAlunos={totalAlunosCountValue}
             temAluno={temAluno}
           />
         </StaggerItem>
