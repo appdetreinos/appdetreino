@@ -68,15 +68,12 @@ export async function POST(request: NextRequest) {
 
   // 5) Atualiza a payment correspondente
   const { data: payment, error } = await supabase
-    .from("payments")
+    .from("payment_links")
     .update({
-      status: "paid",
       paid_at: new Date().toISOString(),
-      gateway: "mercadopago",
-      external_id: externalId,
     })
     .eq("external_id", externalId)
-    .select("id, trainer_id, student_id, status")
+    .select("trainer_id")
     .maybeSingle();
 
   if (error) {
@@ -84,9 +81,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 
-  // Se já estava pago, só confirma idempotência
-  if (payment?.status !== "paid") {
-    safeLog.warn("[mp-webhook] payment not found", { externalId });
+  // 5.1) DESTRAVAR O TRAINER: Marca como pago no perfil para remover lockout do trial
+  if (payment?.trainer_id) {
+    await supabase
+      .from("trainer_profiles")
+      .update({ 
+        plan_tier: "start", // Default para quem paga o primeiro plano
+        trial_ends_at: null   // Remove a data de trial pois agora é assinante
+      })
+      .eq("user_id", payment.trainer_id);
   }
 
   // 6) Audit
