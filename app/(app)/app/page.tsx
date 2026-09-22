@@ -7,11 +7,17 @@ import {
   Users, 
   Wallet, 
   CalendarDays, 
-  Flame 
+  Flame,
+  ArrowUpRight,
+  UserPlus,
+  CalendarCheck2,
+  Receipt,
+  MessageCircle
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
 import { KpiCard } from "./_components/kpi-card";
+import { DashboardEntrance } from "./dashboard-entrance";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -37,8 +43,11 @@ export default async function TrainerDashboard() {
       .eq("id", user.id)
       .maybeSingle();
 
-    const firstName = (profile?.full_name ?? user.email ?? "Treinador").split(" ")[0];
+    const firstName = (profile?.full_name ?? user.email?.split("@")[0] ?? "Treinador");
 
+    // --- DATA FETCHING (Optimized & Safe) ---
+    
+    // 1. Total Students (Accurate count)
     let totalAlunos = 0;
     try {
       const { count, error } = await supabase
@@ -46,10 +55,9 @@ export default async function TrainerDashboard() {
         .select("user_id", { count: "exact", head: true })
         .eq("trainer_id", user.id);
       if (!error) totalAlunos = count ?? 0;
-    } catch (e) {
-      console.error("Erro count alunos:", e);
-    }
+    } catch (e) { console.error("KPI Alunos error:", e); }
 
+    // 2. Monthly Revenue (Confirmed payments)
     let receitaMes = 0;
     try {
       const { data: payments } = await supabase
@@ -60,48 +68,143 @@ export default async function TrainerDashboard() {
       if (payments) {
         receitaMes = payments.reduce((acc, p) => acc + (p.amount_cents / 100), 0);
       }
-    } catch (e) {
-      console.error("Erro receita:", e);
-    }
+    } catch (e) { console.error("KPI Receita error:", e); }
+
+    // 3. Recent Students for the "Who is waiting" section
+    let studentsList: StudentSummary[] = [];
+    try {
+      const { data: students, error: sErr } = await supabase
+        .from("student_profiles")
+        .select("user_id, full_name, status, goal")
+        .eq("trainer_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(6);
+      
+      if (!sErr && students) {
+        studentsList = students.map(s => ({
+          id: s.user_id,
+          nome: s.full_name ?? "Aluno",
+          letra: s.full_name?.[0]?.toUpperCase() ?? "?",
+          oque: s.goal || "Sem objetivo",
+          quando: s.status === "active" ? "Ativo" : "Inativo",
+        }));
+      }
+    } catch (e) { console.error("Students list error:", e); }
 
     return (
-      <div className="min-h-screen p-6">
-        <header className="flex items-center justify-between mb-8">
+      <div className="min-h-screen p-6 space-y-8 max-w-7xl mx-auto animate-in fade-in duration-500">
+        {/* Header Section */}
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Olá, {firstName}! 👋</h1>
-            <p className="text-sm text-muted-foreground">Bem-vindo ao seu painel de controle.</p>
+            <h1 className="text-3xl font-extrabold tracking-tight">
+              Olá, <span className="text-primary">{firstName}</span>! 👋
+            </h1>
+            <p className="text-muted-foreground">
+              Aqui está o resumo da sua consultoria hoje.
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <ButtonLink href="/app/students/new" className="font-semibold">
-              <Plus className="size-4" /> Novo aluno
+          <div className="flex items-center gap-3">
+            <ButtonLink href="/app/students/new" className="shadow-lg shadow-primary/20">
+              <Plus className="size-4 mr-2" /> Novo aluno
             </ButtonLink>
             <LogoutButton variant="ghost" label="" />
           </div>
         </header>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <KpiCard icon={Users} label="Alunos ativos" value={totalAlunos} hint="Total de alunos" />
-          <KpiCard icon={Wallet} label="Receita do mês" value={receitaMes} formatKind="currency" hint="Soma total" />
+        {/* KPI Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard 
+            icon={Users} 
+            label="Alunos ativos" 
+            value={totalAlunos} 
+            hint="Total de alunos vinculados" 
+            badge={totalAlunos > 0 ? <Badge variant="outline" className="text-emerald-500 border-emerald-500/30">Sincronizado</Badge> : null}
+          />
+          <KpiCard 
+            icon={Wallet} 
+            label="Receita do mês" 
+            value={receitaMes} 
+            formatKind="currency" 
+            hint="Soma de pagamentos confirmados" 
+          />
           <KpiCard icon={CalendarDays} label="Sessões (7d)" value={0} hint="Em breve" />
           <KpiCard icon={Flame} label="Aderência" value={0} formatKind="percent" hint="Em breve" />
         </div>
 
-        <Card className="p-6 border-white/10 bg-card/50">
-          <h2 className="text-lg font-bold mb-4">Status do Sistema</h2>
-          <div className="flex items-center gap-2 text-sm text-emerald-500">
-            <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-            Conexão com Supabase: Estável
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Main Content - Student Focus */}
+          <div className="lg:col-span-2 space-y-6">
+            {studentsList.length > 0 ? (
+              <DashboardEntrance
+                focus={{ pergunta: "Quem está aguardando você hoje?", itens: studentsList }}
+                recentes={[]}
+                totalAlunos={totalAlunos}
+                temAluno={true}
+              />
+            ) : (
+              <Card className="p-12 text-center border-dashed border-2">
+                <div className="bg-muted rounded-full size-16 flex items-center justify-center mx-auto mb-4">
+                  <UserPlus className="size-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">Nenhum aluno encontrado</h3>
+                <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+                  Você ainda não tem alunos vinculados ao seu perfil. Comece convidando seu primeiro aluno!
+                </p>
+                <ButtonLink href="/app/students/new" className="mx-auto">
+                  Adicionar primeiro aluno
+                </ButtonLink>
+              </Card>
+            )}
           </div>
-        </Card>
+
+          {/* Side Content - Quick Actions */}
+          <div className="space-y-6">
+            <Card className="p-6 bg-card/50 border-white/10">
+              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <Plus className="size-5 text-primary" /> Atalhos Rápidos
+              </h2>
+              <div className="grid grid-cols-1 gap-3">
+                <QuickAction icon={UserPlus} label="Novo Aluno" href="/app/students/new" />
+                <QuickAction icon={CalendarCheck2} label="Enviar Treino" href="/app/workouts" />
+                <QuickAction icon={Receipt} label="Cobranças" href="/app/finance" />
+                <QuickAction icon={MessageCircle} label="WhatsApp" href="/app/whatsapp" />
+              </div>
+            </Card>
+
+            <Card className="p-6 bg-primary/10 border-primary/20">
+              <h2 className="text-lg font-bold mb-2 text-primary">Dica do Dia 💡</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Mantenha os treinos atualizados semanalmente para aumentar a aderência dos seus alunos em até 40%.
+              </p>
+            </Card>
+          </div>
+        </div>
       </div>
     );
-  } catch (fatalError) {
-    console.error("FATAL DASHBOARD ERROR:", fatalError);
+  } catch (err) {
+    console.error("DASHBOARD CRITICAL ERROR:", err);
     return (
       <div className="p-10 text-center">
-        <h2 className="text-xl font-bold">Erro Interno</h2>
-        <p className="text-muted-foreground">{String(fatalError)}</p>
+        <h2 className="text-2xl font-bold text-red-500">Erro no Painel</h2>
+        <p className="text-muted-foreground">{String(err)}</p>
       </div>
     );
   }
+}
+
+function QuickAction({ icon: Icon, label, href }: { icon: React.ComponentType<{ className?: string }>; label: string; href: string }) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center justify-between p-3 rounded-xl border border-white/10 bg-background/50 hover:bg-primary/5 hover:border-primary/30 transition-all group"
+    >
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-muted group-hover:bg-primary/20 transition-colors">
+          <Icon className="size-4 text-foreground/70 group-hover:text-primary" />
+        </div>
+        <span className="text-sm font-medium">{label}</span>
+      </div>
+      <ArrowUpRight className="size-4 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
+    </Link>
+  );
 }
