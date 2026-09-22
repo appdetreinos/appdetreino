@@ -143,12 +143,13 @@ async function TrainerDashboardInner() {
     .eq("trainer_id", user.id);
 
   // Alunos ativos nos últimos 7 dias (treinaram)
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  // workout_sessions tem coluna `date` (não `created_at`).
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const { data: activeStudentsRaw } = await supabase
     .from("workout_sessions")
     .select("student_id, student_profiles!inner(trainer_id)")
     .eq("student_profiles.trainer_id", user.id)
-    .gte("created_at", sevenDaysAgo);
+    .gte("date", sevenDaysAgo);
 
   const activeStudentsSet = new Set(
     (activeStudentsRaw ?? []).map((s) => s.student_id).filter(Boolean),
@@ -200,11 +201,12 @@ async function TrainerDashboardInner() {
       : 0;
 
   // Atividade recente: últimas sessões de treino
+  // workout_sessions tem coluna `date` (não `created_at`).
   const { data: sessionsRaw } = await supabase
     .from("workout_sessions")
-    .select("created_at, status, student_profiles!inner(full_name, trainer_id)")
+    .select("date, status, student_profiles!inner(full_name, trainer_id)")
     .eq("student_profiles.trainer_id", user.id)
-    .order("created_at", { ascending: false })
+    .order("date", { ascending: false })
     .limit(3);
 
   const recentes = (sessionsRaw ?? []).map((s) => {
@@ -219,7 +221,7 @@ async function TrainerDashboardInner() {
           : s.status === "skipped"
             ? "Pulou treino"
             : "Iniciou treino",
-      quando: relativeTime(s.created_at),
+      quando: relativeTime(s.date),
     };
   });
 
