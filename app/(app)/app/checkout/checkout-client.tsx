@@ -38,7 +38,6 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
     setError(null);
     startTransition(async () => {
       try {
-        // Recupera o token CSRF do cookie para evitar erro 'csrf_invalid'
         const getCookie = (name: string) => {
           const value = "; " + document.cookie;
           const parts = value.split("; " + name + "=");
@@ -66,7 +65,7 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
         }
         const data = (await res.json()) as { init_point: string };
         if (typeof window !== "undefined") {
-          window.location.href = data.init_point;
+          window.open(data.init_point, "_blank");
         }
       } catch (e) {
         safeLog.error("[checkout] failed", e instanceof Error ? e.message : "unknown");
@@ -74,6 +73,7 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
       }
     });
   }
+
 
 
   return (

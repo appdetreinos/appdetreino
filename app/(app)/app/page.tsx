@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import {
   Plus,
@@ -8,9 +9,16 @@ import {
   Receipt,
   MessageCircle,
   UserPlus,
+  Users,
+  Wallet,
+  CalendarDays,
+  Flame,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { safeLog } from "@/lib/log/safe";
 import { LogoutButton } from "@/components/logout-button";
+import { DashboardEntrance } from "./dashboard-entrance";
+import { KpiCard } from "./_components/kpi-card";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,6 +28,7 @@ export default async function TrainerDashboard() {
     return await TrainerDashboardInner();
   } catch (err) {
     console.error("[CRITICAL DASHBOARD ERROR]:", err);
+    safeLog.error("[dashboard] render failed", String(err));
     return <DashboardDegraded />;
   }
 }
@@ -41,25 +50,47 @@ async function TrainerDashboardInner() {
   if (!user) return null;
   const userId = user.id;
 
-  // Simples verificação de trial para evitar crash
-  const { data: trainerProfile } = await supabase
-    .from("trainer_profiles")
-    .select("trial_ends_at")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (trainerProfile?.trial_ends_at && new Date(trainerProfile.trial_ends_at) < new Date()) {
-    // Redirecionamento simples via Next.js (se necessário)
-    // Para evitar loop, deixamos passar aqui e confiamos no Layout
+  async function safe<T>(label: string, fallback: T, fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (e) {
+      safeLog.warn(`[dashboard] ${label} falhou`, String(e));
+      return fallback;
+    }
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", userId)
-    .maybeSingle();
-
+  const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle();
   const firstName = (profile?.full_name ?? user.email ?? "treinador").split(" ")[0];
+
+  const studentsRaw = await safe("students.list", [] as any[], async () => {
+    const { data, error } = await supabase
+      .from("student_profiles")
+      .select("user_id, full_name, status, joined_at, goal")
+      .eq("trainer_id", userId)
+      .order("joined_at", { ascending: false })
+      .limit(3);
+    if (error) throw error;
+    return data ?? [];
+  });
+
+  const focusStudents = studentsRaw.map((s) => ({
+    id: s.user_id,
+    nome: s.full_name ?? "Aluno",
+    letra: s.full_name?.[0]?.toUpperCase() ?? "?",
+    oque: s.goal || "Sem objetivo definido ainda",
+    quando: s.status === "active" ? "Ativo" : "Inativo",
+  }));
+
+  const totalAlunosCountValue = await safe("students.count", 0, async () => {
+    const { count, error } = await supabase
+      .from("student_profiles")
+      .select("user_id", { count: "exact", head: true })
+      .eq("trainer_id", userId);
+    if (error) throw error;
+    return count ?? 0;
+  });
+
+  const temAluno = totalAlunosCountValue > 0;
 
   return (
     <div className="min-h-screen">
@@ -67,22 +98,26 @@ async function TrainerDashboardInner() {
         <div className="px-6 h-16 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-xl font-bold truncate">Bom dia, <span className="text-primary">{firstName}</span> 🔥</h1>
-            <p className="text-xs text-foreground/65">Modo de Segurança Ativado</p>
+            <p className="text-xs text-foreground/65">
+              {temAluno
+                ? `${totalAlunosCountValue} aluno${totalAlunosCountValue === 1 ? "" : "s"} ativo${totalAlunosCountValue === 1 ? "" : "s"}`
+                : "Tá esperando você convidar o primeiro aluno"}
+            </p>
           </div>
           <div className="flex items-center gap-2">
-            <ButtonLink href="/app/students/new" className="font-semibold">
-              <Plus className="size-4" />
-              <span className="hidden sm:inline">Novo aluno</span>
-            </ButtonLink>
-            <div className="sm:hidden">
-              <LogoutButton variant="ghost" label="" />
-            </div>
+            <ButtonLink href="/app/students/new" className="font-semibold"><Plus className="size-4" /> <span className="hidden sm:inline">Novo aluno</span></ButtonLink>
+            <div className="sm:hidden"><LogoutButton variant="ghost" label="" /></div>
           </div>
         </div>
       </header>
-
-      <div className="p-6 space-y-6 max-w-5xl mx-auto">
-        <Card className="bg-card border-white/10 p-6">
+      <div className="p-6 space-y-6 max-w-5xl mx-auto animate-fade-in">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <KpiCard icon={Users} label="Alunos ativos" value={totalAlunosCountValue} badge={totalAlunosCountValue > 0 ? <Badge variant="outline" className="border-emerald-500/30 text-emerald-500">Sincronizado</Badge> : null} hint="Atualizado agora" />
+          <KpiCard icon={Wallet} label="Receita do mês" value={0} formatKind="currency" hint="Em breve..." />
+          <KpiCard icon={CalendarDays} label="Sessões (7d)" value={0} hint="Em breve..." />
+          <KpiCard icon={Flame} label="Streak" value={0} formatKind="percent" hint="Em breve..." />
+        </div>
+        <Card className="bg-card/80 border-white/10 p-6">
           <h2 className="text-lg font-bold mb-4">Atalhos Rápidos</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Atalho icon={UserPlus} label="Novo aluno" href="/app/students/new" />
@@ -91,10 +126,12 @@ async function TrainerDashboardInner() {
             <Atalho icon={MessageCircle} label="Conectar WhatsApp" href="/app/whatsapp" />
           </div>
         </Card>
-        
-        <div className="p-10 text-center border-2 border-dashed border-white/10 rounded-xl">
-          <p className="text-muted-foreground">O painel está em modo de diagnóstico. <br/> KPIs e Onboarding foram desativados para estabilidade.</p>
-        </div>
+        <DashboardEntrance
+          focus={{ pergunta: "Quem tá esperando você hoje?", itens: focusStudents }}
+          recentes={[]}
+          totalAlunos={totalAlunosCountValue}
+          temAluno={temAluno}
+        />
       </div>
     </div>
   );
