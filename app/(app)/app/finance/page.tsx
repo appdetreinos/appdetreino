@@ -12,10 +12,14 @@ import {
   Clock,
   Settings,
   Plus,
+  TrendingUp,
+  ArrowDownRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { formatBRL } from "@/lib/types/billing";
 import { relativeTime } from "@/lib/utils/date";
+import { Sparkline } from "@/components/ui/sparkline";
+import { Stagger, StaggerItem, AnimatedNumber } from "@/components/ui/stagger";
 import { PixCobrarButton } from "./pix-cobrar-button";
 import { MarkPaidButton } from "./mark-paid-button";
 
@@ -94,6 +98,38 @@ export default async function FinancePage() {
     (p) => p.status === "pending" || p.status === "overdue",
   );
 
+  // Receita últimos 6 meses — sparkline
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setUTCMonth(sixMonthsAgo.getUTCMonth() - 5);
+  sixMonthsAgo.setUTCDate(1);
+  sixMonthsAgo.setUTCHours(0, 0, 0, 0);
+
+  const { data: recentPaymentsRaw } = await supabase
+    .from("payments")
+    .select("amount, paid_at, status, student_profiles!inner(trainer_id)")
+    .eq("student_profiles.trainer_id", user.id)
+    .eq("status", "paid")
+    .gte("paid_at", sixMonthsAgo.toISOString());
+
+  const MES_PT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  const meses: { label: string; total: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setUTCMonth(d.getUTCMonth() - i);
+    d.setUTCDate(1);
+    d.setUTCHours(0, 0, 0, 0);
+    meses.push({ label: MES_PT[d.getMonth()], total: 0 });
+  }
+  for (const p of recentPaymentsRaw ?? []) {
+    if (!p.paid_at) continue;
+    const d = new Date(p.paid_at);
+    const idx = meses.findIndex(
+      (m) =>
+        m.label === MES_PT[d.getMonth()],
+    );
+    if (idx >= 0) meses[idx].total += Number(p.amount);
+  }
+
   return (
     <div className="min-h-screen">
       <header className="border-b border-white/10 sticky top-0 z-30 bg-background/85 backdrop-blur-md">
@@ -119,111 +155,145 @@ export default async function FinancePage() {
         </div>
       </header>
 
-      <main className="p-6 max-w-5xl mx-auto space-y-6">
+      <Stagger className="p-6 max-w-5xl mx-auto space-y-6" delay={0.05}>
         {/* Banner se não configurou Pix ainda */}
         {!temPix && (
-          <Card className="bg-primary/10 border-primary/30 p-5">
-            <div className="flex items-start gap-4">
-              <div className="grid size-10 place-items-center shrink-0 rounded-full bg-primary/20 text-primary">
-                <Wallet className="size-5" />
+          <StaggerItem>
+            <Card className="bg-primary/10 border-primary/30 p-5">
+              <div className="flex items-start gap-4">
+                <div className="grid size-10 place-items-center shrink-0 rounded-full bg-primary/20 text-primary">
+                  <Wallet className="size-5" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold">Cadastra tua chave Pix</h3>
+                  <p className="mt-1 text-sm text-foreground/70">
+                    Pra cobrar teus alunos, você só precisa cadastrar a chave Pix onde você recebe
+                    (CPF, e-mail, celular ou chave aleatória). A gente monta a mensagem automática
+                    pra você.
+                  </p>
+                  <ButtonLink href="/app/settings#cobranca" size="sm" className="mt-3 font-semibold">
+                    Configurar Pix
+                  </ButtonLink>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-bold">Cadastra tua chave Pix</h3>
-                <p className="mt-1 text-sm text-foreground/70">
-                  Pra cobrar teus alunos, você só precisa cadastrar a chave Pix onde você recebe
-                  (CPF, e-mail, celular ou chave aleatória). A gente monta a mensagem automática
-                  pra você.
-                </p>
-                <ButtonLink href="/app/settings#cobranca" size="sm" className="mt-3 font-semibold">
-                  Configurar Pix
-                </ButtonLink>
-              </div>
+            </Card>
+          </StaggerItem>
+        )}
+
+        {/* KPIs resumo */}
+        {payments.length > 0 && (
+          <StaggerItem>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <Kpi
+                icon={CheckCircle2}
+                label="Recebido"
+                value={recebido}
+                format={(v) => formatBRL(v)}
+                tone="good"
+              />
+              <Kpi
+                icon={Clock}
+                label="Aguardando"
+                value={payments.filter((p) => p.status === "pending").reduce((s, p) => s + p.valor, 0)}
+                format={(v) => formatBRL(v)}
+                tone="warning"
+              />
+              <Kpi
+                icon={AlertTriangle}
+                label="Em atraso"
+                value={atrasado}
+                format={(v) => formatBRL(v)}
+                tone="bad"
+              />
             </div>
-          </Card>
+          </StaggerItem>
+        )}
+
+        {/* Sparkline receita */}
+        {meses.some((m) => m.total > 0) && (
+          <StaggerItem>
+            <Card className="bg-card/80 border-white/10 p-5">
+              <div className="flex items-baseline justify-between gap-2 mb-3">
+                <div>
+                  <h2 className="text-lg font-bold">Receita dos últimos 6 meses</h2>
+                  <p className="text-xs text-muted-foreground">Pagamentos confirmados</p>
+                </div>
+                <Badge variant="outline" className="border-emerald-500/30 text-emerald-500">
+                  <TrendingUp className="size-3 mr-1" />
+                  {formatBRL(meses.reduce((s, m) => s + m.total, 0))} total
+                </Badge>
+              </div>
+              <div className="text-primary">
+                <Sparkline
+                  data={meses.map((m) => m.total)}
+                  labels={meses.map((m) => m.label)}
+                  height={90}
+                  showDots
+                  showArea
+                />
+              </div>
+            </Card>
+          </StaggerItem>
         )}
 
         {/* Pergunta-chave + lista */}
-        <Card className="bg-card/80 border-white/10 p-6">
-          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <Wallet className="size-5 text-primary" />
-            {temPix ? "Quem tá esperando pagamento?" : "Cobranças recentes"}
-          </h2>
+        <StaggerItem>
+          <Card className="bg-card/80 border-white/10 p-6">
+            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <Wallet className="size-5 text-primary" />
+              {temPix ? "Quem tá esperando pagamento?" : "Cobranças recentes"}
+            </h2>
 
-          {payments.length === 0 ? (
-            <EmptyFinance />
-          ) : (
-            <div className="divide-y divide-white/5">
-              {payments.map((p) => {
-                const s = statusMap[p.status];
-                const podeCobrar =
-                  (p.status === "pending" || p.status === "overdue") && temPix;
-                return (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-4 py-3.5 first:pt-0 last:pb-0"
-                  >
-                    <Avatar className="size-10 border border-white/10">
-                      <AvatarFallback className="bg-primary/15 text-primary font-bold">
-                        {p.letra}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold truncate">{p.aluno}</div>
-                      <div className="text-sm text-foreground/65 truncate">
-                        {p.status === "paid" && p.pagoEm
-                          ? `Pago ${p.pagoEm}`
-                          : `Vence em ${p.vencimento}`}
+            {payments.length === 0 ? (
+              <EmptyFinance />
+            ) : (
+              <div className="divide-y divide-white/5">
+                {payments.map((p) => {
+                  const s = statusMap[p.status];
+                  const podeCobrar =
+                    (p.status === "pending" || p.status === "overdue") && temPix;
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-4 py-3.5 first:pt-0 last:pb-0"
+                    >
+                      <Avatar className="size-10 border border-white/10">
+                        <AvatarFallback className="bg-primary/15 text-primary font-bold">
+                          {p.letra}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold truncate">{p.aluno}</div>
+                        <div className="text-sm text-foreground/65 truncate">
+                          {p.status === "paid" && p.pagoEm
+                            ? `Pago ${p.pagoEm}`
+                            : `Vence em ${p.vencimento}`}
+                        </div>
                       </div>
+                      <span className="num font-bold text-base shrink-0">
+                        {formatBRL(p.valor)}
+                      </span>
+                      <Badge className={s.cls}>
+                        <s.icon className="size-3 mr-1" />
+                        {s.label}
+                      </Badge>
+                      {podeCobrar && p.telefone && (
+                        <PixCobrarButton
+                          paymentId={p.id}
+                          phone={p.telefone}
+                          studentName={p.aluno}
+                          valor={p.valor}
+                        />
+                      )}
+                      {podeCobrar && <MarkPaidButton paymentId={p.id} />}
                     </div>
-                    <span className="num font-bold text-base shrink-0">
-                      {formatBRL(p.valor)}
-                    </span>
-                    <Badge className={s.cls}>
-                      <s.icon className="size-3 mr-1" />
-                      {s.label}
-                    </Badge>
-                    {podeCobrar && p.telefone && (
-                      <PixCobrarButton
-                        paymentId={p.id}
-                        phone={p.telefone}
-                        studentName={p.aluno}
-                        valor={p.valor}
-                      />
-                    )}
-                    {podeCobrar && <MarkPaidButton paymentId={p.id} />}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-
-        {/* Resumo simples — 2 números só */}
-        {payments.length > 0 && (
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Card className="bg-card/80 border-white/10 p-5">
-              <div className="text-xs text-foreground/65 uppercase tracking-wider">
-                Recebido
+                  );
+                })}
               </div>
-              <div className="num text-2xl font-extrabold mt-2 text-emerald-500">
-                {formatBRL(recebido)}
-              </div>
-            </Card>
-            <Card className="bg-card/80 border-white/10 p-5">
-              <div className="text-xs text-foreground/65 uppercase tracking-wider">
-                Em atraso
-              </div>
-              <div
-                className={`num text-2xl font-extrabold mt-2 ${
-                  atrasado > 0 ? "text-destructive" : "text-foreground/40"
-                }`}
-              >
-                {formatBRL(atrasado)}
-              </div>
-            </Card>
-          </div>
-        )}
-      </main>
+            )}
+          </Card>
+        </StaggerItem>
+      </Stagger>
     </div>
   );
 }
@@ -244,5 +314,39 @@ function EmptyFinance() {
         Nova cobrança
       </ButtonLink>
     </div>
+  );
+}
+
+function Kpi({
+  icon: Icon,
+  label,
+  value,
+  format,
+  tone,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: number;
+  format?: (n: number) => string;
+  tone?: "good" | "warning" | "bad";
+}) {
+  const toneClass =
+    tone === "good"
+      ? "text-emerald-500"
+      : tone === "bad"
+        ? "text-destructive"
+        : tone === "warning"
+          ? "text-yellow-500"
+          : "text-foreground";
+  return (
+    <Card className="bg-card/80 border-white/10 p-4">
+      <div className="grid size-9 place-items-center rounded-xl bg-primary/15 text-primary">
+        <Icon className="size-4" />
+      </div>
+      <div className={`mt-3 text-xl font-extrabold tracking-tight ${toneClass}`}>
+        <AnimatedNumber value={value} format={format} />
+      </div>
+      <div className="text-xs text-foreground/65">{label}</div>
+    </Card>
   );
 }

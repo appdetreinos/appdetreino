@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, MapPin, Video, Clock } from "lucide-react";
+import { Plus, Calendar, MapPin, Video, Clock, Sparkles } from "lucide-react";
+import { Stagger, StaggerItem } from "@/components/ui/stagger";
 
 const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -52,7 +53,7 @@ export default async function AgendaPage() {
   });
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8">
+    <div className="p-6 max-w-6xl mx-auto space-y-8 pb-12">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight">Agenda</h1>
@@ -66,102 +67,110 @@ export default async function AgendaPage() {
         </ButtonLink>
       </header>
 
-      <section className="grid lg:grid-cols-3 gap-6">
-        {/* Tipos de agendamento */}
-        <Card className="bg-card border-white/5 p-5">
-          <h2 className="font-semibold mb-3 flex items-center gap-2">
-            <Clock className="size-4" />
-            Tipos
-          </h2>
-          {(types ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum tipo cadastrado.</p>
-          ) : (
-            <ul className="space-y-2">
-              {(types ?? []).map((t) => (
-                <li
-                  key={t.id}
-                  className="flex items-center justify-between p-2 rounded-md hover:bg-muted/30 transition-colors"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span
-                      className="size-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: t.color }}
-                    />
-                    <span className="text-sm font-medium truncate">{t.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
-                    <span>{t.duration_minutes}min</span>
-                    {!t.active && <Badge variant="outline">Inativo</Badge>}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-          <ButtonLink
-            href="/app/agenda/types"
-            variant="outline"
-            className="w-full mt-3"
-            size="sm"
-          >
-            Gerenciar tipos
-          </ButtonLink>
-        </Card>
+      <Stagger className="space-y-6" delay={0.05}>
+        <StaggerItem>
+          <section className="grid lg:grid-cols-3 gap-6">
+            {/* Tipos de agendamento */}
+            <Card className="bg-card border-white/5 p-5">
+              <h2 className="font-semibold mb-3 flex items-center gap-2">
+                <Clock className="size-4" />
+                Tipos
+              </h2>
+              {(types ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum tipo cadastrado.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {(types ?? []).map((t) => (
+                    <li
+                      key={t.id}
+                      className="flex items-center justify-between p-2 rounded-md hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="size-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: t.color }}
+                        />
+                        <span className="text-sm font-medium truncate">{t.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
+                        <span>{t.duration_minutes}min</span>
+                        {!t.active && <Badge variant="outline">Inativo</Badge>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <ButtonLink
+                href="/app/agenda/types"
+                variant="outline"
+                className="w-full mt-3"
+                size="sm"
+              >
+                Gerenciar tipos
+              </ButtonLink>
+            </Card>
 
-        {/* Disponibilidade */}
-        <Card className="bg-card border-white/5 p-5">
-          <h2 className="font-semibold mb-3 flex items-center gap-2">
-            <Calendar className="size-4" />
-            Disponibilidade
-          </h2>
-          {(availability ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Configure os dias e horários que você atende.
-            </p>
-          ) : (
-            <ul className="space-y-1.5 text-sm">
-              {(availability ?? []).map((a) => (
-                <li key={a.id} className="flex items-center justify-between">
-                  <span className="font-medium">{DAY_NAMES[a.weekday]}</span>
-                  <span className="text-muted-foreground font-mono text-xs">
-                    {a.start_time} → {a.end_time}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+            {/* Disponibilidade */}
+            <Card className="bg-card border-white/5 p-5">
+              <h2 className="font-semibold mb-3 flex items-center gap-2">
+                <Calendar className="size-4" />
+                Disponibilidade
+              </h2>
+              {(availability ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Configure os dias e horários que você atende.
+                </p>
+              ) : (
+                <ul className="space-y-1.5 text-sm">
+                  {(availability ?? []).map((a) => (
+                    <li key={a.id} className="flex items-center justify-between">
+                      <span className="font-medium">{DAY_NAMES[a.weekday]}</span>
+                      <span className="text-muted-foreground font-mono text-xs">
+                        {a.start_time} → {a.end_time}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
 
-        {/* Resumo rápido */}
-        <Card className="bg-card border-white/5 p-5">
-          <h2 className="font-semibold mb-3">Resumo</h2>
-          <div className="space-y-2 text-sm">
-            <Row label="Total tipos" value={String((types ?? []).length)} />
-            <Row label="Tipos ativos" value={String((types ?? []).filter((t) => t.active).length)} />
-            <Row label="Agendamentos futuros" value={String(list.length)} />
-            <Row label="Dias com horário" value={String(new Set((availability ?? []).map((a) => a.weekday)).size)} />
-          </div>
-        </Card>
-      </section>
+            {/* Resumo rápido */}
+            <Card className="bg-card border-white/5 p-5">
+              <h2 className="font-semibold mb-3 flex items-center gap-2">
+                <Sparkles className="size-4 text-primary" />
+                Resumo
+              </h2>
+              <div className="space-y-2 text-sm">
+                <Row label="Total tipos" value={String((types ?? []).length)} />
+                <Row label="Tipos ativos" value={String((types ?? []).filter((t) => t.active).length)} />
+                <Row label="Agendamentos futuros" value={String(list.length)} />
+                <Row label="Dias com horário" value={String(new Set((availability ?? []).map((a) => a.weekday)).size)} />
+              </div>
+            </Card>
+          </section>
+        </StaggerItem>
 
-      {/* Próximos atendimentos */}
-      <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Próximos atendimentos
-        </h2>
-        {list.length === 0 ? (
-          <Card className="bg-card border-dashed border-white/10 p-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              Nenhum agendamento futuro. Crie o primeiro.
-            </p>
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {list.slice(0, 10).map((a) => (
-              <AppointmentRow key={a.id} apt={a} />
-            ))}
-          </div>
-        )}
-      </section>
+        <StaggerItem>
+          <section>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+              Próximos atendimentos
+            </h2>
+            {list.length === 0 ? (
+              <Card className="bg-card border-dashed border-white/10 p-8 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Nenhum agendamento futuro. Crie o primeiro.
+                </p>
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {list.slice(0, 10).map((a) => (
+                  <AppointmentRow key={a.id} apt={a} />
+                ))}
+              </div>
+            )}
+          </section>
+        </StaggerItem>
+      </Stagger>
     </div>
   );
 }

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Plus, Salad, ChevronRight, Globe, User } from "lucide-react";
+import { Stagger, StaggerItem } from "@/components/ui/stagger";
 import { ApplyTemplateButton } from "./apply-template-button";
 
 type DietListItem = {
@@ -11,6 +13,7 @@ type DietListItem = {
   kcal_target: number | null;
   p_target: number | null;
   student_id: string | null;
+  student_profiles?: { full_name: string } | { full_name: string }[] | null;
 };
 
 type StudentOption = { id: string; name: string };
@@ -45,7 +48,7 @@ export default async function DietsPage() {
   // Dietas atribuídas (trainer criou e atribuiu a aluno)
   const { data: assignedRaw, error } = await supabase
     .from("diets")
-    .select("id, title, kcal_target, p_target, student_id")
+    .select("id, title, kcal_target, p_target, student_id, student_profiles(full_name)")
     .eq("trainer_id", user.id)
     .not("student_id", "is", null)
     .order("created_at", { ascending: false })
@@ -73,7 +76,7 @@ export default async function DietsPage() {
   const assigned = (assignedRaw ?? []) as DietListItem[];
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8">
+    <div className="p-6 max-w-6xl mx-auto space-y-8 pb-12">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight">Dietas</h1>
@@ -87,39 +90,45 @@ export default async function DietsPage() {
         </ButtonLink>
       </header>
 
-      <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-          <Globe className="size-4" />
-          Templates prontos
-        </h2>
-        {templates.length === 0 ? (
-          <EmptyState
-            title="Nenhum template ainda"
-            description="Cria um plano alimentar base que você adapta pra cada aluno."
-            cta={{ href: "/app/diets/new", label: "Criar primeiro template" }}
-          />
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {templates.map((t) => (
-              <TemplateCard key={t.id} tpl={t} students={students} />
-            ))}
-          </div>
-        )}
-      </section>
+      <Stagger className="space-y-8" delay={0.05}>
+        <StaggerItem>
+          <section>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+              <Globe className="size-4" />
+              Templates prontos
+            </h2>
+            {templates.length === 0 ? (
+              <EmptyState
+                title="Nenhum template ainda"
+                description="Cria um plano alimentar base que você adapta pra cada aluno."
+                cta={{ href: "/app/diets/new", label: "Criar primeiro template" }}
+              />
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {templates.map((t) => (
+                  <TemplateCard key={t.id} tpl={t} students={students} />
+                ))}
+              </div>
+            )}
+          </section>
+        </StaggerItem>
 
-      {assigned.length > 0 && (
-        <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-            <User className="size-4" />
-            Atribuídas
-          </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {assigned.map((d) => (
-              <DietCard key={d.id} diet={d} />
-            ))}
-          </div>
-        </section>
-      )}
+        {assigned.length > 0 && (
+          <StaggerItem>
+            <section>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                <User className="size-4" />
+                Atribuídas
+              </h2>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {assigned.map((d) => (
+                  <DietCard key={d.id} diet={d} />
+                ))}
+              </div>
+            </section>
+          </StaggerItem>
+        )}
+      </Stagger>
     </div>
   );
 }
@@ -178,11 +187,25 @@ function TemplateCard({
 
 function DietCard({ diet }: { diet: DietListItem }) {
   const hasMacros = diet.kcal_target != null || diet.p_target != null;
+  const studentName = (() => {
+    if (!diet.student_profiles) return null;
+    const s = Array.isArray(diet.student_profiles)
+      ? diet.student_profiles[0]
+      : diet.student_profiles;
+    return s?.full_name ?? null;
+  })();
   return (
     <Link href={`/app/diets/${diet.id}`} className="block group">
-      <Card className="bg-card border-white/5 p-5 hover:border-primary/40 transition-colors">
-        <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
-          <Salad className="size-5" />
+      <Card className="bg-card border-white/5 p-5 hover:border-primary/40 transition-colors relative overflow-hidden">
+        <div className="flex items-center gap-3">
+          <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary group-hover:scale-110 transition-transform">
+            <Salad className="size-5" />
+          </div>
+          {studentName && (
+            <Badge variant="outline" className="border-primary/30 text-primary">
+              {studentName}
+            </Badge>
+          )}
         </div>
         <h3 className="mt-4 font-bold truncate">{diet.title}</h3>
         <div className="mt-3 flex items-center justify-between">
@@ -191,7 +214,7 @@ function DietCard({ diet }: { diet: DietListItem }) {
               ? `${diet.kcal_target ?? "—"} kcal · ${diet.p_target ?? "—"}g P`
               : "Sem macros definidos"}
           </span>
-          <ChevronRight className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          <ChevronRight className="size-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
         </div>
       </Card>
     </Link>

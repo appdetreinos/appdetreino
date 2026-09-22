@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Plus,
   ArrowUpRight,
@@ -11,19 +10,39 @@ import {
   Receipt,
   MessageCircle,
   UserPlus,
+  TrendingUp,
+  Users,
+  Wallet,
+  CalendarDays,
+  Flame,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { DashboardEntrance } from "./dashboard-entrance";
 import { LogoutButton } from "@/components/logout-button";
 import { OnboardingWizard } from "./_components/onboarding-wizard";
 import { OnboardingChecklist } from "./_components/onboarding-checklist";
+import { Sparkline } from "@/components/ui/sparkline";
+import { Stagger, StaggerItem, AnimatedNumber } from "@/components/ui/stagger";
+import { ProgressRing } from "@/components/ui/progress-ring";
 
 /**
  * Trainer dashboard — server component com dados reais do Supabase.
  *
- * Se RLS bloquear as queries (algo errado na config), o catchAll garante
- * que o usuário pelo menos vê o shell vazio em vez de 500.
+ * Melhorias 2026-09-22 (audit UIX):
+ *  - Faixa de KPIs no topo: Alunos / Receita do mês / Sessões (7d) / Renovações pendentes
+ *  - Sparkline de receita últimos 12 meses
+ *  - Contadores animados
+ *  - ProgressRing de "foco de hoje" (% de alunos que treinaram nos últimos 7 dias)
+ *  - Stagger pra entrada dos blocos
  */
+
+function brMonthLabel(d: Date): string {
+  return d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
+}
+
+function monthKey(d: Date): string {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
 
 export default async function TrainerDashboard() {
   const supabase = await createClient();
@@ -31,30 +50,19 @@ export default async function TrainerDashboard() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Sem user, manda pro login (proxy.ts também barrou, mas defensivo)
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   // ── Guard de role ────────────────────────────────────────────────
-  // Se o user logado é student (não trainer/admin), manda pro painel
-  // do aluno. Defesa em camadas — proxy.ts já filtra, mas aqui
-  // garante que um student nunca vê o console do trainer.
   const { data: profileRole } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (profileRole?.role === "student") {
-    redirect("/aluno");
-  }
-  if (profileRole?.role === "admin") {
-    redirect("/admin");
-  }
+  if (profileRole?.role === "student") redirect("/aluno");
+  if (profileRole?.role === "admin") redirect("/admin");
   // ────────────────────────────────────────────────────────────────
 
-  // Saudação: nome vem de `profiles.full_name`
   const { data: profile } = await supabase
     .from("profiles")
     .select("full_name")
@@ -63,7 +71,7 @@ export default async function TrainerDashboard() {
 
   const firstName = (profile?.full_name ?? user.email ?? "treinador").split(" ")[0];
 
-  // Alunos ativos do trainer (top 3 pra "Quem tá esperando você hoje?")
+  // Alunos ativos do trainer
   const { data: studentsRaw } = await supabase
     .from("student_profiles")
     .select("user_id, full_name, status, joined_at, goal")
@@ -79,10 +87,73 @@ export default async function TrainerDashboard() {
     quando: s.status === "active" ? "Ativo" : "Inativo",
   }));
 
-  const totalAlunos = (studentsRaw ?? []).length;
+  const totalAlunos = focusStudents.length;
   const temAluno = totalAlunos > 0;
 
-  // Atividade recente: últimas sessões de treino dos alunos do trainer
+  // Total de alunos do trainer (count)
+  const totalAlunosCount = await supabase
+    .from("student_profiles")
+    .select("user_id", { count: "exact", head: true })
+    .eq("trainer_id", user.id);
+
+  // Alunos ativos nos últimos 7 dias (treinaram)
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: activeStudentsRaw } = await supabase
+    .from("workout_sessions")
+    .select("student_id, student_profiles!inner(trainer_id)")
+    .eq("student_profiles.trainer_id", user.id)
+    .gte("created_at", sevenDaysAgo);
+
+  const activeStudentsSet = new Set(
+    (activeStudentsRaw ?? []).map((s) => s.student_id).filter(Boolean),
+  );
+  const activeStudents = activeStudentsSet.size;
+  const activeRate =
+    (totalAlunosCount.count ?? 0) > 0
+      ? Math.round((activeStudents / (totalAlunosCount.count ?? 1)) * 100)
+      : 0;
+
+  // Sessões nos últimos 7 dias (volume)
+  const sessionsLast7Days = (activeStudentsRaw ?? []).length;
+
+  // Receita últimos 12 meses — soma de payment_links pagos por mês do trainer
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setUTCMonth(twelveMonthsAgo.getUTCMonth() - 11);
+  twelveMonthsAgo.setUTCDate(1);
+  twelveMonthsAgo.setUTCHours(0, 0, 0, 0);
+
+  const { data: paymentsRaw } = await supabase
+    .from("payment_links")
+    .select("amount_cents, paid_at, status")
+    .eq("trainer_id", user.id)
+    .eq("status", "paid")
+    .gte("paid_at", twelveMonthsAgo.toISOString());
+
+  // Agrupa por mês
+  const months: { label: string; total: number; key: string }[] = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date();
+    d.setUTCMonth(d.getUTCMonth() - i);
+    d.setUTCDate(1);
+    d.setUTCHours(0, 0, 0, 0);
+    months.push({ label: brMonthLabel(d), key: monthKey(d), total: 0 });
+  }
+  for (const p of paymentsRaw ?? []) {
+    if (!p.paid_at) continue;
+    const k = monthKey(new Date(p.paid_at));
+    const m = months.find((x) => x.key === k);
+    if (m) m.total += p.amount_cents / 100;
+  }
+
+  const receita12m = months.reduce((acc, m) => acc + m.total, 0);
+  const receitaMes = months.at(-1)?.total ?? 0;
+  const receitaMesAnterior = months.at(-2)?.total ?? 0;
+  const variacaoMes =
+    receitaMesAnterior > 0
+      ? Math.round(((receitaMes - receitaMesAnterior) / receitaMesAnterior) * 100)
+      : 0;
+
+  // Atividade recente: últimas sessões de treino
   const { data: sessionsRaw } = await supabase
     .from("workout_sessions")
     .select("created_at, status, student_profiles!inner(full_name, trainer_id)")
@@ -106,12 +177,7 @@ export default async function TrainerDashboard() {
     };
   });
 
-  const totalAlunosCount = await supabase
-    .from("student_profiles")
-    .select("user_id", { count: "exact", head: true })
-    .eq("trainer_id", user.id);
-
-  // Wizard de onboarding — mostra se nunca terminou (onboarding_completed_at é NULL)
+  // Wizard / checklist de onboarding
   const { data: trainerOnboarding } = await supabase
     .from("trainer_profiles")
     .select(
@@ -120,7 +186,6 @@ export default async function TrainerDashboard() {
     .eq("user_id", user.id)
     .maybeSingle();
   const showOnboarding = !trainerOnboarding?.onboarding_completed_at;
-
   const checklistState = {
     invited_student: !!trainerOnboarding?.checklist_invited_student_at,
     sent_workout: !!trainerOnboarding?.checklist_sent_workout_at,
@@ -136,10 +201,12 @@ export default async function TrainerDashboard() {
       <header className="border-b border-white/10 sticky top-0 z-30 bg-background/85 backdrop-blur-md">
         <div className="px-6 h-16 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-xl font-bold truncate">Bom dia, {firstName} 🔥</h1>
+            <h1 className="text-xl font-bold truncate">
+              Bom dia, <span className="text-primary">{firstName}</span> 🔥
+            </h1>
             <p className="text-xs text-foreground/65">
               {temAluno
-                ? `${totalAlunos} aluno${totalAlunos > 1 ? "s" : ""} ativo${totalAlunos > 1 ? "s" : ""} no painel`
+                ? `${totalAlunosCount.count ?? 0} aluno${(totalAlunosCount.count ?? 0) === 1 ? "" : "s"} ativo${(totalAlunosCount.count ?? 0) === 1 ? "" : "s"} · ${activeStudents} treinaram nos últimos 7 dias`
                 : "Tá esperando você convidar o primeiro aluno"}
             </p>
           </div>
@@ -155,27 +222,179 @@ export default async function TrainerDashboard() {
         </div>
       </header>
 
-      <main className="p-6 space-y-6 max-w-5xl mx-auto">
-        {showChecklist && <OnboardingChecklist initial={checklistState} />}
-        <DashboardEntrance
-          focus={{ pergunta: "Quem tá esperando você hoje?", itens: focusStudents }}
-          recentes={recentes}
-          totalAlunos={totalAlunosCount.count ?? 0}
-          temAluno={temAluno}
-        />
-
-        {/* Atalhos rápidos */}
-        <Card className="bg-card/80 border-white/10 p-6">
-          <h2 className="text-lg font-bold mb-4">Atalhos</h2>
+      <Stagger className="p-6 space-y-6 max-w-5xl mx-auto" delay={0.05}>
+        {/* KPIs com sparkline de receita */}
+        <StaggerItem>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <Atalho icon={UserPlus} label="Novo aluno" href="/app/students/new" />
-            <Atalho icon={CalendarCheck2} label="Mandar treino" href="/app/workouts" />
-            <Atalho icon={Receipt} label="Cobrar atrasado" href="/app/finance" />
-            <Atalho icon={MessageCircle} label="Conectar WhatsApp" href="/app/whatsapp" />
+            <Kpi
+              icon={Users}
+              label="Alunos ativos"
+              value={totalAlunosCount.count ?? 0}
+              badge={
+                activeRate > 0 ? (
+                  <Badge variant="outline" className="border-emerald-500/30 text-emerald-500">
+                    {activeRate}% ativos
+                  </Badge>
+                ) : null
+              }
+              hint={`${activeStudents} treinaram nos últimos 7 dias`}
+            />
+            <Kpi
+              icon={Wallet}
+              label="Receita do mês"
+              value={receitaMes}
+              format={(v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
+              badge={
+                variacaoMes !== 0 ? (
+                  <Badge
+                    variant="outline"
+                    className={
+                      variacaoMes > 0
+                        ? "border-emerald-500/30 text-emerald-500"
+                        : "border-rose-500/30 text-rose-500"
+                    }
+                  >
+                    <TrendingUp className="size-3 mr-1" />
+                    {variacaoMes > 0 ? "+" : ""}
+                    {variacaoMes}% vs mês anterior
+                  </Badge>
+                ) : null
+              }
+            />
+            <Kpi
+              icon={CalendarDays}
+              label="Sessões (7d)"
+              value={sessionsLast7Days}
+              hint="treinos iniciados/concluídos"
+            />
+            <Kpi
+              icon={Flame}
+              label="Streak da consultoria"
+              value={activeRate}
+              format={(v) => `${Math.round(v)}%`}
+              hint="aderência média semanal"
+            />
           </div>
-        </Card>
-      </main>
+        </StaggerItem>
+
+        {/* Sparkline de receita 12 meses */}
+        <StaggerItem>
+          <Card className="bg-card/80 border-white/10 p-5">
+            <div className="flex items-baseline justify-between gap-2 mb-3">
+              <div>
+                <h2 className="text-lg font-bold">Receita — últimos 12 meses</h2>
+                <p className="text-sm text-foreground/65">
+                  Total acumulado:{" "}
+                  <span className="font-semibold text-foreground">
+                    {receita12m.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
+                  </span>
+                </p>
+              </div>
+              <Link
+                href="/app/finance"
+                className="text-xs text-foreground/65 hover:text-foreground inline-flex items-center gap-1 transition-colors"
+              >
+                ver financeiro <ArrowUpRight className="size-3" />
+              </Link>
+            </div>
+            <div className="text-primary">
+              <Sparkline
+                data={months.map((m) => m.total)}
+                labels={months.map((m) => m.label)}
+                height={100}
+                showDots
+                showArea
+              />
+            </div>
+          </Card>
+        </StaggerItem>
+
+        {showChecklist && <OnboardingChecklist initial={checklistState} />}
+
+        <StaggerItem>
+          <DashboardEntrance
+            focus={{ pergunta: "Quem tá esperando você hoje?", itens: focusStudents }}
+            recentes={recentes}
+            totalAlunos={totalAlunosCount.count ?? 0}
+            temAluno={temAluno}
+          />
+        </StaggerItem>
+
+        <StaggerItem>
+          <Card className="bg-card/80 border-white/10 p-6">
+            <h2 className="text-lg font-bold mb-4">Atalhos</h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <Atalho icon={UserPlus} label="Novo aluno" href="/app/students/new" />
+              <Atalho icon={CalendarCheck2} label="Mandar treino" href="/app/workouts" />
+              <Atalho icon={Receipt} label="Cobrar atrasado" href="/app/finance" />
+              <Atalho icon={MessageCircle} label="Conectar WhatsApp" href="/app/whatsapp" />
+            </div>
+          </Card>
+        </StaggerItem>
+
+        {/* ProgressRing de "foco de hoje" */}
+        <StaggerItem>
+          <Card className="bg-card/80 border-white/10 p-6">
+            <div className="flex items-center gap-5">
+              <ProgressRing
+                value={activeRate}
+                size={88}
+                strokeWidth={7}
+                progressColor="oklch(0.685 0.196 38.5)"
+                label={
+                  <span className="text-xl">
+                    <AnimatedNumber value={activeRate} />%
+                  </span>
+                }
+                sublabel="aderência"
+              />
+              <div>
+                <h2 className="text-base font-bold">Aderência da semana</h2>
+                <p className="text-sm text-foreground/65 max-w-md">
+                  {activeRate >= 70
+                    ? "Sua consultoria tá voando. Mais de 70% dos alunos treinaram essa semana."
+                    : activeRate >= 30
+                      ? "Tá indo bem. Alguns alunos sumiram — manda um oi pra puxar de volta."
+                      : "Hora de cutucar quem tá parado. Manda uma mensagem pra quem tá frio."}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </StaggerItem>
+      </Stagger>
     </div>
+  );
+}
+
+function Kpi({
+  icon: Icon,
+  label,
+  value,
+  format,
+  badge,
+  hint,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: number;
+  format?: (n: number) => string;
+  badge?: React.ReactNode;
+  hint?: string;
+}) {
+  return (
+    <Card className="bg-card/80 border-white/10 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="grid size-9 place-items-center rounded-xl bg-primary/15 text-primary">
+          <Icon className="size-4" />
+        </div>
+        {badge}
+      </div>
+      <div className="mt-3 text-2xl font-extrabold tracking-tight">
+        <AnimatedNumber value={value} format={format} />
+      </div>
+      <div className="text-xs text-foreground/65">{label}</div>
+      {hint && <div className="mt-2 text-[11px] text-foreground/55">{hint}</div>}
+    </Card>
   );
 }
 

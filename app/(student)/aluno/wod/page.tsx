@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { WodResultForm } from "./wod-result-form";
 import { Timer, Flame } from "lucide-react";
 import { todayBR } from "@/lib/utils/date";
+import { Stagger, StaggerItem } from "@/components/ui/stagger";
 
 export default async function WodAlunoPage() {
   const supabase = await createClient();
@@ -85,63 +87,85 @@ export default async function WodAlunoPage() {
           </p>
         </Card>
       ) : (
-        todaysWods.map((w) => {
-          // Minha participação
-          const mine = (w.participants ?? []).find((p) => p.student_id === user.id);
-          return (
-            <Card key={w.id} className="bg-card border-white/5 p-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="font-bold text-xl">{w.title}</h2>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(w.scheduled_for).toLocaleDateString("pt-BR", {
-                      weekday: "long",
-                      day: "2-digit",
-                      month: "short",
-                    })}
-                  </span>
-                </div>
-                <Flame className="size-6 text-orange-500" />
-              </div>
-
-              {w.description && (
-                <p className="mt-3 text-sm whitespace-pre-line">{w.description}</p>
-              )}
-
-              <div className="mt-5 pt-5 border-t border-white/5">
-                {mine?.completed_at ? (
-                  <div className="space-y-2">
-                    <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                      Seu resultado
+        <Stagger className="space-y-4" delay={0.05}>
+          {todaysWods.map((w) => {
+            const mine = (w.participants ?? []).find((p) => p.student_id === user.id);
+            const completed = !!mine?.completed_at;
+            return (
+              <StaggerItem key={w.id}>
+                <Card className="bg-card border-white/5 p-5 relative overflow-hidden">
+                  <div
+                    className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-500 via-primary to-orange-400"
+                    aria-hidden
+                  />
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="font-bold text-xl">{w.title}</h2>
+                        {completed && (
+                          <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30">
+                            Concluído
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(w.scheduled_for).toLocaleDateString("pt-BR", {
+                          weekday: "long",
+                          day: "2-digit",
+                          month: "short",
+                        })}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      {mine.result_time_seconds != null && (
-                        <div className="flex items-center gap-1.5">
-                          <Timer className="size-4 text-primary" />
-                          <span className="font-mono text-lg font-bold">
-                            {formatTime(mine.result_time_seconds)}
-                          </span>
-                        </div>
-                      )}
-                      {mine.result_rounds != null && (
-                        <div className="text-lg font-bold">
-                          {mine.result_rounds} rounds
-                        </div>
-                      )}
+                    <div className="grid size-10 place-items-center rounded-full bg-orange-500/15 text-orange-500 shrink-0">
+                      <Flame className="size-5" />
                     </div>
-                    {mine.result_notes && (
-                      <p className="text-xs text-muted-foreground italic">
-                        "{mine.result_notes}"
-                      </p>
+                  </div>
+
+                  {w.description && (
+                    <p className="mt-3 text-sm whitespace-pre-line bg-secondary/30 p-3 rounded-lg">
+                      {w.description}
+                    </p>
+                  )}
+
+                  <div className="mt-5 pt-5 border-t border-white/5">
+                    {completed ? (
+                      <div className="space-y-2">
+                        <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                          Seu resultado
+                        </div>
+                        <div className="flex items-center gap-4">
+                          {mine.result_time_seconds != null && (
+                            <div className="flex items-center gap-2">
+                              <Timer className="size-4 text-primary" />
+                              <span className="font-mono text-2xl font-extrabold">
+                                {formatTime(mine.result_time_seconds)}
+                              </span>
+                            </div>
+                          )}
+                          {mine.result_rounds != null && (
+                            <div className="text-2xl font-extrabold">
+                              {mine.result_rounds}{" "}
+                              <span className="text-sm text-muted-foreground font-medium">
+                                rounds
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        {mine.result_notes && (
+                          <p className="text-xs text-muted-foreground italic">
+                            "{mine.result_notes}"
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <WodResultForm wodId={w.id} />
                     )}
                   </div>
-                ) : (
-                  <WodResultForm wodId={w.id} />
-                )}
-              </div>
-            </Card>
-          );
-        })
+                </Card>
+              </StaggerItem>
+            );
+          })}
+        </Stagger>
       )}
 
       {/* Próximos */}
@@ -152,8 +176,11 @@ export default async function WodAlunoPage() {
           </h2>
           <div className="space-y-2">
             {(upcomingWods ?? []).map((w) => (
-              <Card key={w.id} className="bg-card border-white/5 p-3 flex items-center gap-3">
-                <span className="text-xs font-mono text-muted-foreground w-16 shrink-0">
+              <Card
+                key={w.id}
+                className="bg-card border-white/5 p-3 flex items-center gap-3 hover:border-primary/30 transition-colors"
+              >
+                <span className="text-xs font-mono text-muted-foreground w-16 shrink-0 bg-secondary/30 px-2 py-1 rounded text-center">
                   {new Date(w.scheduled_for).toLocaleDateString("pt-BR", {
                     day: "2-digit",
                     month: "short",

@@ -3,6 +3,8 @@ import { Card } from "@/components/ui/card";
 import { HabitCounter } from "./habit-counter";
 import { Sparkles, Flame } from "lucide-react";
 import { todayBR } from "@/lib/utils/date";
+import { Stagger, StaggerItem, AnimatedNumber } from "@/components/ui/stagger";
+import { ProgressRing } from "@/components/ui/progress-ring";
 
 const DAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"]; // dom-sáb (compacto)
 
@@ -108,16 +110,33 @@ export default async function HabitosAlunoPage() {
 
       {/* Progresso geral HOJE */}
       {list.length > 0 && (
-        <Card className="bg-card border-white/5 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium">Hoje</span>
-            <span className="text-2xl font-bold">{Math.round(overallProgress)}%</span>
-          </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all"
-              style={{ width: `${Math.min(100, overallProgress)}%` }}
+        <Card className="bg-card border-white/5 p-5 relative overflow-hidden">
+          <div className="flex items-center gap-5">
+            <ProgressRing
+              value={overallProgress}
+              size={84}
+              strokeWidth={7}
+              progressColor="oklch(0.685 0.196 38.5)"
+              label={
+                <span className="text-lg font-extrabold">
+                  <AnimatedNumber value={Math.round(overallProgress)} />%
+                </span>
+              }
+              sublabel="hoje"
             />
+            <div className="flex-1">
+              <div className="text-sm text-muted-foreground">Progresso geral</div>
+              <div className="text-base font-bold">
+                {list.filter((h) => h.current >= h.target).length} de {list.length}{" "}
+                hábitos batidos hoje
+              </div>
+              <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-primary to-orange-400 transition-all duration-700"
+                  style={{ width: `${Math.min(100, overallProgress)}%` }}
+                />
+              </div>
+            </div>
           </div>
         </Card>
       )}
@@ -133,74 +152,74 @@ export default async function HabitosAlunoPage() {
           </p>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <Stagger className="space-y-3" delay={0.05}>
           {list.map((h) => (
-            <Card key={h.id} className="bg-card border-white/5 p-5 space-y-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold truncate">{h.name}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Meta: {h.target} {h.unit || "x"} por dia
+            <StaggerItem key={h.id}>
+              <Card className="bg-card border-white/5 p-5 space-y-4 hover:border-primary/30 transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold truncate">{h.name}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Meta: {h.target} {h.unit || "x"} por dia
+                    </div>
+                  </div>
+                  {h.streak >= 2 && (
+                    <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-orange-500/15 text-orange-500 px-2.5 py-1 text-xs font-semibold">
+                      <Flame className="size-3" />
+                      {h.streak} {h.streak === 1 ? "dia" : "dias"}
+                    </span>
+                  )}
+                </div>
+
+                <HabitCounter
+                  habitId={h.id}
+                  name={h.name}
+                  icon={h.icon}
+                  target={h.target}
+                  unit={h.unit}
+                  current={h.current}
+                />
+
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-foreground/55 mb-2">
+                    Semana
+                  </div>
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {h.week.map((done, idx) => {
+                      const dayDate = last7[idx];
+                      const isToday = dayDate === today;
+                      const dow = new Date(dayDate + "T12:00:00").getDay();
+                      return (
+                        <div
+                          key={idx}
+                          className="flex flex-col items-center gap-1"
+                          title={`${done ? "Bateu a meta" : "Não bateu"} em ${dayDate}`}
+                        >
+                          <span
+                            className={`text-[10px] uppercase ${
+                              isToday ? "text-primary font-bold" : "text-foreground/45"
+                            }`}
+                          >
+                            {DAY_LABELS[dow]}
+                          </span>
+                          <div
+                            className={`size-7 rounded-md border-2 transition-all ${
+                              done
+                                ? "bg-primary border-primary"
+                                : isToday
+                                  ? "border-primary/40 bg-primary/5"
+                                  : "border-white/10 bg-background/40"
+                            }`}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-                {h.streak >= 2 && (
-                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-orange-500/15 text-orange-500 px-2.5 py-1 text-xs font-semibold">
-                    <Flame className="size-3" />
-                    {h.streak} {h.streak === 1 ? "dia" : "dias"}
-                  </span>
-                )}
-              </div>
-
-              {/* Contador de hoje */}
-              <HabitCounter
-                habitId={h.id}
-                name={h.name}
-                icon={h.icon}
-                target={h.target}
-                unit={h.unit}
-                current={h.current}
-              />
-
-              {/* Visão semanal */}
-              <div>
-                <div className="text-xs uppercase tracking-wider text-foreground/55 mb-2">
-                  Semana
-                </div>
-                <div className="grid grid-cols-7 gap-1.5">
-                  {h.week.map((done, idx) => {
-                    const dayDate = last7[idx];
-                    const isToday = dayDate === today;
-                    const dow = new Date(dayDate + "T12:00:00").getDay();
-                    return (
-                      <div
-                        key={idx}
-                        className="flex flex-col items-center gap-1"
-                        title={`${done ? "Bateu a meta" : "Não bateu"} em ${dayDate}`}
-                      >
-                        <span
-                          className={`text-[10px] uppercase ${
-                            isToday ? "text-primary font-bold" : "text-foreground/45"
-                          }`}
-                        >
-                          {DAY_LABELS[dow]}
-                        </span>
-                        <div
-                          className={`size-7 rounded-md border-2 ${
-                            done
-                              ? "bg-primary border-primary"
-                              : isToday
-                                ? "border-primary/40 bg-primary/5"
-                                : "border-white/10 bg-background/40"
-                          }`}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </Card>
+              </Card>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       )}
     </div>
   );

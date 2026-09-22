@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { MessageSquare, Phone } from "lucide-react";
 import { sanitizePhone } from "@/lib/security/sanitize";
+import { Stagger, StaggerItem } from "@/components/ui/stagger";
 
 export default async function MensagensPage() {
   const supabase = await createClient();
@@ -10,8 +11,6 @@ export default async function MensagensPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // Pega trainer do aluno + telefone DO TRAINER (não do aluno — o link wa.me precisa
-  // abrir conversa com o personal, não consigo mesmo)
   const { data: studentProfile } = await supabase
     .from("student_profiles")
     .select("trainer_id, phone")
@@ -26,7 +25,6 @@ export default async function MensagensPage() {
         .maybeSingle()
     : { data: null };
 
-  // Mensagens do trainer do aluno onde to_phone ou from_phone = telefone do aluno
   const messages: Array<{
     id: string;
     direction: string;
@@ -37,11 +35,7 @@ export default async function MensagensPage() {
   }> = [];
 
   if (studentProfile?.trainer_id && studentProfile?.phone) {
-    // Sanitize: tira qualquer caractere fora do alfabeto de telefone.
-    // Impede PostgREST injection (",..,(), etc).
     const safePhone = sanitizePhone(studentProfile.phone);
-
-    // Duas queries explícitas em vez de `.or(...)` com interpolação.
     const [{ data: toData }, { data: fromData }] = await Promise.all([
       supabase
         .from("evolution_messages")
@@ -67,21 +61,29 @@ export default async function MensagensPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <div className="p-6 max-w-2xl mx-auto space-y-6 pb-12">
       <header>
         <h1 className="text-2xl font-extrabold tracking-tight">Mensagens</h1>
         <p className="text-sm text-muted-foreground">
-          Histórico de mensagens com seu personal
+          Histórico com seu personal
+          {trainerProfile?.full_name ? (
+            <>
+              {" · "}
+              <span className="font-semibold text-foreground">
+                {trainerProfile.full_name.split(" ")[0]}
+              </span>
+            </>
+          ) : null}
         </p>
       </header>
 
       {messages.length === 0 ? (
-        <Card className="bg-card border-dashed border-white/10 p-8 text-center">
+        <Card className="bg-card border-dashed border-white/10 p-10 text-center">
           <div className="grid size-12 place-items-center rounded-full bg-muted text-muted-foreground mx-auto">
             <MessageSquare className="size-6" />
           </div>
           <h3 className="mt-4 font-semibold">Sem mensagens ainda</h3>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
             A integração WhatsApp chega em breve. Seu personal já tem seus dados de contato.
           </p>
           {trainerProfile?.phone ? (
@@ -89,7 +91,7 @@ export default async function MensagensPage() {
               href={`https://wa.me/55${trainerProfile.phone.replace(/\D/g, "")}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 mt-4 text-sm text-primary hover:underline"
+              className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors"
             >
               <Phone className="size-4" />
               Abrir WhatsApp do {trainerProfile.full_name?.split(" ")[0] ?? "personal"}
@@ -97,33 +99,43 @@ export default async function MensagensPage() {
           ) : null}
         </Card>
       ) : (
-        <div className="space-y-2">
-          {messages.map((m) => (
-            <Card
-              key={m.id}
-              className={`bg-card p-4 ${
-                m.direction === "outbound" ? "border-primary/30 ml-8" : "mr-8"
-              }`}
-            >
-              <div className="text-xs text-muted-foreground mb-1">
-                {m.direction === "outbound" ? "Você enviou" : "Personal"} ·{" "}
-                {new Date(m.sent_at ?? m.created_at).toLocaleString("pt-BR", {
-                  day: "2-digit",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </div>
-              <div className="text-sm">
-                {typeof m.payload_jsonb === "object" &&
-                m.payload_jsonb !== null &&
-                "text" in (m.payload_jsonb as Record<string, unknown>)
-                  ? String((m.payload_jsonb as Record<string, unknown>).text)
-                  : <span className="text-muted-foreground italic">[{m.type}]</span>}
-              </div>
-            </Card>
-          ))}
-        </div>
+        <Stagger className="space-y-2" delay={0.05}>
+          {messages.map((m) => {
+            const outbound = m.direction === "outbound";
+            const text =
+              typeof m.payload_jsonb === "object" &&
+              m.payload_jsonb !== null &&
+              "text" in (m.payload_jsonb as Record<string, unknown>)
+                ? String((m.payload_jsonb as Record<string, unknown>).text)
+                : null;
+            return (
+              <StaggerItem key={m.id}>
+                <div className={`flex ${outbound ? "justify-end" : "justify-start"}`}>
+                  <Card
+                    className={`max-w-[80%] p-3.5 ${
+                      outbound
+                        ? "bg-primary/15 border-primary/30"
+                        : "bg-card border-white/10"
+                    }`}
+                  >
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
+                      {outbound ? "Você" : trainerProfile?.full_name?.split(" ")[0] ?? "Personal"}{" · "}
+                      {new Date(m.sent_at ?? m.created_at).toLocaleString("pt-BR", {
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </div>
+                    <div className="text-sm whitespace-pre-line">
+                      {text ?? <span className="text-muted-foreground italic">[{m.type}]</span>}
+                    </div>
+                  </Card>
+                </div>
+              </StaggerItem>
+            );
+          })}
+        </Stagger>
       )}
     </div>
   );

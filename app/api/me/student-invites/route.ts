@@ -12,6 +12,13 @@ const bodySchema = z
       .nullable()
       .optional()
       .transform((v) => (v && v.trim().length > 0 ? v.trim() : null)),
+    email: z
+      .string()
+      .email()
+      .max(200)
+      .nullable()
+      .optional()
+      .transform((v) => (v && v.trim().length > 0 ? v.trim() : null)),
     goal: z
       .string()
       .max(200)
@@ -70,11 +77,12 @@ export async function POST(request: NextRequest) {
       trainer_id: auth.user.id,
       full_name: body.data.full_name,
       phone: body.data.phone,
+      email: body.data.email,
       goal: body.data.goal,
       notes: body.data.notes,
       status: "pending",
     })
-    .select("code, full_name, phone")
+    .select("code, full_name, phone, email")
     .single();
 
   if (insertError || !data) {

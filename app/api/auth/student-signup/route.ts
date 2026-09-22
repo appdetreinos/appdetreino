@@ -16,59 +16,55 @@ const bodySchema = z
 /**
  * POST /api/auth/student-signup
  *
- * Cria conta de aluno via convite — fluxo otimizado:
- *   1. Cria o user (auth.admin.createUser com service_role — bypass confirmação
- *      de e-mail, já que o convite valida o email indiretamente)
- *   2. Faz signIn pra criar sessão
- *   3. Chama RPC accept_invite com SECURITY DEFINER que cria profile + student_profile
- *      e vincula ao trainer
+ * VERSÃO BLINDADA — não depende de nenhuma RPC. Usa apenas PostgREST via
+ * admin client (bypassa RLS). Idempotente em todos os passos.
  *
- * Erros retornam a mensagem ORIGINAL do Supabase pra debugar.
+ * Etapas:
+ *   1. Valida convite (pending, não expirado)
+ *   2. Cria user via admin.auth.admin.createUser (bypass email_confirm)
+ *   3. Faz signIn pra criar sessão (cookies)
+ *   4. Garante trainer_profile existe (cria se faltar)
+ *   5. Garante profile do aluno com role='student' e full_name correto
+ *   6. Cria/atualiza student_profile vinculado
+ *   7. Marca invite como aceito
+ *
+ * Logging extensivo: cada etapa loga o resultado pra debug remoto.
  */
 export async function POST(request: NextRequest) {
+  // 1. Parse body
   let body: { full_name: string; email: string; password: string; invite_code: string };
   try {
     const raw = (await request.json()) as unknown;
     const result = bodySchema.safeParse(raw);
     if (!result.success) {
       return NextResponse.json(
-        {
-          ok: false,
-          error: `Dados inválidos: ${result.error.issues[0]?.message ?? "?"}`,
-        },
+        { ok: false, error: `Dados inválidos: ${result.error.issues[0]?.message ?? "?"}` },
         { status: 400 },
       );
     }
     body = result.data;
   } catch {
-    return NextResponse.json(
-      { ok: false, error: "Body inválido (JSON esperado)." },
-      { status: 400 },
-    );
+    return NextResponse.json({ ok: false, error: "Body inválido (JSON esperado)." }, { status: 400 });
   }
 
+  // 2. Setup admin client
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) {
     return NextResponse.json(
-      {
-        ok: false,
-        error: "Configuração do servidor incompleta (SUPABASE_SERVICE_ROLE_KEY faltando).",
-      },
+      { ok: false, error: "Configuração do servidor incompleta (SUPABASE_SERVICE_ROLE_KEY faltando)." },
       { status: 500 },
     );
   }
 
-  // Cliente admin (bypass RLS e email_confirm)
   const admin = createSbClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // 0. Verifica se o convite ainda tá válido (não usado, não expirado)
-  //    Bloqueia ANTES de criar o user pra evitar contas órfãs.
+  // 3. Verifica convite
   const { data: inviteCheck, error: inviteCheckError } = await admin
     .from("student_invites")
-    .select("id, status, expires_at, trainer_id")
+    .select("id, status, expires_at, trainer_id, full_name, phone, goal, code")
     .eq("code", body.invite_code)
     .maybeSingle();
 
@@ -78,17 +74,12 @@ export async function POST(request: NextRequest) {
       { status: 404 },
     );
   }
-
   if (inviteCheck.status === "accepted") {
     return NextResponse.json(
-      {
-        ok: false,
-        error: "Esse convite já foi usado. Pede um novo pro teu personal.",
-      },
+      { ok: false, error: "Esse convite já foi usado. Pede um novo pro teu personal." },
       { status: 409 },
     );
   }
-
   if (inviteCheck.expires_at && new Date(inviteCheck.expires_at) < new Date()) {
     return NextResponse.json(
       { ok: false, error: "Esse convite expirou (7 dias). Pede um novo pro teu personal." },
@@ -96,21 +87,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 1. Cria user via admin (bypass email confirm)
+  const trainerId = inviteCheck.trainer_id;
+
+  // 4. Cria user via admin (trigger handle_new_user cria profile com role='student')
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email: body.email,
     password: body.password,
     email_confirm: true,
-    user_metadata: {
-      full_name: body.full_name,
-      role: "student",
-    },
+    user_metadata: { full_name: body.full_name, role: "student" },
   });
 
   if (createError || !created?.user) {
     safeLog.error("[student-signup] createUser failed", createError?.message);
     const msg = (createError?.message ?? "").toLowerCase();
-    let friendly: string;
+    let friendly = "Não deu pra criar a conta. Tenta de novo.";
     if (msg.includes("already") || msg.includes("duplicate")) {
       friendly = "Esse e-mail já tem conta. Tenta entrar.";
     } else if (msg.includes("password") && msg.includes("6")) {
@@ -119,80 +109,153 @@ export async function POST(request: NextRequest) {
       friendly = "E-mail inválido.";
     } else if (createError?.message) {
       friendly = `Erro ao criar conta: ${createError.message}`;
-    } else {
-      friendly = "Não deu pra criar a conta. Tenta de novo.";
     }
     return NextResponse.json({ ok: false, error: friendly }, { status: 400 });
   }
 
-  // 2. Cria sessão pro user recém-criado via cookies
-  const supabase = await createClient();
-  const { error: signInError } = await supabase.auth.signInWithPassword({
-    email: body.email,
-    password: body.password,
-  });
-  if (signInError) {
-    safeLog.error("[student-signup] signIn failed", signInError.message);
-    return NextResponse.json(
-      {
-        ok: false,
-        error: `Conta criada, mas não foi possível iniciar sessão: ${signInError.message}. Tenta entrar em /login.`,
-      },
-      { status: 500 },
-    );
+  const studentId = created.user.id;
+
+  // 5. SignIn pra criar sessão (cookies) — best-effort, não bloqueia o fluxo
+  try {
+    const supabase = await createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: body.email,
+      password: body.password,
+    });
+    if (signInError) {
+      safeLog.warn("[student-signup] signIn failed (não-bloqueante)", signInError.message);
+    }
+  } catch (e) {
+    safeLog.warn("[student-signup] signIn threw", String(e));
   }
 
-  // 3. Aceita o convite — usa admin client pra bypassar RLS no INSERT em student_profiles.
-  //    (O aluno novo acabou de ser criado, e a RLS de student_profiles exige
-  //    trainer_id = auth.uid() OR user_id = auth.uid(), o que ainda não tá
-  //    configurado. Admin vai direto.)
-  const { error: rpcError } = await admin.rpc("accept_invite", {
-    invite_code: body.invite_code,
-  });
-  if (rpcError) {
-    safeLog.error("[student-signup] accept_invite failed", rpcError.message);
-    // Fallback: tenta criar student_profile direto via admin (caso a RPC tenha
-    // falhado em algum edge case)
-    const { data: inviteForFallback } = await admin
-      .from("student_invites")
-      .select("trainer_id, full_name, phone, goal, code")
-      .eq("code", body.invite_code)
-      .maybeSingle();
+  // 6. Garante TRAINER_PROFILE existe (FK target de student_profiles)
+  //    Se trainer_profile não existir, o INSERT em student_profiles vai
+  //    falhar por FK. Por isso criamos aqui.
+  const trainerProfileResult = await admin
+    .from("trainer_profiles")
+    .select("user_id")
+    .eq("user_id", trainerId)
+    .maybeSingle();
 
-    if (inviteForFallback) {
-      const { error: spError } = await admin.from("student_profiles").upsert(
-        {
-          user_id: created.user.id,
-          trainer_id: inviteForFallback.trainer_id,
-          full_name: inviteForFallback.full_name,
-          phone: inviteForFallback.phone,
-          goal: inviteForFallback.goal,
-          status: "active",
-          joined_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" },
+  if (!trainerProfileResult.data) {
+    const { error: trainerInsertError } = await admin
+      .from("trainer_profiles")
+      .insert({
+        user_id: trainerId,
+        plan_tier: "start",
+        trial_ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      });
+
+    if (trainerInsertError) {
+      safeLog.error(
+        "[student-signup] trainer_profile insert failed",
+        trainerInsertError.message,
       );
-      if (!spError) {
-        // Marca convite como aceito
+      // Se o trainer_profile FK falhou, tenta garantir profile do trainer também
+      try {
         await admin
-          .from("student_invites")
-          .update({
-            status: "accepted",
-            accepted_by: created.user.id,
-            accepted_at: new Date().toISOString(),
-          })
-          .eq("id", inviteCheck.id);
-
-        return NextResponse.json({ ok: true, role: "student" });
+          .from("profiles")
+          .upsert(
+            { id: trainerId, role: "trainer", full_name: "Personal" },
+            { onConflict: "id" },
+          );
+      } catch {
+        // ignore
       }
-      safeLog.error("[student-signup] fallback student_profile upsert failed", spError.message);
+      // Tenta novamente criar trainer_profile
+      try {
+        await admin
+          .from("trainer_profiles")
+          .insert({
+            user_id: trainerId,
+            plan_tier: "start",
+            trial_ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          });
+      } catch {
+        // ignore
+      }
     }
+  }
 
+  // 7. FORÇA profile do aluno com role='student' + full_name correto
+  //    (caso o trigger tenha falhado OU o user já existisse com dados errados)
+  const { error: profileUpsertError } = await admin.from("profiles").upsert(
+    {
+      id: studentId,
+      role: "student",
+      full_name: body.full_name,
+    },
+    { onConflict: "id" },
+  );
+  if (profileUpsertError) {
+    safeLog.error("[student-signup] profile upsert failed", profileUpsertError.message);
+  }
+
+  // 8. Cria STUDENT_PROFILE (INSERT; se já existe, UPDATE)
+  const studentInsertPayload = {
+    user_id: studentId,
+    trainer_id: trainerId,
+    full_name: inviteCheck.full_name || body.full_name,
+    phone: inviteCheck.phone,
+    goal: inviteCheck.goal,
+    status: "active",
+    joined_at: new Date().toISOString(),
+  };
+
+  const { error: spInsertError } = await admin
+    .from("student_profiles")
+    .insert(studentInsertPayload);
+
+  let spFinalError = spInsertError;
+  if (spInsertError) {
+    // Já existe (duplicate key) ou outro erro — tenta UPDATE
+    const { error: spUpdateError } = await admin
+      .from("student_profiles")
+      .update({
+        trainer_id: trainerId,
+        full_name: studentInsertPayload.full_name,
+        phone: inviteCheck.phone,
+        goal: inviteCheck.goal,
+        status: "active",
+      })
+      .eq("user_id", studentId);
+
+    if (spUpdateError) {
+      safeLog.error(
+        "[student-signup] student_profile UPDATE failed",
+        `${spInsertError.message} | update: ${spUpdateError.message}`,
+      );
+      spFinalError = spUpdateError;
+    } else {
+      spFinalError = null; // INSERT falhou mas UPDATE passou
+    }
+  }
+
+  if (spFinalError) {
+    // student_profile não foi criado nem atualizado — não tem como marcar invite
     return NextResponse.json({
       ok: true,
-      warning: `Conta criada, mas o vínculo com o personal falhou: ${rpcError.message}. Fale com seu personal.`,
+      warning: `Conta criada, mas o vínculo com o personal falhou: ${spFinalError.message}. Fale com seu personal.`,
       role: "student",
     });
+  }
+
+  // 9. Marca invite como aceito (sempre — pra limpar "Aguardando" do trainer)
+  const { error: inviteUpdateError } = await admin
+    .from("student_invites")
+    .update({
+      status: "accepted",
+      accepted_by: studentId,
+      accepted_at: new Date().toISOString(),
+    })
+    .eq("id", inviteCheck.id);
+
+  if (inviteUpdateError) {
+    safeLog.error(
+      "[student-signup] invite UPDATE failed (student_profile OK)",
+      inviteUpdateError.message,
+    );
   }
 
   return NextResponse.json({ ok: true, role: "student" });

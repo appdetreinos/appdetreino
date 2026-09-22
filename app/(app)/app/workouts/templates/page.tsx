@@ -11,6 +11,7 @@ import {
   TrendingUp,
   ChevronRight,
 } from "lucide-react";
+import { Stagger, StaggerItem } from "@/components/ui/stagger";
 import { TemplateUseButton } from "./template-use-button";
 
 /**
@@ -84,7 +85,7 @@ export default async function TemplatesPage() {
           </div>
         </Card>
 
-        <div className="grid sm:grid-cols-2 gap-4">
+        <Stagger className="grid sm:grid-cols-2 gap-4" delay={0.05}>
           {(templates ?? []).map((t) => {
             const items = (t.workout_template_items ?? []) as Array<{
               position: number;
@@ -100,68 +101,69 @@ export default async function TemplatesPage() {
               });
 
             return (
-              <Card key={t.id} className="bg-card/80 border-white/10 p-5 flex flex-col">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <h3 className="font-bold text-lg">{t.title}</h3>
-                    <p className="text-sm text-foreground/65 mt-0.5 line-clamp-2">
-                      {t.description}
-                    </p>
+              <StaggerItem key={t.id}>
+                <Card className="bg-card/80 border-white/10 p-5 flex flex-col hover:border-primary/40 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-lg">{t.title}</h3>
+                      <p className="text-sm text-foreground/65 mt-0.5 line-clamp-2">
+                        {t.description}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {t.category && (
-                    <Badge variant="secondary" className="capitalize bg-primary/10 text-primary border-primary/20">
-                      <Dumbbell className="size-3 mr-1" />
-                      {t.category.replace("_", " ")}
-                    </Badge>
-                  )}
-                  {t.estimated_minutes && (
-                    <Badge variant="secondary" className="bg-background/40">
-                      <Clock className="size-3 mr-1" />
-                      ~{t.estimated_minutes} min
-                    </Badge>
-                  )}
-                  {t.difficulty && (
-                    <Badge variant="secondary" className="bg-background/40 capitalize">
-                      <TrendingUp className="size-3 mr-1" />
-                      {t.difficulty}
-                    </Badge>
-                  )}
-                </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {t.category && (
+                      <Badge variant="secondary" className="capitalize bg-primary/10 text-primary border-primary/20">
+                        <Dumbbell className="size-3 mr-1" />
+                        {t.category.replace("_", " ")}
+                      </Badge>
+                    )}
+                    {t.estimated_minutes && (
+                      <Badge variant="secondary" className="bg-background/40">
+                        <Clock className="size-3 mr-1" />
+                        ~{t.estimated_minutes} min
+                      </Badge>
+                    )}
+                    {t.difficulty && (
+                      <Badge variant="secondary" className="bg-background/40 capitalize">
+                        <TrendingUp className="size-3 mr-1" />
+                        {t.difficulty}
+                      </Badge>
+                    )}
+                  </div>
 
-                {/* Lista resumida dos primeiros exercícios */}
-                <div className="mt-4 space-y-1.5">
-                  {exerciseNames.map((name, i) => (
-                    <div
-                      key={i}
-                      className="text-sm text-foreground/85 flex items-center gap-2"
-                    >
-                      <span className="size-5 grid place-items-center rounded-full bg-background/60 text-[10px] font-bold text-muted-foreground">
-                        {i + 1}
-                      </span>
-                      {name}
-                    </div>
-                  ))}
-                  {items.length > 4 && (
-                    <div className="text-xs text-muted-foreground pl-7">
-                      +{items.length - 4} exercícios
-                    </div>
-                  )}
-                </div>
+                  <div className="mt-4 space-y-1.5">
+                    {exerciseNames.map((name, i) => (
+                      <div
+                        key={i}
+                        className="text-sm text-foreground/85 flex items-center gap-2"
+                      >
+                        <span className="size-5 grid place-items-center rounded-full bg-background/60 text-[10px] font-bold text-muted-foreground">
+                          {i + 1}
+                        </span>
+                        {name}
+                      </div>
+                    ))}
+                    {items.length > 4 && (
+                      <div className="text-xs text-muted-foreground pl-7">
+                        +{items.length - 4} exercícios
+                      </div>
+                    )}
+                  </div>
 
-                <div className="mt-5 pt-4 border-t border-white/5 flex justify-end">
-                  <TemplateUseButton
-                    templateId={t.id}
-                    templateTitle={t.title}
-                    students={studentOptions}
-                  />
-                </div>
-              </Card>
+                  <div className="mt-5 pt-4 border-t border-white/5 flex justify-end">
+                    <TemplateUseButton
+                      templateId={t.id}
+                      templateTitle={t.title}
+                      students={studentOptions}
+                    />
+                  </div>
+                </Card>
+              </StaggerItem>
             );
           })}
-        </div>
+        </Stagger>
       </main>
     </div>
   );

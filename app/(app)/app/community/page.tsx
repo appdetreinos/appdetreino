@@ -3,7 +3,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { PostComposer } from "./post-composer";
-import { Heart, MessageCircle, Plus, Trophy } from "lucide-react";
+import { Heart, MessageCircle, Plus, Trophy, Flame } from "lucide-react";
+import { Stagger, StaggerItem } from "@/components/ui/stagger";
 
 export default async function CommunityPage() {
   const supabase = await createClient();
@@ -91,37 +92,42 @@ export default async function CommunityPage() {
               </p>
             </Card>
           ) : (
-            list.map((p) => (
-              <Card key={p.id} className="bg-card border-white/5 p-5">
-                {p.pinned && (
-                  <div className="text-xs text-primary font-semibold mb-2">
-                    📌 Fixado
-                  </div>
-                )}
-                <p className="text-sm whitespace-pre-line">{p.content}</p>
-                <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Heart className="size-3.5" />
-                    {p.likes}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <MessageCircle className="size-3.5" />
-                    {p.comments}
-                  </span>
-                  <span className="ml-auto">
-                    {new Date(p.createdAt).toLocaleDateString("pt-BR", {
-                      day: "2-digit",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                  <Badge variant="outline" className="text-xs">
-                    {p.audience}
-                  </Badge>
-                </div>
-              </Card>
-            ))
+            <Stagger className="space-y-4" delay={0.05}>
+              {list.map((p) => (
+                <StaggerItem key={p.id}>
+                  <Card className="bg-card border-white/5 p-5 hover:border-primary/30 transition-colors">
+                    {p.pinned && (
+                      <div className="text-xs text-primary font-semibold mb-2 flex items-center gap-1">
+                        <Flame className="size-3" />
+                        Fixado
+                      </div>
+                    )}
+                    <p className="text-sm whitespace-pre-line">{p.content}</p>
+                    <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1 hover:text-primary transition-colors cursor-default">
+                        <Heart className="size-3.5" />
+                        {p.likes}
+                      </span>
+                      <span className="flex items-center gap-1 hover:text-primary transition-colors cursor-default">
+                        <MessageCircle className="size-3.5" />
+                        {p.comments}
+                      </span>
+                      <span className="ml-auto">
+                        {new Date(p.createdAt).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      <Badge variant="outline" className="text-xs">
+                        {p.audience}
+                      </Badge>
+                    </div>
+                  </Card>
+                </StaggerItem>
+              ))}
+            </Stagger>
           )}
         </div>
 
