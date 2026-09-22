@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Loader2, Copy, MessageCircle, Check } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { csrfFetch } from "@/lib/security/client";
 
 /**
  * Form de criação de aluno — gera invite_code e mostra link de convite
@@ -41,49 +41,26 @@ export default function NewStudentPage() {
       return;
     }
 
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      setError("Sessão expirou. Faz login de novo.");
+    const res = await csrfFetch("/api/me/student-invites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ full_name, phone, goal, notes }),
+    });
+    const json = (await res.json().catch(() => null)) as
+      | { ok: boolean; code?: string; full_name?: string; phone?: string | null; error?: string }
+      | null;
+
+    if (!res.ok || !json?.ok || !json.code) {
+      setError(json?.error ?? "Não deu pra criar o convite. Tenta de novo.");
       setSubmitting(false);
       return;
     }
 
-    const { data, error: insertError } = await supabase
-      .from("student_invites")
-      .insert({
-        trainer_id: user.id,
-        full_name,
-        phone,
-        goal,
-        notes,
-        status: "pending",
-      })
-      .select("code, full_name, phone")
-      .single();
-
-    if (insertError || !data) {
-      // Mensagens em PT-BR pros erros mais comuns — sem expor detalhes técnicos
-      const raw = (insertError?.message ?? "").toLowerCase();
-      let friendly: string;
-      if (raw.includes("foreign key") && raw.includes("trainer_profiles")) {
-        friendly =
-          "Tua conta de profissional não tá totalmente configurada ainda. Sai e entra de novo, ou fala com o suporte se persistir.";
-      } else if (raw.includes("foreign key")) {
-        friendly = "Não deu pra criar o convite. Verifica se teu perfil tá completo.";
-      } else if (raw.includes("duplicate")) {
-        friendly = "Já existe um convite com esses dados.";
-      } else {
-        friendly = "Não deu pra criar o convite. Tenta de novo.";
-      }
-      setError(friendly);
-      setSubmitting(false);
-      return;
-    }
-
-    setResult({ code: data.code, fullName: data.full_name, phone: data.phone });
+    setResult({
+      code: json.code,
+      fullName: json.full_name ?? full_name,
+      phone: json.phone ?? phone,
+    });
     setSubmitting(false);
     startTransition(() => router.refresh());
   }
