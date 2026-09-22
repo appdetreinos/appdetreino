@@ -34,6 +34,13 @@ export default async function SettingsPage() {
 
   const currentPlan = PLANS.find((p) => p.id === trainer?.plan_tier) ?? PLANS[0];
 
+  // Status do trial: pending, active, expired, none
+  const trialEnd = trainer?.trial_ends_at ? new Date(trainer.trial_ends_at) : null;
+  const isInTrial = trialEnd ? trialEnd > new Date() : false;
+  const trialDaysLeft = trialEnd
+    ? Math.max(0, Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
   return (
     <div className="min-h-screen">
       <header className="border-b border-white/10 sticky top-0 z-30 bg-background/85 backdrop-blur-md">
@@ -70,26 +77,37 @@ export default async function SettingsPage() {
           />
         </Card>
 
-        {/* Plano */}
+        {/* Plano — com lógica de trial separada */}
         <Card className="bg-card/80 border-white/10 p-6">
           <h2 className="text-lg font-bold">Plano</h2>
-          <div className="mt-4 rounded-xl border border-primary/30 bg-primary/10 p-4 flex items-center justify-between">
+          <div
+            className={`mt-4 rounded-xl border p-4 flex items-center justify-between ${
+              isInTrial
+                ? "border-emerald-500/30 bg-emerald-500/5"
+                : "border-primary/30 bg-primary/10"
+            }`}
+          >
             <div>
-              <div className="font-extrabold capitalize">{currentPlan.name} · R$ {currentPlan.priceMonthly.toFixed(2).replace(".", ",")}/mês</div>
+              <div className="font-extrabold capitalize">
+                {isInTrial
+                  ? `🎁 Trial grátis · ${trialDaysLeft} dia${trialDaysLeft === 1 ? "" : "s"} restante${trialDaysLeft === 1 ? "" : "s"}`
+                  : `${currentPlan.name} · R$ ${currentPlan.priceMonthly.toFixed(2).replace(".", ",")}/mês`}
+              </div>
               <div className="text-xs text-foreground/65">
-                {currentPlan.studentLimit
-                  ? `${currentPlan.studentLimit} alunos ativos`
-                  : "Alunos ilimitados"}
-                {trainer?.trial_ends_at
-                  ? ` · trial até ${new Date(trainer.trial_ends_at).toLocaleDateString("pt-BR")}`
-                  : ""}
+                {isInTrial
+                  ? `Você tem até ${trialEnd?.toLocaleDateString("pt-BR")} pra explorar tudo. Sem cartão, sem cobrança.`
+                  : `${currentPlan.studentLimit ? `${currentPlan.studentLimit} alunos ativos` : "Alunos ilimitados"}`}
               </div>
             </div>
             <Link
               href="/app/settings/upgrade"
-              className="inline-flex items-center justify-center rounded-md border border-white/10 bg-background/60 px-3 py-1.5 text-sm font-semibold hover:border-primary/40 transition-colors"
+              className={`inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
+                isInTrial
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "border border-white/10 bg-background/60 hover:border-primary/40"
+              }`}
             >
-              Upgrade
+              {isInTrial ? "Escolher plano" : "Upgrade"}
             </Link>
           </div>
         </Card>

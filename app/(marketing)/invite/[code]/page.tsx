@@ -70,8 +70,8 @@ export default async function InvitePage({ params }: PageProps) {
   }
 
   // Lê o invite via view pública `student_invites_safe` (mascara phone).
-  // Isso destrava o caso "Convite não encontrado" quando o user clica
-  // no link do WhatsApp sem estar logado — antes a RLS bloqueava.
+  // A view (migration 0019) NÃO filtra por status/expires_at — a página
+  // trata cada caso com mensagem específica (expired / accepted / pending).
   const { data: invite, error } = await supabase
     .from("student_invites_safe")
     .select("id, full_name, code, status, trainer_id, expires_at")
@@ -93,7 +93,7 @@ export default async function InvitePage({ params }: PageProps) {
         <Card className="bg-card/80 border-white/10 p-8 text-center max-w-md">
           <h1 className="text-xl font-bold">Convite não encontrado</h1>
           <p className="mt-2 text-sm text-foreground/65">
-            Esse código não existe, expirou ou já foi usado. Pede um novo convite pro teu personal.
+            Esse código não existe ou tá errado. Confere o link que teu personal te mandou no WhatsApp.
           </p>
         </Card>
       </Shell>
@@ -111,6 +111,20 @@ export default async function InvitePage({ params }: PageProps) {
               entra aqui
             </Link>
             .
+          </p>
+        </Card>
+      </Shell>
+    );
+  }
+
+  // Convite expirado (criado há >7 dias e nunca aceito)
+  if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+    return (
+      <Shell>
+        <Card className="bg-card/80 border-white/10 p-8 text-center max-w-md">
+          <h1 className="text-xl font-bold">Convite expirado</h1>
+          <p className="mt-2 text-sm text-foreground/65">
+            Esse convite passou do prazo (7 dias). Pede um novo pro teu personal.
           </p>
         </Card>
       </Shell>
