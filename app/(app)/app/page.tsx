@@ -19,7 +19,6 @@ import { LogoutButton } from "@/components/logout-button";
 import { KpiCard } from "./_components/kpi-card";
 import { DashboardEntrance } from "./dashboard-entrance";
 
-// FORÇAR DINAMISMO TOTAL
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
@@ -41,7 +40,6 @@ export default async function TrainerDashboard() {
 
     const currentTrainerId = user.id;
 
-    // 1. Profile
     const { data: profile } = await supabase
       .from("profiles")
       .select("full_name")
@@ -50,13 +48,11 @@ export default async function TrainerDashboard() {
 
     const firstName = (profile?.full_name ?? user.email?.split("@")[0] ?? "Treinador");
 
-    // 2. Alunos - Query com cache desativado explicitamente
     let totalAlunos = 0;
     let studentsList: StudentSummary[] = [];
     try {
       const { data: students, error: sErr } = await supabase
         .from("student_profiles")
-        .select("user_id, full_// a la l'ancien code, on a:
         .select("user_id, full_name, status, goal")
         .eq("trainer_id", currentTrainerId)
         .order("created_at", { ascending: false });
@@ -73,7 +69,6 @@ export default async function TrainerDashboard() {
       }
     } catch (e) { console.error("Error fetching students:", e); }
 
-    // 3. Receita
     let receitaMes = 0;
     try {
       const { data: payments } = await supabase
@@ -138,7 +133,7 @@ export default async function TrainerDashboard() {
                 </div>
                 <h3 className="text-xl font-bold mb-2">Nenhum aluno encontrado</h3>
                 <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-                  Você ainda não tem alunos vinculados ao seu perfil.
+                  Você ainda não tem alunos vinculados. Comece convidando seu primeiro aluno!
                 </p>
                 <ButtonLink href="/app/students/new" className="mx-auto">
                   Adicionar primeiro aluno
