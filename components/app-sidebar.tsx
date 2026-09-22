@@ -15,6 +15,7 @@ import {
   Calendar,
   Flame,
   CheckSquare,
+  History,
 } from "lucide-react";
 import {
   Sidebar,
@@ -44,6 +45,7 @@ const trainerMenu: MenuItem[] = [
   { title: "Agenda", url: "/app/agenda", icon: Calendar },
   { title: "Alunos", url: "/app/students", icon: Users },
   { title: "Treinos", url: "/app/workouts", icon: Dumbbell },
+  { title: "Histórico", url: "/app/workouts/historico", icon: History },
   { title: "Dietas", url: "/app/diets", icon: Salad },
   { title: "WOD", url: "/app/wod", icon: Flame },
   { title: "Hábitos", url: "/app/habitos", icon: CheckSquare },

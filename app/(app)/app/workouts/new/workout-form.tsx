@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
@@ -8,27 +8,48 @@ import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { ExerciseMedia } from "@/components/ui/exercise-media";
+import { ExercisePicker } from "@/components/ui/exercise-picker";
+import {
+  ArrowLeft,
+  Loader2,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { csrfFetch } from "@/lib/security/client";
 
 type Student = { id: string; full_name: string };
-type ExerciseOption = {
+
+export type ExerciseLibraryItem = {
   id: string;
   name: string;
   muscle_group: string | null;
   equipment: string | null;
+  image_url: string | null;
+  animation_url: string | null;
+  category: string | null;
+  aliases: string[] | null;
 };
-type ExerciseDraft = { name: string; sets: string; reps: string; load: string };
+
+type ExerciseDraft = {
+  exerciseId: string;
+  name: string;
+  sets: string;
+  reps: string;
+  load: string;
+};
 
 const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export function WorkoutForm({
   students,
   exercises,
+  resolvedUrls,
 }: {
   students: Student[];
-  exercises: ExerciseOption[];
+  exercises: ExerciseLibraryItem[];
+  /** Mapa exerciseId → URL final já resolvida (Wikimedia ou data URI). */
+  resolvedUrls: Record<string, string | null>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -40,17 +61,21 @@ export function WorkoutForm({
   const [studentId, setStudentId] = useState<string>(""); // "" = template (sem aluno)
   const [days, setDays] = useState<number[]>([1, 3, 5]); // seg/qua/sex default
   const [exerciseRows, setExerciseRows] = useState<ExerciseDraft[]>([
-    { name: "", sets: "3", reps: "10-12", load: "" },
+    { exerciseId: "", name: "", sets: "3", reps: "10-12", load: "" },
   ]);
+  const [pickerForRow, setPickerForRow] = useState<number | null>(null);
 
   function toggleDay(d: number) {
     setDays((prev) =>
-      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort()
+      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort(),
     );
   }
 
   function addExercise() {
-    setExerciseRows((prev) => [...prev, { name: "", sets: "3", reps: "10-12", load: "" }]);
+    setExerciseRows((prev) => [
+      ...prev,
+      { exerciseId: "", name: "", sets: "3", reps: "10-12", load: "" },
+    ]);
   }
 
   function removeExercise(i: number) {
@@ -58,7 +83,16 @@ export function WorkoutForm({
   }
 
   function updateExercise(i: number, patch: Partial<ExerciseDraft>) {
-    setExerciseRows((prev) => prev.map((e, idx) => (idx === i ? { ...e, ...patch } : e)));
+    setExerciseRows((prev) =>
+      prev.map((e, idx) => (idx === i ? { ...e, ...patch } : e)),
+    );
+  }
+
+  async function handleAddFromLibrary(i: number, pickedId: string) {
+    const picked = exercises.find((e) => e.id === pickedId);
+    if (!picked) return;
+    updateExercise(i, { exerciseId: picked.id, name: picked.name });
+    setPickerForRow(null);
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -69,7 +103,9 @@ export function WorkoutForm({
       setError("Título é obrigatório.");
       return;
     }
-    const validExercises = exerciseRows.filter((ex) => ex.name.trim().length > 0);
+    const validExercises = exerciseRows.filter(
+      (ex) => ex.name.trim().length > 0,
+    );
     if (validExercises.length === 0) {
       setError("Adicione pelo menos 1 exercício com nome.");
       return;
@@ -118,7 +154,10 @@ export function WorkoutForm({
     <div className="min-h-screen">
       <header className="border-b border-white/10 sticky top-0 z-30 bg-background/85 backdrop-blur-md">
         <div className="px-6 h-16 flex items-center gap-3">
-          <Link href="/app/workouts" className="text-foreground/70 hover:text-foreground">
+          <Link
+            href="/app/workouts"
+            className="text-foreground/70 hover:text-foreground"
+          >
             <ArrowLeft className="size-5" />
           </Link>
           <h1 className="text-xl font-bold">Novo treino</h1>
@@ -152,7 +191,9 @@ export function WorkoutForm({
             </div>
 
             <div>
-              <Label htmlFor="student">Atribuir a (opcional — vazio = template)</Label>
+              <Label htmlFor="student">
+                Atribuir a (opcional — vazio = template)
+              </Label>
               <select
                 id="student"
                 value={studentId}
@@ -195,13 +236,18 @@ export function WorkoutForm({
           <Card className="bg-card/80 border-white/10 p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">Exercícios</h2>
-              <Button type="button" variant="outline" size="sm" onClick={addExercise}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addExercise}
+              >
                 <Plus className="size-4" />
                 Adicionar
               </Button>
             </div>
 
-            {exerciseRows.map((ex, i) => (
+            {exerciseRows.map((row, i) => (
               <div
                 key={i}
                 className="rounded-lg border border-white/10 bg-background/40 p-4 space-y-3"
@@ -220,34 +266,56 @@ export function WorkoutForm({
                     </button>
                   )}
                 </div>
-                <ExercisePicker
-                  value={ex.name}
-                  onChange={(name) => updateExercise(i, { name })}
-                  options={exercises}
-                />
+
+                {row.name ? (
+                  <SelectedExercisePreview
+                    name={row.name}
+                    mediaUrl={resolvedUrls[row.exerciseId] ?? null}
+                    onClear={() =>
+                      updateExercise(i, { exerciseId: "", name: "" })
+                    }
+                    onChangeClick={() => setPickerForRow(i)}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setPickerForRow(i)}
+                    className="flex w-full items-center gap-3 rounded-xl border border-dashed border-white/15 bg-card/40 px-4 py-3 text-sm text-foreground/70 hover:border-primary/40 hover:text-foreground"
+                  >
+                    <Plus className="size-4" />
+                    Selecionar exercício
+                  </button>
+                )}
+
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <Label className="text-xs">Séries</Label>
                     <Input
                       type="number"
                       min={1}
-                      value={ex.sets}
-                      onChange={(e) => updateExercise(i, { sets: e.target.value })}
+                      value={row.sets}
+                      onChange={(e) =>
+                        updateExercise(i, { sets: e.target.value })
+                      }
                     />
                   </div>
                   <div>
                     <Label className="text-xs">Reps</Label>
                     <Input
-                      value={ex.reps}
-                      onChange={(e) => updateExercise(i, { reps: e.target.value })}
+                      value={row.reps}
+                      onChange={(e) =>
+                        updateExercise(i, { reps: e.target.value })
+                      }
                       placeholder="8-12"
                     />
                   </div>
                   <div>
                     <Label className="text-xs">Carga</Label>
                     <Input
-                      value={ex.load}
-                      onChange={(e) => updateExercise(i, { load: e.target.value })}
+                      value={row.load}
+                      onChange={(e) =>
+                        updateExercise(i, { load: e.target.value })
+                      }
                       placeholder="20kg"
                     />
                   </div>
@@ -266,7 +334,11 @@ export function WorkoutForm({
             <ButtonLink href="/app/workouts" variant="outline">
               Cancelar
             </ButtonLink>
-            <Button type="submit" disabled={submitting || pending} className="font-semibold">
+            <Button
+              type="submit"
+              disabled={submitting || pending}
+              className="font-semibold"
+            >
               {submitting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
@@ -279,97 +351,69 @@ export function WorkoutForm({
           </div>
         </form>
       </main>
+
+      <ExercisePicker
+        open={pickerForRow !== null}
+        onClose={() => setPickerForRow(null)}
+        exercises={exercises}
+        resolvedUrls={resolvedUrls}
+        selectedIds={
+          pickerForRow !== null
+            ? exerciseRows
+                .filter((r, idx) => idx !== pickerForRow && r.exerciseId)
+                .map((r) => r.exerciseId)
+            : []
+        }
+        onAdd={(ex) => handleAddFromLibrary(pickerForRow ?? 0, ex.id)}
+      />
     </div>
   );
 }
 
-/**
- * Picker de exercício com autocomplete na biblioteca (30+ exercícios globais + do trainer).
- * Aceita nome digitado também (fallback pra exercícios custom não cadastrados).
- */
-function ExercisePicker({
-  value,
-  onChange,
-  options,
+function SelectedExercisePreview({
+  name,
+  mediaUrl,
+  onClear,
+  onChangeClick,
 }: {
-  value: string;
-  onChange: (name: string) => void;
-  options: ExerciseOption[];
+  name: string;
+  mediaUrl: string | null;
+  onClear: () => void;
+  onChangeClick: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  // Fecha dropdown ao clicar fora
-  useState(() => {
-    if (typeof window === "undefined") return;
-    function onDocClick(e: MouseEvent) {
-      if (!containerRef.current) return;
-      if (!containerRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    window.addEventListener("mousedown", onDocClick);
-    return () => window.removeEventListener("mousedown", onDocClick);
-  });
-
-  const filtered = useMemo(() => {
-    const q = value.trim().toLowerCase();
-    if (!q) return options.slice(0, 30);
-    return options
-      .filter((o) =>
-        o.name.toLowerCase().includes(q) ||
-        (o.muscle_group ?? "").toLowerCase().includes(q) ||
-        (o.equipment ?? "").toLowerCase().includes(q),
-      )
-      .slice(0, 30);
-  }, [value, options]);
-
   return (
-    <div ref={containerRef} className="relative">
-      <div className="relative">
-        <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" />
-        <Input
-          value={value}
-          onChange={(e) => {
-            onChange(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          placeholder="Buscar exercício (ex: supino, agachamento)"
-          className="pl-9"
-          autoComplete="off"
-        />
+    <div className="flex items-center gap-3 rounded-xl border border-primary/40 bg-primary/[0.04] p-3">
+      <ExerciseMedia
+        exercise={{
+          id: "",
+          name,
+          muscle_group: null,
+          image_url: null,
+          animation_url: null,
+          category: null,
+          media_type: null,
+        }}
+        resolvedUrl={mediaUrl}
+        size="md"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold">{name}</p>
+        <button
+          type="button"
+          onClick={onChangeClick}
+          className="text-[11px] text-foreground/65 hover:text-foreground"
+        >
+          Trocar
+        </button>
       </div>
-
-      {open && filtered.length > 0 && (
-        <div className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-md border border-white/10 bg-card shadow-lg">
-          {filtered.map((o) => {
-            const selected = o.name === value;
-            return (
-              <button
-                key={o.id}
-                type="button"
-                onClick={() => {
-                  onChange(o.name);
-                  setOpen(false);
-                }}
-                className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-primary/10 ${
-                  selected ? "bg-primary/5" : ""
-                }`}
-              >
-                <span className="truncate">{o.name}</span>
-                <span className="shrink-0 text-[10px] uppercase tracking-wider text-foreground/55">
-                  {[o.muscle_group, o.equipment].filter(Boolean).join(" · ")}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {open && filtered.length === 0 && value.trim().length > 0 && (
-        <div className="absolute z-20 mt-1 w-full rounded-md border border-white/10 bg-card p-3 text-xs text-foreground/60 shadow-lg">
-          Nenhum exercício na biblioteca. O nome "{value}" será criado ao salvar.
-        </div>
-      )}
+      <button
+        type="button"
+        onClick={onClear}
+        className="text-foreground/60 hover:text-destructive"
+        aria-label="Remover"
+      >
+        <Trash2 className="size-4" />
+      </button>
     </div>
   );
 }
