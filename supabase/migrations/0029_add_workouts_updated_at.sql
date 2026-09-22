@@ -4,17 +4,13 @@
 -- updated_at mas a coluna não existia (workouts só tem created_at).
 --
 -- Idempotente: usa IF NOT EXISTS no ADD COLUMN (Postgres 9.6+).
+--
+-- ORDEM IMPORTANTE: cria a FUNÇÃO primeiro, depois o TRIGGER que a usa.
 
-ALTER TABLE public.workouts
-  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+-- ============================================================
+-- 1. Cria função helper touch_updated_at() se não existir
+-- ============================================================
 
--- Trigger pra manter updated_at automático em UPDATE
-DROP TRIGGER IF EXISTS trg_workouts_updated_at ON public.workouts;
-CREATE TRIGGER trg_workouts_updated_at
-  BEFORE UPDATE ON public.workouts
-  FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
-
--- Cria a função touch_updated_at se não existir (helper genérico)
 CREATE OR REPLACE FUNCTION public.touch_updated_at()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -24,3 +20,20 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- ============================================================
+-- 2. Adiciona coluna updated_at em workouts
+-- ============================================================
+
+ALTER TABLE public.workouts
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- ============================================================
+-- 3. Trigger pra manter updated_at automático em UPDATE
+--    DROP IF EXISTS + CREATE deixa idempotente
+-- ============================================================
+
+DROP TRIGGER IF EXISTS trg_workouts_updated_at ON public.workouts;
+CREATE TRIGGER trg_workouts_updated_at
+  BEFORE UPDATE ON public.workouts
+  FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
