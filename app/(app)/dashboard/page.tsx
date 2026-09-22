@@ -7,8 +7,7 @@ import {
   Users, 
   Wallet, 
   CalendarDays, 
-  Flame,
-  AlertCircle
+  Flame 
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
@@ -17,26 +16,21 @@ import { KpiCard } from "./_components/kpi-card";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+interface StudentSummary {
+  id: string;
+  nome: string;
+  letra: string;
+  oque: string;
+  quando: string;
+}
+
 export default async function TrainerDashboard() {
-  // Wrap everything in a high-level try-catch to prevent Vercel fatal crashes
   try {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
     
-    // 1. Auth - Basic check
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return (
-        <div className="p-10 text-center">
-          <AlertCircle className="size-10 mx-auto text-red-500 mb-2" />
-          <h2 className="text-xl font-bold">Sessão expirada</h2>
-          <p className="text-muted-foreground">Por favor, faça login novamente.</p>
-          <Link href="/login" className="text-primary underline mt-4 block">Voltar ao login</Link>
-        </div>
-      );
-    }
+    if (!user) return <div className="p-10 text-center">Autenticação necessária.</div>;
 
-    // 2. Profile - Fetch simply
     const { data: profile } = await supabase
       .from("profiles")
       .select("full_name")
@@ -45,7 +39,6 @@ export default async function TrainerDashboard() {
 
     const firstName = (profile?.full_name ?? user.email ?? "Treinador").split(" ")[0];
 
-    // 3. Data - Fetch with individual try-catches
     let totalAlunos = 0;
     try {
       const { count, error } = await supabase
@@ -54,7 +47,7 @@ export default async function TrainerDashboard() {
         .eq("trainer_id", user.id);
       if (!error) totalAlunos = count ?? 0;
     } catch (e) {
-      console.error("KPI Alunos error:", e);
+      console.error("Erro count alunos:", e);
     }
 
     let receitaMes = 0;
@@ -68,7 +61,7 @@ export default async function TrainerDashboard() {
         receitaMes = payments.reduce((acc, p) => acc + (p.amount_cents / 100), 0);
       }
     } catch (e) {
-      console.error("KPI Receita error:", e);
+      console.error("Erro receita:", e);
     }
 
     return (
@@ -106,8 +99,7 @@ export default async function TrainerDashboard() {
     console.error("FATAL DASHBOARD ERROR:", fatalError);
     return (
       <div className="p-10 text-center">
-        <AlertCircle className="size-10 mx-auto text-red-500 mb-2" />
-        <h2 className="text-xl font-bold">Erro Interno do Servidor</h2>
+        <h2 className="text-xl font-bold">Erro Interno</h2>
         <p className="text-muted-foreground">{String(fatalError)}</p>
       </div>
     );

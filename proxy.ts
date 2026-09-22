@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
-  // Simplified to the absolute minimum. No headers, no complex logic.
   return NextResponse.next();
 }
 
