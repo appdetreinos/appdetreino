@@ -53,9 +53,11 @@ export default async function TrainerDashboard() {
   try {
     return await TrainerDashboardInner();
   } catch (err) {
+    console.error("[CRITICAL DASHBOARD ERROR]:", err);
     safeLog.error("[dashboard] render failed", String(err));
     return <DashboardDegraded />;
   }
+
 }
 
 function DashboardDegraded() {
