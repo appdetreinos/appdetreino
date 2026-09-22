@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
-  // PASSAGEM LIVRE TOTAL
-  // Removemos todos os cabeçalhos de segurança e validações de auth para isolar o crash
+  // RESET TOTAL: Apenas deixa passar.
+  // Se o site crashar com isso, o erro está no layout.tsx ou no bundle do Next.js.
   return NextResponse.next();
 }
 
