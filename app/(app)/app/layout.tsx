@@ -1,13 +1,17 @@
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+
 export default async function TrainerLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // REMOVIDO: Tudo. Sidebar, Providers, Auth.
-  // Se isso abrir, o erro está nos componentes de Sidebar ou Providers.
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {children}
-    </div>
+    <SidebarProvider>
+      <AppSidebar role="trainer" />
+      <SidebarInset className="bg-background">
+        {children}
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
