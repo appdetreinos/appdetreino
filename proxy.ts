@@ -61,8 +61,9 @@ export async function proxy(request: NextRequest) {
     request,
     headers: { "x-pathname": pathname },
   });
-  setSecurityHeaders(response);
-
+  
+  // COMENTADO PARA DIAGNÓSTICO: setSecurityHeaders(response);
+  
   // 0b) /app é server-rendered dinâmico — NUNCA cachear.
   // Estava servindo página de erro antiga cacheada por CDN mesmo após
   // deploy novo. Forçar no-store garante que cada request chega ao server.
