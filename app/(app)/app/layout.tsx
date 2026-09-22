@@ -1,12 +1,18 @@
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+
 export default async function TrainerLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // LIMPEZA ATÔMICA: Sem Providers, sem Sidebars, sem nada.
+  // Devolvendo a Sidebar, mas mantendo a simplicidade
   return (
-    <div className="bg-black text-white min-h-screen">
-      {children}
-    </div>
+    <SidebarProvider>
+      <AppSidebar role="trainer" />
+      <SidebarInset className="bg-background">
+        {children}
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
