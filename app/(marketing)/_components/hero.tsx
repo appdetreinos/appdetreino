@@ -3,24 +3,22 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useMotionValue, useTransform, animate, useInView } from "motion/react";
 import { ButtonLink } from "@/components/ui/button-link";
-import { ArrowRight, Flame, Activity, DollarSign, Users, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Activity, DollarSign, Users, CheckCircle2, Check } from "lucide-react";
 
 /**
- * Hero "Viva FIT APP" — mobile-first, sem cara de IA.
+ * Hero "Viva FIT APP".
  *
- * Mockup: "console do trainer" — não é WhatsApp do aluno.
- * Mostra widgets que animam em sequência, como se o sistema
- * estivesse trabalhando pelo trainer em tempo real.
+ * Headline (2 linhas):
+ *   "Sua consultoria, no piloto automático."
+ *   "Alunos, treino, dieta e Pix — tudo num painel só."
  *
- * Princípios de movimento:
- *  - Widgets aparecem com stagger (não fade genérico)
- *  - Toasts "pingam" do topo (notificação real)
- *  - Counter de alunos ativos sobe de 0
- *  - Gráfico de receita desenha a linha
+ * Subtítulo: foco em "tempo recuperado" e "sair da bagunça".
+ * CTAs: "Começar 3 dias grátis" + "Ver planos"
+ * Trust line: sem cartão, sem taxa por aluno.
+ *
+ * Mockup à direita: "Console do Trainer" — diferencial próprio
+ * (a gente mostra gestão, não tela de aluno).
  */
-
-const headlineParte1 = "Menos planilha.";
-const headlineParte2 = "Mais aluno.";
 
 export function Hero() {
   return (
@@ -39,49 +37,41 @@ export function Hero() {
         <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           {/* Lado esquerdo */}
           <div className="lg:col-span-7">
-            <motion.div
-              initial={{ opacity: 0, x: -16 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-primary"
-            >
+            <h1 className="font-extrabold leading-[1.05] tracking-tight text-4xl sm:text-5xl md:text-6xl lg:text-7xl">
               <motion.span
-                animate={{ rotate: [0, -8, 8, -4, 0] }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 4 }}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                className="block text-foreground"
               >
-                <Flame className="size-3.5" />
+                Sua consultoria no
               </motion.span>
-              Feito pra personal trainer BR
-            </motion.div>
-
-            <h1 className="mt-5 sm:mt-6 font-extrabold leading-[1.05] tracking-tight">
-              {/* Mobile: 1 linha */}
-              <span className="block sm:hidden text-4xl">
-                {palavrasAnimadas(headlineParte1, 0.02)}
-                {palavrasAnimadas(headlineParte2, 0.18)}
-              </span>
-
-              {/* Desktop: CAIXA ALTA com palavra-chave laranja */}
-              <span className="hidden sm:block text-5xl md:text-6xl lg:text-7xl">
-                <span className="block text-foreground">MENOS PLANILHA.</span>
-                <span className="block text-primary mt-1">MAIS ALUNO NA ACADEMIA.</span>
-              </span>
+              <motion.span
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                className="block text-primary mt-1"
+              >
+                piloto automático.
+              </motion.span>
             </h1>
 
             <motion.p
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.45 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
               className="mt-5 sm:mt-6 text-base sm:text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed"
             >
-              O <strong className="text-foreground">Viva FIT APP</strong> centraliza alunos,
-              treinos, dietas e cobrança. E dispara tudo no WhatsApp — sem você digitar.
+              Você para de montar planilha, mandar PDF e cobrar aluno um por um. O{" "}
+              <strong className="text-foreground">Viva FIT APP</strong> assume a parte chata —
+              treino, dieta, agenda e Pix recorrente — e devolve pra você o que tava faltando:
+              <strong className="text-foreground"> tempo pra treinar gente, não pra correr atrás</strong>.
             </motion.p>
 
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.65 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
               className="mt-7 sm:mt-10 flex flex-col sm:flex-row gap-3"
             >
               <CTAButton href="/register" variant="default">
@@ -93,14 +83,17 @@ export function Hero() {
               </CTAButton>
             </motion.div>
 
-            <motion.p
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.8 }}
-              className="mt-4 text-xs text-muted-foreground"
+              transition={{ duration: 0.5, delay: 0.65 }}
+              className="mt-4 flex items-center gap-2 text-xs text-muted-foreground"
             >
-              Sem cartão · Cancele quando quiser
-            </motion.p>
+              <Check className="size-3.5 text-primary" />
+              <span>
+                Sem cartão pra começar · sem taxa por aluno · cancela quando quiser
+              </span>
+            </motion.div>
 
             {/* Faixa mobile — substitui o mockup */}
             <motion.div
@@ -135,25 +128,6 @@ export function Hero() {
 }
 
 /* ---------- helpers ---------- */
-
-function palavrasAnimadas(frase: string, delayInicial = 0) {
-  const palavras = frase.split(" ");
-  return palavras.map((p, i) => (
-    <motion.span
-      key={i}
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: 0.32,
-        delay: delayInicial + i * 0.04,
-        ease: [0.16, 1, 0.3, 1],
-      }}
-      className="inline-block mr-2"
-    >
-      {p}
-    </motion.span>
-  ));
-}
 
 function CTAButton({
   href,

@@ -15,62 +15,54 @@ import {
 
 /**
  * Features — carrossel horizontal interativo (drag pra passar).
+ * Estrutura fiel à Prime: eyebrow "O app do aluno", título e descrição curtos.
  *
- * 6 features selecionadas (não 12, não 4 — o número que faz sentido ler).
- * No mobile: scroll horizontal nativo (snappy).
+ * 6 features selecionadas. No mobile: scroll horizontal nativo (snappy).
  * No desktop: drag com mouse + setas + indicador de posição.
- *
- * Cada card é grande e destaca 1 benefício principal.
  */
 
 const features = [
   {
     icon: Dumbbell,
     eyebrow: "Treino",
-    title: "Editor de treino em 3 cliques",
-    big: "Arrasta. Salva. Manda no WhatsApp.",
+    title: "Protocolo de treino",
     description:
-      "Biblioteca com 100+ exercícios, ajuste de carga por aluno, templates reutilizáveis. Atribui pra 1 aluno ou turma inteira.",
+      "Treino com séries, cargas e registro a cada execução. O aluno marca o que fez e você enxerga a adesão em tempo real, sem precisar perguntar.",
   },
   {
     icon: Salad,
     eyebrow: "Dieta",
-    title: "Plano alimentar com lista de compras",
-    big: "Calcula macros. Gera lista. Aluno vai no mercado.",
+    title: "Plano alimentar",
     description:
-      "Calculadora automática de macros por objetivo. Lista de compras semanal sai direto pro aluno — agrupada por categoria.",
+      "A dieta completa dentro do app: refeições, horários, quantidades e trocas equivalentes. Chega de PDF perdido na conversa do WhatsApp.",
   },
   {
     icon: Calendar,
     eyebrow: "Agenda",
-    title: "Agendamento com self-booking",
-    big: "Você libera horário. Aluno reserva.",
+    title: "Agendamento self-booking",
     description:
-      "Você define os slots livres, aluno reserva em 1 clique. Sessão presencial, online, avaliação — tudo organizado num calendário só.",
+      "Você libera horário, aluno reserva em 1 clique. Sessão presencial, online, avaliação — tudo organizado num calendário só.",
   },
   {
     icon: Flame,
-    eyebrow: "WOD",
-    title: "Desafio do dia com ranking da turma",
-    big: "Cria o WOD. A turma compete. O ranking sai.",
+    eyebrow: "Desafios",
+    title: "Desafios com ranking",
     description:
       "Franco, AMRAP, Cindy… você escolhe. Alunos marcam tempo ou rounds. Ranking em tempo real no app e no WhatsApp.",
   },
   {
     icon: CheckSquare,
     eyebrow: "Hábitos",
-    title: "Hábitos que prendem o aluno",
-    big: "Água, sono, passos, refeições — você prescreve.",
+    title: "Hábitos diários",
     description:
-      "Atribui hábitos por aluno. Ele marca todo dia no app. Você vê o compliance semanal e ajusta o que precisar.",
+      "Água, sono, passos, refeições — você prescreve. O aluno marca todo dia no app. Você vê o compliance semanal e ajusta o que precisar.",
   },
   {
     icon: ShoppingBasket,
     eyebrow: "Compras",
     title: "Lista de compras automática",
-    big: "Da dieta pra geladeira — sem planilha.",
     description:
-      "Gerada direto do plano alimentar, com gramas e categoria. Aluno marca no app enquanto passa no mercado.",
+      "Gerada direto do plano alimentar, com gramas e categoria. Aluno marca no app enquanto passa no mercado — sem planilha.",
   },
 ];
 
@@ -115,7 +107,7 @@ export function Features() {
             transition={{ duration: 0.5 }}
             className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-primary"
           >
-            Funcionalidades
+            O app do aluno
           </motion.span>
           <motion.h2
             initial={{ opacity: 0, y: 16 }}
@@ -124,8 +116,8 @@ export function Features() {
             transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             className="mt-3 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.05]"
           >
-            Tudo que você faz hoje,{" "}
-            <span className="text-primary">num único painel</span>.
+            Tudo o que o seu aluno precisa,{" "}
+            <span className="text-primary">num único app</span>.
           </motion.h2>
           <motion.p
             initial={{ opacity: 0 }}
@@ -134,7 +126,7 @@ export function Features() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mt-4 text-base sm:text-lg text-muted-foreground max-w-xl"
           >
-            Arrasta pro lado pra ver tudo. 6 coisas que fazem você atender 3× mais alunos.
+            Arrasta pro lado pra ver tudo. 6 coisas que fazem o aluno abrir o app e ter tudo na mão.
           </motion.p>
         </motion.div>
       </div>
@@ -195,10 +187,7 @@ export function Features() {
               <h3 className="mt-1 text-lg font-extrabold tracking-tight leading-tight">
                 {f.title}
               </h3>
-              <p className="mt-3 text-sm font-bold text-primary leading-snug">
-                {f.big}
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+              <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
                 {f.description}
               </p>
             </motion.div>

@@ -15,6 +15,11 @@ import { cn } from "@/lib/utils";
  *  - Mobile: cards empilhados com tamanho natural (respiram).
  *  - Preço grande em mono (sem "R$" espalhado).
  *  - Toggle Mensal/Anual limpo.
+ *  - Tag "Mais escolhido" no Pro é o destaque.
+ *
+ * Diferencial próprio: o preço do plano é seguido de uma micro-tag com o que
+ * está incluso no preço (ex: "+ alunos ilimitados"). E embaixo do CTA tem
+ * "Começa em X dias" como lembrete do trial.
  */
 
 export function Pricing() {
@@ -34,10 +39,12 @@ export function Pricing() {
             Planos
           </span>
           <h2 className="mt-3 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.1]">
-            Comece com <span className="text-primary">{TRIAL_DAYS} dias grátis</span>.
-            <br />
-            Cancele quando quiser.
+            Pague pelo tamanho da sua carteira,{" "}
+            <span className="text-primary">não pelo número de feature</span>.
           </h2>
+          <p className="mt-4 text-base sm:text-lg text-muted-foreground">
+            3 planos honestos. Sem tier escondido, sem upsell no checkout.
+          </p>
         </motion.div>
 
         {/* Toggle Mensal/Anual — pill clean */}

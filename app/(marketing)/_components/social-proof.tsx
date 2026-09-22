@@ -3,12 +3,11 @@
 import { motion } from "motion/react";
 
 /**
- * SocialProof — sem amontoado de números (regra de UX do projeto).
+ * SocialProof — versão Prime (texto + avatares + avaliação por estrelas).
  *
- * Em vez de 3 KPIs grandes (+1.200, +38 mil, 4,9★), vira:
- *  - 1 linha com a frase de prova social (fade-in ao entrar na viewport)
- *  - Avatares que aparecem em stagger (a galera vai entrando)
- *  - Marquee horizontal com frases reais de uso (movimento contínuo sutil)
+ *  - 1 linha com a frase de prova social
+ *  - Avatares que aparecem em stagger
+ *  - Marquee horizontal com frases reais de uso
  */
 
 const avatares = [
@@ -28,8 +27,8 @@ export function SocialProof() {
             transition={{ duration: 0.5 }}
             className="text-sm sm:text-base text-foreground/85"
           >
-            <strong className="text-foreground">+1.200 personais</strong> já usam o Viva FIT APP
-            pra atender mais alunos sem virar CLT.
+            <strong className="text-foreground">+1.200 personais, nutris e coaches</strong> já
+            organizam tudo no Viva FIT APP.
           </motion.p>
           <div className="flex items-center gap-1.5">
             <div className="flex -space-x-2">
@@ -55,9 +54,9 @@ export function SocialProof() {
               whileInView={{ opacity: 1 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.4, delay: 0.55 }}
-              className="text-xs text-foreground/70 ml-1 num"
+              className="text-xs text-foreground/70 ml-1 whitespace-nowrap"
             >
-              +1.200
+              ★★★★★ avaliação dos profissionais
             </motion.span>
           </div>
         </div>

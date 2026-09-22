@@ -38,7 +38,9 @@ export function MarketingFooter() {
         </div>
 
         <div className="mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-          <p className="text-xs text-foreground/60">© {new Date().getFullYear()} Viva FIT APP.</p>
+          <p className="text-xs text-foreground/60">
+            © {new Date().getFullYear()} Viva FIT APP · Todos os direitos reservados.
+          </p>
           <p className="text-xs text-foreground/60">Feito pra personal trainer BR 🇧🇷</p>
         </div>
       </div>

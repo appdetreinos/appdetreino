@@ -27,31 +27,31 @@ const features = [
   {
     n: "01",
     icon: LayoutDashboard,
-    title: "Dashboard do aluno",
+    title: "Dashboard",
     description:
-      "Tudo do dia numa tela só: treino, dieta, progresso e recados. O aluno abre o app e sabe exatamente o que fazer hoje — sem te mandar mensagem perguntando.",
+      "Tudo do dia numa tela só: treino, dieta, progresso e recados. O aluno abre o app e sabe exatamente o que fazer hoje, sem depender de mensagem sua.",
     mockup: "dashboard",
   },
   {
     n: "02",
     icon: LineChart,
-    title: "Acompanhamento com gráfico",
+    title: "Acompanhamento",
     description:
-      "Peso, medidas e fotos comparadas com gráficos de evolução. Resultado visível é o que faz o aluno renovar — não promessa, mas prova.",
+      "Peso, medidas e fotos comparadas com gráficos de evolução. O aluno vê o resultado acontecendo, e resultado visível é o que faz ele renovar.",
     mockup: "evolucao",
   },
   {
     n: "03",
     icon: Salad,
-    title: "Plano alimentar",
+    title: "Plano Alimentar",
     description:
-      "Dieta completa dentro do app: refeições, horários, quantidades e lista de compras automática. Chega de PDF perdido na conversa do WhatsApp.",
+      "A dieta completa dentro do app: refeições, horários, quantidades e trocas equivalentes. Chega de PDF perdido na conversa do WhatsApp.",
     mockup: "dieta",
   },
   {
     n: "04",
     icon: Dumbbell,
-    title: "Protocolo de treino",
+    title: "Protocolo de Treino",
     description:
       "Treino com séries, cargas e registro a cada execução. O aluno marca o que fez e você enxerga a adesão em tempo real, sem precisar perguntar.",
     mockup: "treino",
@@ -59,17 +59,17 @@ const features = [
   {
     n: "05",
     icon: Video,
-    title: "Exercícios com vídeo",
+    title: "Exercícios",
     description:
-      "Cada exercício com vídeo de execução e orientação de técnica. O aluno treina certo mesmo longe de você — e erra muito menos.",
+      "Cada exercício com vídeo de execução e orientação de técnica. O aluno treina certo mesmo longe de você, e erra muito menos.",
     mockup: "video",
   },
   {
     n: "06",
     icon: Trophy,
-    title: "Comunidade com ranking",
+    title: "Comunidade",
     description:
-      "Feed, ranking semanal e desafios que mantêm o aluno engajado entre um check-in e outro. Quem se sente acompanhado não some: fica e evolui.",
+      "Feed, ranking e desafios que mantêm o aluno engajado entre um check-in e outro. Quem se sente acompanhado não some: fica e evolui.",
     mockup: "comunidade",
   },
 ];
