@@ -6,12 +6,11 @@ export default async function TrainerLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // TOTALMENTE ESTÁTICO - Sem SidebarProvider, Sem Sidebar
+  // Se isso abrir, o erro está no SidebarProvider ou no AppSidebar (Client Side Crash)
   return (
-    <SidebarProvider>
-      <AppSidebar role="trainer" />
-      <SidebarInset className="bg-background">
-        {children}
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="min-h-screen bg-background text-foreground">
+      {children}
+    </div>
   );
 }
