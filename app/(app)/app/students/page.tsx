@@ -71,8 +71,14 @@ export default async function StudentsPage() {
       </header>
 
       <main className="p-6 max-w-5xl mx-auto space-y-6">
-        {/* Card "vincular manualmente" — aparece sempre que tem convite pending */}
-        {invites.filter((i) => i.status === "pending").length > 0 && <ClaimStudentForm />}
+        {/* Card "vincular manualmente" — aparece quando tem convite pending
+            OU quando tem convite aceito mas o vínculo em student_profiles
+            não foi criado (caso comum: aluno aceitou por outro fluxo e o
+            signup não completou o INSERT). */}
+        {(invites.filter((i) => i.status === "pending").length > 0 ||
+          (invites.some((i) => i.status === "accepted") && students.length === 0)) && (
+          <ClaimStudentForm />
+        )}
 
         {students.length === 0 && invites.length === 0 ? (
           <EmptyStudents />
