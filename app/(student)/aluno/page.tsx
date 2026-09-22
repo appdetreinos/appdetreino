@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import {
   Dumbbell,
   Salad,
@@ -53,6 +54,24 @@ export default async function StudentHome() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
+
+  // ── Guard de role ────────────────────────────────────────────────
+  // Se o user logado é trainer/admin, manda pro painel certo.
+  // Caso contrário (role='student' mas sem student_profiles), deixa
+  // entrar — vai mostrar a tela vazia do aluno (UX honesta).
+  const { data: profileRole } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileRole?.role === "trainer") {
+    redirect("/app");
+  }
+  if (profileRole?.role === "admin") {
+    redirect("/admin");
+  }
+  // ────────────────────────────────────────────────────────────────
 
   // Perfil + student_profiles
   const { data: profile } = await supabase

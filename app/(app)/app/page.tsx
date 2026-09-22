@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -34,6 +35,24 @@ export default async function TrainerDashboard() {
   if (!user) {
     return null;
   }
+
+  // ── Guard de role ────────────────────────────────────────────────
+  // Se o user logado é student (não trainer/admin), manda pro painel
+  // do aluno. Defesa em camadas — proxy.ts já filtra, mas aqui
+  // garante que um student nunca vê o console do trainer.
+  const { data: profileRole } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileRole?.role === "student") {
+    redirect("/aluno");
+  }
+  if (profileRole?.role === "admin") {
+    redirect("/admin");
+  }
+  // ────────────────────────────────────────────────────────────────
 
   // Saudação: nome vem de `profiles.full_name`
   const { data: profile } = await supabase
