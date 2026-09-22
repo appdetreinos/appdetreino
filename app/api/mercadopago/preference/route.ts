@@ -9,8 +9,28 @@ const bodySchema = z
   .object({
     plan_id: z.string().min(1).max(50),
     amount_cents: z.number().int().min(100).max(1_000_000_00),
+    payment_method: z.enum(["pix", "card", "boleto"]).optional(),
   })
   .strict();
+
+/**
+ * Mapa de payment_method (UI) → tipo aceito pelo Mercado Pago Checkout Pro.
+ * Pra forçar o MP a mostrar SÓ o método escolhido, listamos os outros em
+ * `excluded_payment_types`. O `id` é o que o MP usa no front dele.
+ */
+const MP_PAYMENT_TYPE_IDS = {
+  pix: "pix",
+  card: "credit_card",
+  boleto: "ticket",
+} as const;
+
+/** Retorna os tipos de pagamento a EXCLUIR pra mostrar só o escolhido. */
+function excludedPaymentTypes(keep: keyof typeof MP_PAYMENT_TYPE_IDS) {
+  const keepId = MP_PAYMENT_TYPE_IDS[keep];
+  return Object.values(MP_PAYMENT_TYPE_IDS)
+    .filter((id) => id !== keepId)
+    .map((id) => ({ id }));
+}
 
 /** Server-side: localiza o plano pelo id; null se não existir. */
 function planById(planId: string) {
@@ -127,6 +147,11 @@ export async function POST(request: NextRequest) {
         auto_return: "approved",
         external_reference: `${user.id}:${plan.id}:${currentYYYYMM()}`,
         notification_url: `${siteUrl}/api/mercadopago/webhook`,
+        // Se o trainer escolheu um método específico, esconde os outros.
+        // Sem isso, o Checkout Pro mostra TODOS os meios configurados na conta MP.
+        payment_methods: parsed.data.payment_method
+          ? { excluded_payment_types: excludedPaymentTypes(parsed.data.payment_method) }
+          : undefined,
       }),
     });
 

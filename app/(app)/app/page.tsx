@@ -89,7 +89,17 @@ async function TrainerDashboardInner() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return null;
+  // 0) Trial Lockout Redundancy
+  const trial = await safe("trial.state", { locked: false } as any, async () => {
+    const { getTrainerTrialState } = await import("@/lib/billing/trial");
+    return await getTrainerTrialState(user.id);
+  });
+
+  if (trial.locked) {
+    const { redirect } = await import("next/navigation");
+    redirect("/app/checkout?reason=trial_expired");
+  }
+
 
   const { data: profileRole } = await supabase
     .from("profiles")
@@ -110,7 +120,8 @@ async function TrainerDashboardInner() {
     .from("profiles")
     .select("full_name")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
+
 
   const firstName = (profile?.full_name ?? user.email ?? "treinador").split(" ")[0];
 
@@ -168,14 +179,20 @@ async function TrainerDashboardInner() {
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const activeStudentsRaw = await safe("sessions.7d", [] as Array<{ student_id: string | null }>, async () => {
+    const studentIds = studentsRaw.map(s => s.user_id);
+    if (studentIds.length === 0) return [];
+
     const { data, error } = await supabase
       .from("workout_sessions")
-      .select("student_id, student_profiles!inner(trainer_id)")
-      .eq("student_profiles.trainer_id", user.id)
+      .select("student_id")
+      .in("student_id", studentIds)
       .gte("date", sevenDaysAgo);
     if (error) throw error;
     return (data ?? []) as Array<{ student_id: string | null }>;
   });
+
+
+
 
   const activeStudentsSet = new Set(
     activeStudentsRaw.map((s) => s.student_id).filter(Boolean) as string[],

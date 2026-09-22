@@ -99,17 +99,6 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
                 Mercado Pago — Pix, cartão e boleto no mesmo lugar
               </p>
 
-              <div className="mt-6 grid grid-cols-3 gap-2">
-                {["Pix", "Cartão", "Boleto"].map((m) => (
-                  <div
-                    key={m}
-                    className="rounded-lg border border-white/10 bg-background/40 px-3 py-3 text-sm font-semibold text-center"
-                  >
-                    {m}
-                  </div>
-                ))}
-              </div>
-
               <CheckoutClient
                 planId={plan.id}
                 planName={plan.name}
