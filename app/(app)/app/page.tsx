@@ -52,67 +52,57 @@ async function TrainerDashboardInner() {
   if (!user) return null;
   const userId = user.id;
 
-  // 1. Perfil do Trainer (Essencial)
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", userId)
-    .maybeSingle();
+  async function safe<T>(label: string, fallback: T, fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (e) {
+      safeLog.warn(`[dashboard] ${label} falhou`, String(e));
+      return fallback;
+    }
+  }
 
+  const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle();
   const firstName = (profile?.full_name ?? user.email ?? "Treinador").split(" ")[0];
 
-  // 2. Dados de Alunos (Com proteção individual)
-  let totalAlunosCount = 0;
-  let focusStudents: any[] = [];
-
-  try {
-    const { count, error: countErr } = await supabase
+  const studentsRaw = await safe("students.list", [] as any[], async () => {
+    const { data, error } = await supabase
       .from("student_profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("trainer_id", userId);
-    if (!countErr) totalAlunosCount = count ?? 0;
-
-    const { data: students, error: studentsErr } = await supabase
-      .from("student_profiles")
-      .select("user_id, full_name, status, goal")
+      .select("user_id, full_name, status, joined_at, goal")
       .eq("trainer_id", userId)
       .order("joined_at", { ascending: false })
       .limit(3);
-    
-    if (!studentsErr && students) {
-      focusStudents = students.map(s => ({
-        id: s.user_id,
-        nome: s.full_name ?? "Aluno",
-        letra: s.full_name?.[0]?.toUpperCase() ?? "?",
-        oque: s.goal || "Sem objetivo definido",
-        quando: s.status === "active" ? "Ativo" : "Inativo",
-      }));
-    }
-  } catch (e) {
-    safeLog.warn("[dashboard] students_data_fail", String(e));
-  }
+    if (error) throw error;
+    return data ?? [];
+  });
 
+  const focusStudents = studentsRaw.map((s) => ({
+    id: s.user_id,
+    nome: s.full_name ?? "Aluno",
+    letra: s.full_name?.[0]?.toUpperCase() ?? "?",
+    oque: s.goal || "Sem objetivo definido",
+    quando: s.status === "active" ? "Ativo" : "Inativo",
+  }));
 
-  } catch (e) {
-    safeLog.warn("[dashboard] students_data_fail", String(e));
-  }
+  const totalAlunosCount = await safe("students.count", 0, async () => {
+    const { count, error } = await supabase
+      .from("student_profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("trainer_id", userId);
+    if (error) throw error;
+    return count ?? 0;
+  });
 
-  // 3. Financeiro (Proteção total - se falhar, mostra 0)
-  let receitaMes = 0;
-  try {
+  const temAluno = totalAlunosCount > 0;
+
+  const receitaMes = await safe("receita.mes", 0, async () => {
     const { data: payments } = await supabase
       .from("payment_links")
       .select("amount_cents")
       .eq("trainer_id", userId)
       .not("paid_at", "is", null)
       .gte("paid_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
-    
-    if (payments) {
-      receitaMes = payments.reduce((acc, p) => acc + (p.amount_cents / 100), 0);
-    }
-  } catch (e) {
-    safeLog.warn("[dashboard] finance_fail", String(e));
-  }
+    return payments ? payments.reduce((acc, p) => acc + (p.amount_cents / 100), 0) : 0;
+  });
 
   return (
     <div className="min-h-screen">
@@ -121,7 +111,7 @@ async function TrainerDashboardInner() {
           <div className="min-w-0">
             <h1 className="text-xl font-bold truncate">Bom dia, <span className="text-primary">{firstName}</span> 🔥</h1>
             <p className="text-xs text-foreground/65">
-              {totalAlunosCount > 0 
+              {temAluno
                 ? `${totalAlunosCount} aluno${totalAlunosCount === 1 ? "" : "s"} ativo${totalAlunosCount === 1 ? "" : "s"}`
                 : "Convide seu primeiro aluno para começar!"}
             </p>
@@ -179,7 +169,6 @@ async function TrainerDashboardInner() {
           </div>
         </Card>
 
-        {/* Renderiza o Entrance apenas se houver alunos para evitar crash de lista vazia */}
         {focusStudents.length > 0 && (
           <DashboardEntrance
             focus={{ pergunta: "Quem tá esperando você hoje?", itens: focusStudents }}
