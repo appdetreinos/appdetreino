@@ -30,23 +30,28 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [method, setMethod] = useState<PaymentMethod>("card");
-  const [mpLoaded, setMpLoaded] = useState(false);
+  const [sdkLoaded, setSdkLoaded] = useState(false);
+  const [brickRendered, setBrickRendered] = useState(false);
 
   useEffect(() => {
+    if (window.MercadoPago) {
+      setSdkLoaded(true);
+      return;
+    }
     const script = document.createElement("script");
     script.src = "https://sdk.mercadopago.com/js/v2";
     script.async = true;
-    script.onload = () => setMpLoaded(true);
+    script.onload = () => setSdkLoaded(true);
     document.head.appendChild(script);
-    return () => {
-      if (document.head.contains(script)) {
-        document.head.removeChild(script);
-      }
-    };
   }, []);
 
   async function renderPaymentBrick() {
     setError(null);
+    if (!sdkLoaded) {
+      setError("O sistema de pagamentos ainda está carregando. Tente novamente em 2 segundos.");
+      return;
+    }
+
     startTransition(async () => {
       try {
         const getCookie = (name: string) => {
@@ -72,17 +77,12 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
 
         if (!res.ok) {
           const body = await res.json().catch(() => null);
-          setError(body?.error ?? "Erro ao gerar preferência");
+          setError(body?.error ?? "Erro ao gerar preferência de pagamento");
           return;
         }
 
         const data = (await res.json()) as { preference_id: string };
         
-        if (!window.MercadoPago) {
-          setError("SDK do Mercado Pago não carregou");
-          return;
-        }
-
         const mp = new window.MercadoPago(process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY || "");
         const bricksBuilder = mp.bricks();
         
@@ -101,18 +101,18 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
           },
           callbacks: {
             onPaymentIsReady: () => {
-              console.log("Payment ready");
+              setBrickRendered(true);
             },
             onSubmit: (payment_id: string) => {
-              console.log("Payment submitted", payment_id);
               window.location.href = "/app/settings?upgrade=pending";
             },
           },
         });
+        setBrickRendered(true);
 
       } catch (e) {
         safeLog.error("[checkout-bricks] failed", e instanceof Error ? e.message : "unknown");
-        setError("Falha ao carregar formulário de pagamento");
+        setError("Falha ao carregar o formulário de pagamento seguro.");
       }
     });
   }
@@ -128,7 +128,10 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
               type="button"
               role="radio"
               aria-checked={active}
-              onClick={() => setMethod(m.id)}
+              onClick={() => {
+                setMethod(m.id);
+                setBrickRendered(false); // Reseta o brick se mudar o método
+              }}
               disabled={pending}
               className={
                 "rounded-lg border px-3 py-3 text-sm font-semibold text-center transition-colors " +
@@ -149,28 +152,32 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
         </div>
       )}
 
-      {!pending && (
+      {!brickRendered && (
         <Button
           size="lg"
           className="mt-6 w-full font-bold h-12"
           onClick={renderPaymentBrick}
+          disabled={pending}
         >
-          <Lock className="size-4 mr-2" />
-          Pagar {formatBRL(amountCents / 100)} via {METHODS.find((m) => m.id === method)?.label}
+          {pending ? (
+            <>
+              <Loader2 className="size-4 animate-spin mr-2" />
+              Carregando...
+            </>
+          ) : (
+            <>
+              <Lock className="size-4 mr-2" />
+              Pagar {formatBRL(amountCents / 100)} via {METHODS.find((m) => m.id === method)?.label}
+            </>
+          )}
         </Button>
       )}
 
-      {pending && (
-        <div className="mt-6 flex items-center justify-center p-4 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin mr-2" />
-          Carregando formulário seguro...
-        </div>
-      )}
-
+      {/* O formulário do Mercado Pago será injetado aqui */}
       <div id="payment-brick" className="mt-6" />
 
       <p className="mt-3 text-center text-xs text-muted-foreground">
-        Pagamento seguro via Mercado Pago Bricks.
+        Pagamento processado com segurança via Mercado Pago Bricks.
       </p>
     </div>
   );
