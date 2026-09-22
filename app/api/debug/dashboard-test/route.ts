@@ -87,9 +87,9 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from("payment_links")
-      .select("amount_cents, paid_at, status")
+      .select("amount_cents, paid_at")
       .eq("trainer_id", user.id)
-      .eq("status", "paid")
+      .not("paid_at", "is", null)
       .gte("paid_at", twelveMonthsAgo.toISOString());
     queries.push({
       name: "payment_links_12m",
