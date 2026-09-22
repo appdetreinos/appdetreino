@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { CheckInButton } from "./check-in-button";
@@ -21,7 +22,7 @@ export default async function TreinosPage() {
          id, day_of_week, title,
          workout_items:workout_items(
            id, sets, reps, load, rest_seconds, notes, position,
-           exercises:exercise_id(name, muscle_group)
+           exercises:exercise_id(id, name, muscle_group)
          )
        )`,
     )
@@ -94,7 +95,10 @@ type WorkoutItem = {
   rest_seconds: number | null;
   notes: string | null;
   position: number;
-  exercises: { name: string; muscle_group: string | null } | { name: string; muscle_group: string | null }[] | null;
+  exercises:
+    | { id: string; name: string; muscle_group: string | null }
+    | { id: string; name: string; muscle_group: string | null }[]
+    | null;
 };
 
 function WorkoutBlock({ workout, todayDay }: WorkoutBlockProps) {
@@ -156,9 +160,18 @@ function DaySection({
             return (
               <div key={item.id} className="p-3 flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm">
-                    {ex?.name ?? "Exercício"}
-                  </div>
+                  {ex?.id ? (
+                    <Link
+                      href={`/aluno/exercicio/${ex.id}`}
+                      className="font-medium text-sm hover:text-primary transition-colors"
+                    >
+                      {ex.name}
+                    </Link>
+                  ) : (
+                    <div className="font-medium text-sm">
+                      {ex?.name ?? "Exercício"}
+                    </div>
+                  )}
                   <div className="text-xs text-muted-foreground mt-0.5">
                     {item.sets}x {item.reps}
                     {item.load && ` · ${item.load}`}

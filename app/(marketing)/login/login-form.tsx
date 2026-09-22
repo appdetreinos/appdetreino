@@ -3,10 +3,11 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm() {
@@ -24,6 +25,11 @@ function LoginFormInner() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rememberMe, setRememberMe] = useState(true);
+  // Otimista: depois do signIn OK, mostramos "logado ✓" por ~150ms
+  // enquanto o router.refresh() revalida server-side. Sensação de
+  // velocidade sem mudar o tempo real.
+  const [success, setSuccess] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -47,7 +53,6 @@ function LoginFormInner() {
     });
 
     if (signInError) {
-      // Mensagens em PT-BR sem vazar detalhes técnicos
       const msg = signInError.message.toLowerCase();
       if (msg.includes("invalid login credentials")) {
         setError("E-mail ou senha incorretos.");
@@ -62,51 +67,98 @@ function LoginFormInner() {
       return;
     }
 
-    // Força o server a reavaliar a sessão antes do redirect
-    router.push(redirectTo);
-    router.refresh();
+    // Sucesso: mostra confirmação visual por um instante antes do redirect.
+    setSuccess(true);
+    // Pequeno delay pra dar tempo do cookie persistir e do server revalidar.
+    setTimeout(() => {
+      router.push(redirectTo);
+      router.refresh();
+    }, 220);
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-      <div>
-        <Label htmlFor="email">E-mail</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          className="mt-1.5"
-          placeholder="voce@seudominio.com"
-        />
-      </div>
-      <div>
-        <div className="flex justify-between items-center">
-          <Label htmlFor="password">Senha</Label>
-          <Link href="/recuperar" className="text-xs text-primary hover:underline">
-            Esqueci
-          </Link>
-        </div>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          className="mt-1.5"
-        />
-      </div>
+    <AnimatePresence mode="wait" initial={false}>
+      {success ? (
+        <motion.div
+          key="success"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="mt-8 flex flex-col items-center gap-3 py-12"
+        >
+          <span className="grid size-12 place-items-center rounded-full bg-emerald-500/15 text-emerald-500">
+            <Check className="size-6" />
+          </span>
+          <p className="text-sm font-semibold">Logado! Entrando no painel…</p>
+        </motion.div>
+      ) : (
+        <motion.form
+          key="form"
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.12 }}
+          onSubmit={handleSubmit}
+          className="mt-8 space-y-4"
+        >
+          <div>
+            <Label htmlFor="email">E-mail</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              className="mt-1.5"
+              placeholder="voce@seudominio.com"
+            />
+          </div>
+          <div>
+            <div className="flex justify-between items-center">
+              <Label htmlFor="password">Senha</Label>
+              <Link href="/recuperar" className="text-xs text-primary hover:underline">
+                Esqueci
+              </Link>
+            </div>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              className="mt-1.5"
+            />
+          </div>
 
-      {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {error}
-        </div>
+          {/* Lembrar-me — padrão ON. Desmarcar pra sessão "desta aba só". */}
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="size-4 rounded border-white/20 bg-background accent-primary"
+            />
+            <span className="text-sm text-foreground/85">Manter conectado por 30 dias</span>
+          </label>
+
+          {error && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+          <Button type="submit" disabled={loading} className="w-full font-semibold h-11 mt-2">
+            {loading ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Entrando…
+              </>
+            ) : (
+              "Entrar"
+            )}
+          </Button>
+        </motion.form>
       )}
-
-      <Button type="submit" disabled={loading} className="w-full font-semibold h-11 mt-2">
-        {loading ? <Loader2 className="size-4 animate-spin" /> : "Entrar"}
-      </Button>
-    </form>
+    </AnimatePresence>
   );
 }

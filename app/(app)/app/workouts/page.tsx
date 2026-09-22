@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button-link";
-import { Plus, Dumbbell, ChevronRight } from "lucide-react";
+import { Plus, Dumbbell, ChevronRight, Sparkles } from "lucide-react";
 
 type WorkoutListItem = {
   id: string;
@@ -42,17 +42,23 @@ export default async function WorkoutsPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
-      <header className="flex items-center justify-between">
+      <header className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight">Treinos</h1>
           <p className="text-sm text-muted-foreground">
             {templates.length} templates · {assigned.length} atribuídos
           </p>
         </div>
-        <ButtonLink href="/app/workouts/new" className="font-semibold">
-          <Plus className="size-4" />
-          Novo treino
-        </ButtonLink>
+        <div className="flex items-center gap-2">
+          <ButtonLink href="/app/workouts/templates" variant="outline" className="font-semibold">
+            <Sparkles className="size-4" />
+            Templates prontos
+          </ButtonLink>
+          <ButtonLink href="/app/workouts/new" className="font-semibold">
+            <Plus className="size-4" />
+            Novo treino
+          </ButtonLink>
+        </div>
       </header>
 
       {/* Templates do trainer */}
