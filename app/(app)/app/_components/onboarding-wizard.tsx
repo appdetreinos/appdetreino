@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
 import {
   Briefcase,
   Users,
@@ -185,11 +184,8 @@ export function OnboardingWizard() {
       <div className="absolute inset-0 bg-background/85 backdrop-blur-md" />
 
       {/* Modal */}
-      <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-card p-6 shadow-2xl sm:p-8"
+      <div
+        className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-card p-6 shadow-2xl sm:p-8 animate-fade-in-up"
       >
         {/* Header: barra de progresso + step counter + X */}
         <div className="flex items-center gap-2">
@@ -220,39 +216,37 @@ export function OnboardingWizard() {
 
         {/* Conteúdo da etapa */}
         <div className="mt-6 min-h-[300px]">
-          <AnimatePresence mode="wait">
-            {step === 1 && (
-              <Step1
-                key="1"
-                value={actuation}
-                onChange={(v) => setActuation(v)}
-              />
-            )}
-            {step === 2 && (
-              <Step2
-                key="2"
-                value={clientVolume}
-                onChange={(v) => setClientVolume(v)}
-              />
-            )}
-            {step === 3 && (
-              <Step3
-                key="3"
-                value={revenue}
-                onChange={(v) => setRevenue(v)}
-              />
-            )}
-            {step === 4 && (
-              <Step4
-                key="4"
-                annual={annual}
-                onAnnualChange={setAnnual}
-                suggested={suggestedPlan}
-                volume={clientVolume}
-                revenue={revenue}
-              />
-            )}
-          </AnimatePresence>
+          {step === 1 && (
+            <Step1
+              key="1"
+              value={actuation}
+              onChange={(v) => setActuation(v)}
+            />
+          )}
+          {step === 2 && (
+            <Step2
+              key="2"
+              value={clientVolume}
+              onChange={(v) => setClientVolume(v)}
+            />
+          )}
+          {step === 3 && (
+            <Step3
+              key="3"
+              value={revenue}
+              onChange={(v) => setRevenue(v)}
+            />
+          )}
+          {step === 4 && (
+            <Step4
+              key="4"
+              annual={annual}
+              onAnnualChange={setAnnual}
+              suggested={suggestedPlan}
+              volume={clientVolume}
+              revenue={revenue}
+            />
+          )}
         </div>
 
         {/* Footer: navegação */}
@@ -299,7 +293,7 @@ export function OnboardingWizard() {
             {errorMsg}
           </div>
         )}
-      </motion.div>
+      </div>
     </div>
   );
 }
@@ -345,12 +339,11 @@ function OptionCard({
   onClick: () => void;
 }) {
   return (
-    <motion.button
+    <button
       type="button"
       onClick={onClick}
-      whileTap={{ scale: 0.98 }}
       className={cn(
-        "group flex w-full items-center justify-between rounded-xl border bg-background/40 px-4 py-3.5 text-left transition-all",
+        "group flex w-full items-center justify-between rounded-xl border bg-background/40 px-4 py-3.5 text-left transition-all active:scale-[0.98]",
         active
           ? "border-primary bg-primary/[0.06] shadow-[0_0_0_1px_rgba(255,107,53,0.4)]"
           : "border-white/10 hover:border-white/20 hover:bg-white/[0.03]"
@@ -378,7 +371,7 @@ function OptionCard({
           <ChevronRight className="size-4" />
         )}
       </span>
-    </motion.button>
+    </button>
   );
 }
 
@@ -387,16 +380,7 @@ function StepShell({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: 16 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -16 }}
-      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-    >
-      {children}
-    </motion.div>
-  );
+  return <div className="animate-fade-in">{children}</div>;
 }
 
 /* ---------- Etapa 1: Como você atua ---------- */

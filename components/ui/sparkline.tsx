@@ -1,18 +1,18 @@
 "use client";
 
-import { motion } from "motion/react";
-
 /**
- * Mini gráfico de linha (sparkline) com animação de desenho progressivo.
+ * Mini gráfico de linha (sparkline).
  *
- * Props:
- *  - data: array de números (eixo Y)
- *  - labels: array opcional de strings pra mostrar abaixo
- *  - height: altura do SVG em px (largura é 100% responsiva)
- *  - stroke: cor da linha (default primary)
- *  - showDots: se mostra bolinhas em cada ponto
- *  - showArea: preenche abaixo da linha
+ * Versão SEM motion/react — usa SVG puro + CSS animations
+ * (stroke-dasharray pra desenhar a linha progressivamente).
+ *
+ * motion/react v13.4.0 quebra com Next 16 + React 19 em algumas
+ * situações, então migramos pra CSS keyframes (que são determinísticos
+ * e não dependem de JS pra animar).
+ *
+ * Props: igual à versão anterior.
  */
+
 export function Sparkline({
   data,
   labels,
@@ -67,42 +67,34 @@ export function Sparkline({
         </defs>
 
         {showArea && (
-          <motion.path
+          <path
             d={area}
             fill="url(#spark-area)"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
+            className="animate-fade-in"
+            style={{ animationDelay: "300ms", animationFillMode: "backwards" }}
           />
         )}
 
-        <motion.path
+        <path
           d={path}
           fill="none"
           stroke={strokeColor}
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+          className="sparkline-path"
         />
 
         {showDots &&
           xs.map((x, i) => (
-            <motion.circle
+            <circle
               key={i}
               cx={x}
               cy={ys[i]}
               r="3"
               fill={strokeColor}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{
-                duration: 0.3,
-                delay: 0.7 + i * 0.04,
-                ease: [0.22, 1, 0.36, 1],
-              }}
+              className="sparkline-dot"
+              style={{ animationDelay: `${700 + i * 40}ms` }}
             />
           ))}
       </svg>

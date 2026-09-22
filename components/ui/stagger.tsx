@@ -1,47 +1,56 @@
-"use client";
-
-import { motion, animate, useMotionValue, useTransform, type HTMLMotionProps } from "motion/react";
+import * as React from "react";
 import { useEffect, useState, type ReactNode } from "react";
 
 /**
- * Container que faz filhos entrarem com stagger (um após o outro).
- * Pra usar: <Stagger><Card1 /><Card2 /><Card3 /></Stagger>
+ * Container + items de stagger — entrada progressiva.
  *
- * Respeita prefers-reduced-motion automaticamente via motion/react.
+ * Migrado de motion/react → CSS animations com delay inline.
+ * (motion v13.4.0 quebra com Next 16 + React 19 — ref 3162866030 no /app.)
+ *
+ * Respeita prefers-reduced-motion automaticamente via CSS (globals.css).
  */
 export function Stagger({
   children,
   delay = 0,
   className,
+  staggerMs = 60,
   ...rest
 }: {
   children: ReactNode;
   delay?: number;
   className?: string;
-} & Omit<HTMLMotionProps<"div">, "children">) {
+  staggerMs?: number;
+} & React.HTMLAttributes<HTMLDivElement>) {
+  const items = React.Children.toArray(children).filter(React.isValidElement);
+
   return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={{
-        hidden: {},
-        visible: {
-          transition: {
-            staggerChildren: 0.06,
-            delayChildren: delay,
-          },
-        },
-      }}
+    <div
       className={className}
+      style={{
+        animationDelay: `${delay}ms`,
+        animationFillMode: "both",
+      }}
       {...rest}
     >
-      {children}
-    </motion.div>
+      {items.map((child, i) => {
+        if (!React.isValidElement(child)) return child;
+        const childStyle = (child.props as { style?: React.CSSProperties }).style ?? {};
+        return React.cloneElement(child as React.ReactElement<{
+          style?: React.CSSProperties;
+        }>, {
+          style: {
+            ...childStyle,
+            animationDelay: `${delay + i * staggerMs}ms`,
+            animationFillMode: "both",
+          },
+        });
+      })}
+    </div>
   );
 }
 
 /**
- * Item filho de <Stagger>. Animação: fade + slide pra cima.
+ * Item filho de <Stagger>. Animação: fade + slide pra cima via CSS.
  */
 export function StaggerItem({
   children,
@@ -50,32 +59,21 @@ export function StaggerItem({
 }: {
   children: ReactNode;
   className?: string;
-} & Omit<HTMLMotionProps<"div">, "children">) {
+} & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <motion.div
-      variants={{
-        hidden: { opacity: 0, y: 12 },
-        visible: {
-          opacity: 1,
-          y: 0,
-          transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
-        },
-      }}
-      className={className}
-      {...rest}
-    >
+    <div className={`animate-fade-in-up ${className ?? ""}`} {...rest}>
       {children}
-    </motion.div>
+    </div>
   );
 }
 
 /**
- * Contador animado de 0 → value. Duração curta, easing ease-out.
- * Pra usar: <AnimatedNumber value={42} /> ou com format.
+ * Contador animado de 0 → value.
+ * Migrado pra vanilla JS requestAnimationFrame (não usa motion).
  */
 export function AnimatedNumber({
   value,
-  duration = 0.9,
+  duration = 900,
   format,
   className,
 }: {
@@ -84,29 +82,33 @@ export function AnimatedNumber({
   format?: (n: number) => string;
   className?: string;
 }) {
-  const mv = useMotionValue(0);
-  const rounded = useTransform(mv, (v) => Math.round(v).toString());
-  // Pra format (R$ etc.) — acompanha o motion value
-  const [text, setText] = useState(format ? format(0) : "0");
+  const [display, setDisplay] = useState(0);
 
   useEffect(() => {
-    const controls = animate(mv, value, {
-      duration,
-      ease: [0.22, 1, 0.36, 1],
-    });
-    if (format) {
-      const unsub = mv.on("change", (v) => setText(format(v)));
-      return () => {
-        controls.stop();
-        unsub();
-      };
-    }
-    return () => controls.stop();
-  }, [mv, value, duration, format]);
+    let raf = 0;
+    const start = performance.now();
+    const from = 0;
+    const to = value;
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      const t = Math.min(elapsed / duration, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - t, 3);
+      const current = from + (to - from) * eased;
+      setDisplay(current);
+      if (t < 1) {
+        raf = requestAnimationFrame(tick);
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value, duration]);
+
+  const text = format ? format(display) : Math.round(display).toString();
 
   return (
-    <motion.span className={className} suppressHydrationWarning>
-      {format ? text : rounded}
-    </motion.span>
+    <span className={className} suppressHydrationWarning>
+      {text}
+    </span>
   );
 }

@@ -1,7 +1,4 @@
-"use client";
-
 import Link from "next/link";
-import { motion } from "motion/react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -31,17 +28,19 @@ interface Props {
 }
 
 /**
- * Componente client que recebe os dados reais do Supabase (server-fetched
- * no `page.tsx`) e renderiza com animações progressivas de entrada.
+ * Componente que recebe dados reais do Supabase (server-fetched em
+ * page.tsx) e renderiza com animações de entrada via CSS (delay inline).
+ *
+ * Migrado de motion/react → CSS keyframes (motion v13.4.0 quebra com
+ * Next 16 + React 19).
  */
 export function DashboardEntrance({ focus, recentes, totalAlunos, temAluno }: Props) {
   return (
     <>
       {/* 1) Foco do dia — pergunta + lista de alunos OU empty-state */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, delay: 0.1 }}
+      <div
+        className="animate-fade-in-up"
+        style={{ animationDelay: "100ms", animationFillMode: "both" }}
       >
         <Card className="bg-card/80 border-white/10 p-6">
           <div className="flex items-baseline justify-between mb-5">
@@ -59,11 +58,13 @@ export function DashboardEntrance({ focus, recentes, totalAlunos, temAluno }: Pr
           {temAluno ? (
             <div className="divide-y divide-white/5">
               {focus.itens.map((p, i) => (
-                <motion.div
+                <div
                   key={p.id}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.2 + i * 0.08 }}
+                  className="animate-fade-in-up"
+                  style={{
+                    animationDelay: `${200 + i * 80}ms`,
+                    animationFillMode: "both",
+                  }}
                 >
                   <Link
                     href="/app/students"
@@ -85,32 +86,32 @@ export function DashboardEntrance({ focus, recentes, totalAlunos, temAluno }: Pr
                       {p.quando}
                     </Badge>
                   </Link>
-                </motion.div>
+                </div>
               ))}
             </div>
           ) : (
             <EmptyFocus />
           )}
         </Card>
-      </motion.div>
+      </div>
 
       {/* 2) Atividade recente — mesma estrutura */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, delay: 0.45 }}
+      <div
+        className="animate-fade-in-up"
+        style={{ animationDelay: "450ms", animationFillMode: "both" }}
       >
         <Card className="bg-card/80 border-white/10 p-6">
           <h2 className="text-lg font-bold mb-4">O que seus alunos fizeram</h2>
           {recentes.length > 0 ? (
             <div className="divide-y divide-white/5">
               {recentes.map((r, i) => (
-                <motion.div
+                <div
                   key={`${r.nome}-${i}`}
-                  initial={{ opacity: 0, x: -6 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.55 + i * 0.08 }}
-                  className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+                  className="flex items-center gap-3 py-3 first:pt-0 last:pb-0 animate-fade-in-up"
+                  style={{
+                    animationDelay: `${550 + i * 80}ms`,
+                    animationFillMode: "both",
+                  }}
                 >
                   <Avatar className="size-9 border border-white/10">
                     <AvatarFallback className="bg-secondary text-secondary-foreground text-xs font-bold">
@@ -122,7 +123,7 @@ export function DashboardEntrance({ focus, recentes, totalAlunos, temAluno }: Pr
                     <span className="text-foreground/70"> · {r.oque}</span>
                   </div>
                   <span className="text-xs text-foreground/60 shrink-0">{r.quando}</span>
-                </motion.div>
+                </div>
               ))}
             </div>
           ) : (
@@ -131,7 +132,7 @@ export function DashboardEntrance({ focus, recentes, totalAlunos, temAluno }: Pr
             </p>
           )}
         </Card>
-      </motion.div>
+      </div>
     </>
   );
 }

@@ -1,13 +1,13 @@
-"use client";
-
-import { motion } from "motion/react";
 import type { ReactNode } from "react";
 
 /**
  * Anel circular com progresso animado (0–100).
  *
- * Pra usar: <ProgressRing value={73} size={80} />
+ * Versão SEM motion/react — usa SVG puro + CSS transition no
+ * stroke-dashoffset. Migrei porque motion v13.4.0 quebra com Next 16
+ * + React 19 (causava ref 3162866030 no /app).
  */
+
 export function ProgressRing({
   value,
   size = 80,
@@ -43,7 +43,7 @@ export function ProgressRing({
           stroke={trackColor}
           strokeWidth={strokeWidth}
         />
-        <motion.circle
+        <circle
           cx={size / 2}
           cy={size / 2}
           r={r}
@@ -52,9 +52,10 @@ export function ProgressRing({
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={C}
-          initial={{ strokeDashoffset: C }}
-          animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+          strokeDashoffset={offset}
+          style={{
+            transition: "stroke-dashoffset 1100ms cubic-bezier(0.22, 1, 0.36, 1)",
+          }}
         />
       </svg>
       <div className="absolute inset-0 grid place-items-center text-center">

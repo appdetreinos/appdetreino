@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "motion/react";
 import {
   UserPlus,
   Dumbbell,
@@ -13,24 +12,17 @@ import {
   ChevronDown,
   X,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 /**
  * Onboarding checklist — tour guiado persistente no topo do dashboard.
  *
- * Diferente do wizard (que é 1 vez e força uma decisão), o checklist:
- *  - É persistente: fica visível até completar as 4 tarefas
- *  - Pode ser dispensado (fechado) — vira "X" pequeno pra reabrir
- *  - Marca automaticamente via triggers no banco (a função RPC
- *    `mark_onboarding_checklist` é chamada quando o trainer
- *    cria convite/treino/dieta/payment_link)
- *  - Tem celebração (confetti leve) quando completa 4/4
+ * Migrado de motion/react → CSS animations (motion v13.4.0 quebra com
+ * Next 16 + React 19, causava ref 3162866030 no /app).
  *
- * Tom próprio:
- *  - "Bora começar" em vez de "Vamos começar"
- *  - Micro-copy prática, não motivacional
- *  - Celebração com Sparkles + texto curto, sem fogos exagerados
+ *  - Persistente: visível até completar as 4 tarefas
+ *  - Pode ser dispensado (vira "X" pequeno)
+ *  - Marcado via triggers no banco
  */
 
 export interface ChecklistState {
@@ -54,20 +46,12 @@ export function OnboardingChecklist({
   const allDone = completed === total;
   const pct = (completed / total) * 100;
 
-  // Refetch quando a página ganha foco (cobre o caso de o usuário
-  // fazer a ação e voltar — os triggers do banco já marcaram).
-  // Aqui só exibimos — não precisamos revalidar manualmente porque o
-  // dashboard é server-rendered e o pai passa o `initial` atualizado.
-
   if (allDone && dismissed) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+    <div
       className={cn(
-        "rounded-2xl border overflow-hidden",
+        "rounded-2xl border overflow-hidden animate-fade-in-down",
         allDone
           ? "border-emerald-500/30 bg-emerald-500/[0.04]"
           : "border-primary/30 bg-primary/[0.04]"
@@ -83,11 +67,7 @@ export function OnboardingChecklist({
               : "bg-primary/15 text-primary"
           )}
         >
-          {allDone ? (
-            <Sparkles className="size-4" />
-          ) : (
-            <Sparkles className="size-4" />
-          )}
+          <Sparkles className="size-4" />
         </span>
 
         <div className="flex-1 min-w-0">
@@ -141,62 +121,52 @@ export function OnboardingChecklist({
         )}
       </div>
 
-      {/* Barra de progresso */}
+      {/* Barra de progresso (CSS transition) */}
       <div className="h-1 w-full bg-white/5">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        <div
           className={cn(
-            "h-full",
+            "h-full transition-all duration-800 ease-out",
             allDone ? "bg-emerald-500" : "bg-primary"
           )}
+          style={{ width: `${pct}%`, transitionDuration: "800ms" }}
         />
       </div>
 
       {/* Lista de tarefas — colapsável */}
-      <AnimatePresence initial={false}>
-        {expanded && !allDone && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
-          >
-            <ul className="divide-y divide-white/5">
-              <Task
-                icon={UserPlus}
-                title="Convide seu primeiro aluno"
-                description="Manda o link de convite e ele já entra com tudo configurado."
-                href="/app/students/new"
-                done={state.invited_student}
-              />
-              <Task
-                icon={Dumbbell}
-                title="Monte um treino"
-                description="Cria séries, exercícios e cargas. O aluno recebe pelo app."
-                href="/app/workouts/new"
-                done={state.sent_workout}
-              />
-              <Task
-                icon={Salad}
-                title="Monte uma dieta"
-                description="Refeições, horários e trocas. Tudo no painel do aluno."
-                href="/app/diets"
-                done={state.sent_diet}
-              />
-              <Task
-                icon={CreditCard}
-                title="Configure a cobrança"
-                description="Cria o link de pagamento recorrente (Pix ou cartão)."
-                href="/app/payment-links"
-                done={state.configured_pay}
-              />
-            </ul>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {expanded && !allDone && (
+        <div className="overflow-hidden animate-fade-in">
+          <ul className="divide-y divide-white/5">
+            <Task
+              icon={UserPlus}
+              title="Convide seu primeiro aluno"
+              description="Manda o link de convite e ele já entra com tudo configurado."
+              href="/app/students/new"
+              done={state.invited_student}
+            />
+            <Task
+              icon={Dumbbell}
+              title="Monte um treino"
+              description="Cria séries, exercícios e cargas. O aluno recebe pelo app."
+              href="/app/workouts/new"
+              done={state.sent_workout}
+            />
+            <Task
+              icon={Salad}
+              title="Monte uma dieta"
+              description="Refeições, horários e trocas. Tudo no painel do aluno."
+              href="/app/diets"
+              done={state.sent_diet}
+            />
+            <Task
+              icon={CreditCard}
+              title="Configure a cobrança"
+              description="Cria o link de pagamento recorrente (Pix ou cartão)."
+              href="/app/payment-links"
+              done={state.configured_pay}
+            />
+          </ul>
+        </div>
+      )}
 
       {/* Footer quando completo */}
       {allDone && (
@@ -204,7 +174,7 @@ export function OnboardingChecklist({
           Daqui pra frente é escalar — a plataforma cuida do resto.
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }
 
@@ -234,7 +204,6 @@ function Task({
             : "hover:bg-white/[0.03]"
         )}
       >
-        {/* Checkbox visual */}
         <span
           className={cn(
             "grid size-9 shrink-0 place-items-center rounded-full border-2 transition-all",
