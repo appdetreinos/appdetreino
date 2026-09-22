@@ -68,13 +68,14 @@ async function TrainerDashboardInner() {
 
   // TESTE: Apenas a contagem, SEM a lista de alunos
   const totalAlunosCount = await safe("students.count", 0, async () => {
-    const { count, error } = await supabase
+    const { data, error } = await supabase
       .from("student_profiles")
-      .select("id", { count: "exact", head: true })
+      .select("user_id")
       .eq("trainer_id", userId);
     if (error) throw error;
-    return count ?? 0;
+    return data?.length ?? 0;
   });
+
 
   const temAluno = totalAlunosCount > 0;
 
