@@ -27,11 +27,13 @@ function RegisterFormInner() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [awaitingEmailConfirm, setAwaitingEmailConfirm] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setWarning(null);
     setLoading(true);
 
     const form = new FormData(e.currentTarget);
@@ -45,9 +47,39 @@ function RegisterFormInner() {
       return;
     }
 
-    // role — "trainer" (padrão, vindo da LP) ou "student" (via ?invite=)
     const role: "trainer" | "student" = roleParam === "student" ? "student" : "trainer";
 
+    // Fluxo aluno com convite: usa API server-side (bypass email_confirm, faz login auto)
+    if (role === "student" && inviteParam) {
+      const res = await fetch("/api/auth/student-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: fullName,
+          email,
+          password,
+          invite_code: inviteParam,
+        }),
+      });
+      const json = (await res.json().catch(() => null)) as
+        | { ok: boolean; error?: string; warning?: string; role?: string }
+        | null;
+
+      if (!res.ok || !json?.ok) {
+        setError(json?.error ?? "Não deu pra criar a conta. Tenta de novo.");
+        setLoading(false);
+        return;
+      }
+
+      if (json.warning) setWarning(json.warning);
+
+      // Aluno entra direto no painel dele
+      router.push("/aluno");
+      router.refresh();
+      return;
+    }
+
+    // Fluxo trainer (LP) — signUp normal (pode pedir email confirm)
     const supabase = createClient();
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
@@ -69,7 +101,7 @@ function RegisterFormInner() {
       } else if (msg.includes("rate limit")) {
         setError("Muitas tentativas. Espera um minutinho.");
       } else {
-        setError("Não deu pra criar a conta. Tenta de novo.");
+        setError(`Erro: ${signUpError.message}`);
       }
       setLoading(false);
       return;
@@ -78,22 +110,6 @@ function RegisterFormInner() {
     if (data.user && !data.session) {
       setAwaitingEmailConfirm(true);
       setLoading(false);
-      return;
-    }
-
-    // Se for aluno com convite aceito, vincula ao trainer via RPC
-    if (role === "student" && inviteParam) {
-      const { error: rpcError } = await supabase.rpc("accept_invite", {
-        invite_code: inviteParam,
-      });
-      if (rpcError) {
-        // Não bloqueia — usuário entra, mas sem vínculo. Mostra erro leve.
-        console.error("accept_invite error:", rpcError);
-      }
-      router.push(
-        `/boas-vindas?name=${encodeURIComponent(fullName)}&email=${encodeURIComponent(email)}&role=student`
-      );
-      router.refresh();
       return;
     }
 
@@ -148,13 +164,13 @@ function RegisterFormInner() {
         />
       </div>
       <div>
-        <Label htmlFor="email">E-mail profissional</Label>
+        <Label htmlFor="email">{isStudentInvite ? "Seu e-mail" : "E-mail profissional"}</Label>
         <Input
           id="email"
           name="email"
           type="email"
           autoComplete="email"
-          placeholder="voce@seudominio.com"
+          placeholder={isStudentInvite ? "voce@email.com" : "voce@seudominio.com"}
           required
           className="mt-1.5"
         />
@@ -176,6 +192,12 @@ function RegisterFormInner() {
       {error && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
+        </div>
+      )}
+
+      {warning && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-500">
+          {warning}
         </div>
       )}
 
