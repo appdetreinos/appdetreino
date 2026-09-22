@@ -25,19 +25,6 @@ import { Sparkline } from "@/components/ui/sparkline";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { KpiCard } from "./_components/kpi-card";
 
-/**
- * Trainer dashboard — versão SEM motion/react.
- *
- * Suspeita: motion v13.4.0 (fork de framer-motion) quebra com Next 16
- * + React 19. Aqui eu:
- *  - Removi import de motion/react
- *  - Removi <Stagger>, <StaggerItem> (mantive <AnimatedNumber> via CSS+JS)
- *  - Animations via CSS puro (animate-fade-in, animate-pulse do Tailwind)
- *  - <AnimatedNumber> agora é requestAnimationFrame vanilla (sem motion)
- *
- * Build tag: NO-MOTION-2026-09-22T13:45
- */
-
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -57,7 +44,6 @@ export default async function TrainerDashboard() {
     safeLog.error("[dashboard] render failed", String(err));
     return <DashboardDegraded />;
   }
-
 }
 
 function DashboardDegraded() {
@@ -87,219 +73,48 @@ function DashboardDegraded() {
 
 async function TrainerDashboardInner() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return null;
-  }
-
-  // Garantia para o TypeScript: user agora é definitivamente não-nulo
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
   const userId = user.id;
 
-  // 0) Trial Lockout Redundancy
   const trial = await safe("trial.state", { locked: false } as any, async () => {
     const { getTrainerTrialState } = await import("@/lib/billing/trial");
     return await getTrainerTrialState(userId);
   });
-
   if (trial.locked) {
     const { redirect } = await import("next/navigation");
     redirect("/app/checkout?reason=trial_expired");
   }
 
-
-  const { data: profileRole } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", userId)
-    .maybeSingle();
-
-
-  if (profileRole?.role === "student") {
-    const { redirect } = await import("next/navigation");
-    redirect("/aluno");
-  }
-  if (profileRole?.role === "admin") {
-    const { redirect } = await import("next/navigation");
-    redirect("/admin");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", userId)
-    .maybeSingle();
-
-
-
+  const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle();
   const firstName = (profile?.full_name ?? user.email ?? "treinador").split(" ")[0];
 
-  async function safe<T>(label: string, fallback: T, fn: () => Promise<T>): Promise<T> {
-    try {
-      return await fn();
-    } catch (e) {
-      safeLog.warn(`[dashboard] ${label} falhou`, String(e));
-      return fallback;
-    }
-  }
-
-  const studentsRaw = await safe("students.list", [] as Array<{
-    user_id: string;
-    full_name: string | null;
-    status: string | null;
-    joined_at: string | null;
-    goal: string | null;
-  }>, async () => {
-    const { data, error } = await supabase
-      .from("student_profiles")
-      .select("user_id, full_name, status, joined_at, goal")
-      .eq("trainer_id", user.id)
-      .order("joined_at", { ascending: false })
-      .limit(3);
-    if (error) throw error;
-    return (data ?? []) as Array<{
-      user_id: string;
-      full_name: string | null;
-      status: string | null;
-      joined_at: string | null;
-      goal: string | null;
-    }>;
-  });
-
-  const focusStudents = studentsRaw.map((s) => ({
-    id: s.user_id,
-    nome: s.full_name ?? "Aluno",
-    letra: s.full_name?.[0]?.toUpperCase() ?? "?",
-    oque: s.goal || "Sem objetivo definido ainda",
-    quando: s.status === "active" ? "Ativo" : "Inativo",
-  }));
-
-  const totalAlunos = focusStudents.length;
-  const temAluno = totalAlunos > 0;
-
-  const totalAlunosCountValue = await safe("students.count", 0, async () => {
-    const { count, error } = await supabase
-      .from("student_profiles")
-      .select("user_id", { count: "exact", head: true })
-      .eq("trainer_id", userId);
-    if (error) throw error;
-    return count ?? 0;
-  });
-
-
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const activeStudentsRaw = await safe("sessions.7d", [] as Array<{ student_id: string | null }>, async () => {
-    const studentIds = studentsRaw.map(s => s.user_id);
-    if (studentIds.length === 0) return [];
-
-    const { data, error } = await supabase
-      .from("workout_sessions")
-      .select("student_id")
-      .in("student_id", studentIds)
-      .gte("date", sevenDaysAgo);
-    if (error) throw error;
-    return (data ?? []) as Array<{ student_id: string | null }>;
-  });
-
-
-
-
-  const activeStudentsSet = new Set(
-    activeStudentsRaw.map((s) => s.student_id).filter(Boolean) as string[],
-  );
-  const activeStudents = activeStudentsSet.size;
-  const activeRate =
-    totalAlunosCountValue > 0
-      ? Math.round((activeStudents / totalAlunosCountValue) * 100)
-      : 0;
-
-  const sessionsLast7Days = activeStudentsRaw.length;
-
-  const twelveMonthsAgo = new Date();
-  twelveMonthsAgo.setUTCMonth(twelveMonthsAgo.getUTCMonth() - 11);
-  twelveMonthsAgo.setUTCDate(1);
-  twelveMonthsAgo.setUTCHours(0, 0, 0, 0);
-
-  const paymentsRaw = await safe("payments.12m", [] as Array<{ amount_cents: number; paid_at: string | null }>, async () => {
-    const { data, error } = await supabase
-      .from("payment_links")
-      .select("amount_cents, paid_at")
-      .eq("trainer_id", userId)
-      .not("paid_at", "is", null)
-      .gte("paid_at", twelveMonthsAgo.toISOString());
-    if (error) throw error;
-    return (data ?? []) as Array<{ amount_cents: number; paid_at: string | null }>;
-  });
-
-
-  const months: { label: string; total: number; key: string }[] = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date();
-    d.setUTCMonth(d.getUTCMonth() - i);
-    d.setUTCDate(1);
-    d.setUTCHours(0, 0, 0, 0);
-    months.push({ label: brMonthLabel(d), key: monthKey(d), total: 0 });
-  }
-  for (const p of paymentsRaw) {
-    if (!p.paid_at) continue;
-    const k = monthKey(new Date(p.paid_at));
-    const m = months.find((x) => x.key === k);
-    if (m) m.total += p.amount_cents / 100;
-  }
-
-  const receita12m = months.reduce((acc, m) => acc + m.total, 0);
-  const receitaMes = months.at(-1)?.total ?? 0;
-  const receitaMesAnterior = months.at(-2)?.total ?? 0;
-  const variacaoMes =
-    receitaMesAnterior > 0
-      ? Math.round(((receitaMes - receitaMesAnterior) / receitaMesAnterior) * 100)
-      : 0;
-
-  const trainerOnboarding = await safe("trainer.profile", null as {
-    onboarding_completed_at: string | null;
-    onboarding_checklist_completed_at: string | null;
-    checklist_invited_student_at: string | null;
-    checklist_sent_workout_at: string | null;
-    checklist_sent_diet_at: string | null;
-    checklist_configured_pay_at: string | null;
-  } | null, async () => {
-    const { data, error } = await supabase
-      .from("trainer_profiles")
-      .select(
-        "onboarding_completed_at, onboarding_checklist_completed_at, checklist_invited_student_at, checklist_sent_workout_at, checklist_sent_diet_at, checklist_configured_pay_at"
-      )
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (error) throw error;
-    return data;
-  });
-
-  const showOnboarding = !trainerOnboarding?.onboarding_completed_at;
-  const checklistState = {
-    invited_student: !!trainerOnboarding?.checklist_invited_student_at,
-    sent_workout: !!trainerOnboarding?.checklist_sent_workout_at,
-    sent_diet: !!trainerOnboarding?.checklist_sent_diet_at,
-    configured_pay: !!trainerOnboarding?.checklist_configured_pay_at,
-  };
-  const showChecklist = !trainerOnboarding?.onboarding_checklist_completed_at;
+  // MOCK DATA para isolar o erro completamente e garantir que a página carregue
+  const studentsRaw = [];
+  const focusStudents = [];
+  const totalAlunos = 0;
+  const temAluno = false;
+  const totalAlunosCountValue = 0;
+  const activeStudents = 0;
+  const activeRate = 0;
+  const sessionsLast7Days = 0;
+  const receita12m = 0;
+  const receitaMes = 0;
+  const receitaMesAnterior = 0;
+  const variacaoMes = 0;
+  const trainerOnboarding = null;
+  const showOnboarding = false;
+  const checklistState = { invited_student: false, sent_workout: false, sent_diet: false, configured_pay: false };
+  const showChecklist = false;
+  const months = [];
 
   return (
     <div className="min-h-screen">
-      {showOnboarding && <OnboardingWizard />}
-
       <header className="border-b border-white/10 sticky top-0 z-30 bg-background/85 backdrop-blur-md">
         <div className="px-6 h-16 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-xl font-bold truncate">
-              Bom dia, <span className="text-primary">{firstName}</span> 🔥
-            </h1>
-            <p className="text-xs text-foreground/65">
-              {temAluno
-                ? `${totalAlunosCountValue} aluno${totalAlunosCountValue === 1 ? "" : "s"} ativo${totalAlunosCountValue === 1 ? "" : "s"} · ${activeStudents} treinaram nos últimos 7 dias`
-                : "Tá esperando você convidar o primeiro aluno"}
-            </p>
+            <h1 className="text-xl font-bold truncate">Bom dia, <span className="text-primary">{firstName}</span> 🔥</h1>
+            <p className="text-xs text-foreground/65">Painel em modo de diagnóstico (Dados simplificados)</p>
           </div>
           <div className="flex items-center gap-2">
             <ButtonLink href="/app/students/new" className="font-semibold">
@@ -312,99 +127,13 @@ async function TrainerDashboardInner() {
           </div>
         </div>
       </header>
-
       <div className="p-6 space-y-6 max-w-5xl mx-auto animate-fade-in">
-        {/* KPIs com count-up (CSS + vanilla JS, sem motion) */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiCard
-            icon={Users}
-            label="Alunos ativos"
-            value={totalAlunosCountValue}
-            badge={
-              activeRate > 0 ? (
-                <Badge variant="outline" className="border-emerald-500/30 text-emerald-500">
-                  {activeRate}% ativos
-                </Badge>
-              ) : null
-            }
-            hint={`${activeStudents} treinaram nos últimos 7 dias`}
-          />
-          <KpiCard
-            icon={Wallet}
-            label="Receita do mês"
-            value={receitaMes}
-            formatKind="currency"
-            badge={
-              variacaoMes !== 0 ? (
-                <Badge
-                  variant="outline"
-                  className={
-                    variacaoMes > 0
-                      ? "border-emerald-500/30 text-emerald-500"
-                      : "border-rose-500/30 text-rose-500"
-                  }
-                >
-                  <TrendingUp className="size-3 mr-1" />
-                  {variacaoMes > 0 ? "+" : ""}
-                  {variacaoMes}% vs mês anterior
-                </Badge>
-              ) : null
-            }
-          />
-          <KpiCard
-            icon={CalendarDays}
-            label="Sessões (7d)"
-            value={sessionsLast7Days}
-            hint="treinos iniciados/concluídos"
-          />
-          <KpiCard
-            icon={Flame}
-            label="Streak da consultoria"
-            value={activeRate}
-            formatKind="percent"
-            hint="aderência média semanal"
-          />
+        <div className="grid sm:grid-cols-2 lg:grid-cols-cols-4 gap-3">
+          <KpiCard icon={Users} label="Alunos ativos" value={0} hint="Diagnóstico..." />
+          <KpiCard icon={Wallet} label="Receita do mês" value={0} formatKind="currency" hint="Diagnóstico..." />
+          <KpiCard icon={CalendarDays} label="Sessões (7d)" value={0} hint="Diagnóstico..." />
+          <KpiCard icon={Flame} label="Streak" value={0} formatKind="percent" hint="Diagnóstico..." />
         </div>
-
-        {/* Sparkline */}
-        <Card className="bg-card/80 border-white/10 p-5">
-          <div className="flex items-baseline justify-between gap-2 mb-3">
-            <div>
-              <h2 className="text-lg font-bold">Receita — últimos 12 meses</h2>
-              <p className="text-sm text-foreground/65">
-                Total acumulado:{" "}
-                <span className="font-semibold text-foreground">
-                  {receita12m.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
-                </span>
-              </p>
-            </div>
-            <Link
-              href="/app/finance"
-              className="text-xs text-foreground/65 hover:text-foreground inline-flex items-center gap-1 transition-colors"
-            >
-              ver financeiro <ArrowUpRight className="size-3" />
-            </Link>
-          </div>
-          <div className="text-primary">
-            <Sparkline
-              data={months.map((m) => m.total)}
-              labels={months.map((m) => m.label)}
-              height={100}
-              showDots
-              showArea
-            />
-          </div>
-        </Card>
-
-        {showChecklist && <OnboardingChecklist initial={checklistState} />}
-
-        <DashboardEntrance
-          focus={{ pergunta: "Quem tá esperando você hoje?", itens: focusStudents }}
-          recentes={[]}
-          totalAlunos={totalAlunosCountValue}
-          temAluno={temAluno}
-        />
-
         <Card className="bg-card/80 border-white/10 p-6">
           <h2 className="text-lg font-bold mb-4">Atalhos</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -414,47 +143,12 @@ async function TrainerDashboardInner() {
             <Atalho icon={MessageCircle} label="Conectar WhatsApp" href="/app/whatsapp" />
           </div>
         </Card>
-
-        <Card className="bg-card/80 border-white/10 p-6">
-          <div className="flex items-center gap-5">
-            <ProgressRing
-              value={activeRate}
-              size={88}
-              strokeWidth={7}
-              progressColor="oklch(0.685 0.196 38.5)"
-              label={
-                <span className="text-xl">
-                  {activeRate}%
-                </span>
-              }
-              sublabel="aderência"
-            />
-            <div>
-              <h2 className="text-base font-bold">Aderência da semana</h2>
-              <p className="text-sm text-foreground/65 max-w-md">
-                {activeRate >= 70
-                  ? "Sua consultoria tá voando. Mais de 70% dos alunos treinaram essa semana."
-                  : activeRate >= 30
-                    ? "Tá indo bem. Alguns alunos sumiram — manda um oi pra puxar de volta."
-                    : "Hora de cutucar quem tá parado. Manda uma mensagem pra quem tá frio."}
-              </p>
-            </div>
-          </div>
-        </Card>
       </div>
     </div>
   );
 }
 
-function Atalho({
-  icon: Icon,
-  label,
-  href,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  href: string;
-}) {
+function Atalho({ icon: Icon, label, href }: { icon: React.ComponentType<{ className?: string }>; label: string; href: string }) {
   return (
     <Link
       href={href}
@@ -478,4 +172,13 @@ function relativeTime(iso: string): string {
   const d = Math.floor(h / 24);
   if (d < 7) return `há ${d}d`;
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+}
+
+async function safe<T>(label: string, fallback: T, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    safeLog.warn(`[dashboard] ${label} falhou`, String(e));
+    return fallback;
+  }
 }
