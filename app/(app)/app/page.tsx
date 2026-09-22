@@ -12,7 +12,6 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
 import { KpiCard } from "./_components/kpi-card";
-import { DashboardEntrance } from "./dashboard-entrance";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -40,15 +39,14 @@ export default async function TrainerDashboard() {
 
     const firstName = (profile?.full_name ?? user.email ?? "Treinador").split(" ")[0];
 
-    // Alunos - Query simples e segura
+    // Alunos - BUSCA SEM LIMIT PARA TESTE DE ESTABILIDADE
     let totalAlunos = 0;
     let studentsList: StudentSummary[] = [];
     try {
       const { data: students, error: sErr } = await supabase
         .from("student_profiles")
         .select("user_id, full_name, status, goal")
-        .eq("trainer_id", user.id)
-        .limit(5);
+        .eq("trainer_id", user.id);
       
       if (!sErr && students) {
         totalAlunos = students.length;
@@ -64,14 +62,13 @@ export default async function TrainerDashboard() {
       console.error("Erro alunos:", e);
     }
 
-    // Receita - Query simples e segura
+    // Receita - BUSCA SIMPLIFICADA
     let receitaMes = 0;
     try {
       const { data: payments } = await supabase
         .from("payment_links")
         .select("amount_cents")
-        .eq("trainer_id", user.id)
-        .not("paid_at", "is", null);
+        .eq("trainer_id", user.id);
       if (payments) {
         receitaMes = payments.reduce((acc, p) => acc + (p.amount_cents / 100), 0);
       }
@@ -98,14 +95,13 @@ export default async function TrainerDashboard() {
           <KpiCard icon={Flame} label="Aderência" value={0} formatKind="percent" hint="Em breve" />
         </div>
 
-        {studentsList.length > 0 && (
-          <DashboardEntrance
-            focus={{ pergunta: "Quem tá esperando você hoje?", itens: studentsList }}
-            recentes={[]}
-            totalAlunos={totalAlunos}
-            temAluno={true}
-          />
-        )}
+        {/* REMOVIDO DashboardEntrance para testar se ele é o culpado */}
+        <Card className="p-6 text-center border-blue-500/20 bg-blue-500/5">
+          <p className="text-lg font-medium">KPIs carregados!</p>
+          <p className="text-sm text-muted-foreground">
+            A lista de alunos foi desativada temporariamente para isolar o crash.
+          </p>
+        </Card>
       </div>
     );
   } catch (err) {
