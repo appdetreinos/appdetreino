@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import {
   Plus,
@@ -8,9 +9,16 @@ import {
   Receipt,
   MessageCircle,
   UserPlus,
+  Users,
+  Wallet,
+  CalendarDays,
+  Flame,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { safeLog } from "@/lib/log/safe";
 import { LogoutButton } from "@/components/logout-button";
+import { DashboardEntrance } from "./dashboard-entrance";
+import { KpiCard } from "./_components/kpi-card";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -19,17 +27,20 @@ export default async function TrainerDashboard() {
   try {
     return await TrainerDashboardInner();
   } catch (err) {
-    console.error("[CRITICAL DASHBOARD ERROR]:", err);
+    console.error("[DASHBOARD_CRASH]:", err);
+    safeLog.error("[dashboard] fatal crash", String(err));
     return <DashboardDegraded />;
   }
 }
 
 function DashboardDegraded() {
   return (
-    <div className="min-h-screen p-6">
-      <Card className="border-red-500 p-6">
-        <h2 className="text-lg font-bold text-red-500">Erro Crítico</h2>
-        <p>Não conseguimos carregar o painel. Verifique os logs da Vercel.</p>
+    <div className="min-h-screen p-6 flex items-center justify-center">
+      <Card className="max-w-md border-red-500/50 bg-red-500/5 p-6 text-center">
+        <h2 className="text-lg font-bold text-red-500 mb-2">Ops! Algo deu errado</h2>
+        <p className="text-sm text-muted-foreground">
+          Estamos trabalhando para estabilizar seu painel. Tente recarregar a página.
+        </p>
       </Card>
     </div>
   );
@@ -41,13 +52,62 @@ async function TrainerDashboardInner() {
   if (!user) return null;
   const userId = user.id;
 
+  // 1. Perfil do Trainer (Essencial)
   const { data: profile } = await supabase
     .from("profiles")
     .select("full_name")
     .eq("id", userId)
     .maybeSingle();
 
-  const firstName = (profile?.full_name ?? user.email ?? "treinador").split(" ")[0];
+  const firstName = (profile?.full_name ?? user.email ?? "Treinador").split(" ")[0];
+
+  // 2. Dados de Alunos (Com proteção individual)
+  let totalAlunosCount = 0;
+  let focusStudents = [];
+
+  try {
+    const { count, error: countErr } = await supabase
+      .from("student_profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("trainer_id", userId);
+    if (!countErr) totalAlunosCount = count ?? 0;
+
+    const { data: students, error: studentsErr } = await supabase
+      .from("student_profiles")
+      .select("user_id, full_name, status, goal")
+      .eq("trainer_id", userId)
+      .order("joined_at", { ascending: false })
+      .limit(3);
+    
+    if (!studentsErr && students) {
+      focusStudents = students.map(s => ({
+        id: s.user_id,
+        nome: s.full_name ?? "Aluno",
+        letra: s.full_name?.[0]?.toUpperCase() ?? "?",
+        oque: s.goal || "Sem objetivo definido",
+        quando: s.status === "active" ? "Ativo" : "Inativo",
+      }));
+    }
+  } catch (e) {
+    safeLog.warn("[dashboard] students_data_fail", String(e));
+  }
+
+  // 3. Financeiro (Proteção total - se falhar, mostra 0)
+  let receitaMes = 0;
+  try {
+    const { data: payments } = await supabase
+      .from("payment_links")
+      .select("amount_cents")
+      .eq("trainer_id", userId)
+      .not("paid_at", "is", null)
+      .gte("paid_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
+    
+    if (payments) {
+      receitaMes = payments.reduce((acc, p) => acc + (p.amount_cents / 100), 0);
+    }
+  } catch (e) {
+    safeLog.warn("[dashboard] finance_fail", String(e));
+  }
 
   return (
     <div className="min-h-screen">
@@ -55,7 +115,11 @@ async function TrainerDashboardInner() {
         <div className="px-6 h-16 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-xl font-bold truncate">Bom dia, <span className="text-primary">{firstName}</span> 🔥</h1>
-            <p className="text-xs text-foreground/65">Estabilidade Máxima Ativada</p>
+            <p className="text-xs text-foreground/65">
+              {totalAlunosCount > 0 
+                ? `${totalAlunosCount} aluno${totalAlunosCount === 1 ? "" : "s"} ativo${totalAlunosCount === 1 ? "" : "s"}`
+                : "Convide seu primeiro aluno para começar!"}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <ButtonLink href="/app/students/new" className="font-semibold">
@@ -69,8 +133,38 @@ async function TrainerDashboardInner() {
         </div>
       </header>
 
-      <div className="p-6 space-y-6 max-w-5xl mx-auto">
-        <Card className="bg-card border-white/10 p-6">
+      <div className="p-6 space-y-6 max-w-5xl mx-auto animate-fade-in">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <KpiCard 
+            icon={Users} 
+            label="Alunos ativos" 
+            value={totalAlunosCount} 
+            badge={totalAlunosCount > 0 ? <Badge variant="outline" className="border-emerald-500/30 text-emerald-500">Sincronizado</Badge> : null} 
+            hint="Total de alunos vinculados" 
+          />
+          <KpiCard 
+            icon={Wallet} 
+            label="Receita do mês" 
+            value={receitaMes} 
+            formatKind="currency" 
+            hint="Soma de pagamentos confirmados" 
+          />
+          <KpiCard 
+            icon={CalendarDays} 
+            label="Sessões (7d)" 
+            value={0} 
+            hint="Em breve" 
+          />
+          <KpiCard 
+            icon={Flame} 
+            label="Aderência" 
+            value={0} 
+            formatKind="percent" 
+            hint="Em breve" 
+          />
+        </div>
+
+        <Card className="bg-card/80 border-white/10 p-6">
           <h2 className="text-lg font-bold mb-4">Atalhos Rápidos</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Atalho icon={UserPlus} label="Novo aluno" href="/app/students/new" />
@@ -79,13 +173,16 @@ async function TrainerDashboardInner() {
             <Atalho icon={MessageCircle} label="Conectar WhatsApp" href="/app/whatsapp" />
           </div>
         </Card>
-        
-        <div className="p-10 text-center border-2 border-dashed border-white/10 rounded-xl">
-          <p className="text-muted-foreground">
-            Sua página foi simplificada para resolver o erro de carregamento.<br/>
-            Agora vamos religar as funcionalidades uma a uma.
-          </p>
-        </div>
+
+        {/* Renderiza o Entrance apenas se houver alunos para evitar crash de lista vazia */}
+        {focusStudents.length > 0 && (
+          <DashboardEntrance
+            focus={{ pergunta: "Quem tá esperando você hoje?", itens: focusStudents }}
+            recentes={[]}
+            totalAlunos={totalAlunosCount}
+            temAluno={true}
+          />
+        )}
       </div>
     </div>
   );
