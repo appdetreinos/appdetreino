@@ -12,8 +12,8 @@ export default function LoginPage() {
       </header>
       <main className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
-          <h1 className="text-3xl font-extrabold tracking-tight">Entrar no Viva FIT APP</h1>
-          <p className="mt-2 text-muted-foreground">Acessa teu painel e bora treinar.</p>
+          <h1 className="text-3xl font-extrabold tracking-tight">TESTE DE ATUALIZAÇÃO 🚀</h1>
+          <p className="mt-2 text-muted-foreground">Se você está vendo isso, o deploy funcionou!</p>
           <LoginForm />
           <p className="mt-6 text-sm text-muted-foreground text-center">
             Ainda não tem conta?{" "}
