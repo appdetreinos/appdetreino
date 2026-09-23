@@ -101,7 +101,7 @@ export default async function FinancePage() {
   const { data: templatesRaw } = await supabase
     .from("payment_templates")
     .select("id, name, amount, cycle, billing_type")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .order("created_at", { ascending: true });
   const templates = (templatesRaw ?? []) as BillingTemplate[];
 

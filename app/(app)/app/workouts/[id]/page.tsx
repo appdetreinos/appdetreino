@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,7 +55,7 @@ export default async function WorkoutDetailPage({
       "id, title, goal, student_id, created_at, student_profiles(full_name), workout_days(id, title, day_of_week, workout_items(id, sets, reps, load, position, exercises(id, name, muscle_group, equipment, image_url, animation_url, media_type)))",
     )
     .eq("id", id)
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .maybeSingle();
 
   if (!workout) {

@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { MessageCircle, CheckCircle2, QrCode, Settings2, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { isEvolutionConfigured } from "@/lib/evolution/client";
 import { WhatsappConnector } from "./connector";
 
@@ -85,19 +86,19 @@ export default async function WhatsAppPage() {
     supabase
       .from("evolution_instances")
       .select("instance_name, state, phone, qr_code_base64")
-      .eq("trainer_id", user.id)
+      .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
       .maybeSingle(),
     supabase
       .from("evolution_messages")
       .select("id, to_phone, type, status, scheduled_for, created_at")
-      .eq("trainer_id", user.id)
+      .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(10),
     supabase
       .from("evolution_messages")
       .select("id, to_phone, from_phone, direction, type, status, sent_at, created_at")
-      .eq("trainer_id", user.id)
+      .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
       .neq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(20),

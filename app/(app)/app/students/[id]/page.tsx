@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -51,7 +52,7 @@ export default async function StudentDetailPage({
     .from("student_profiles")
     .select("trainer_id")
     .eq("user_id", id)
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .maybeSingle();
 
   if (!trainerCheck) {

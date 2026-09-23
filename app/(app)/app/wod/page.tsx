@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -44,14 +45,14 @@ export default async function WODPage() {
     supabase
       .from("wods")
       .select("id, title, description, scheduled_for")
-      .eq("trainer_id", user.id)
+      .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
       .gte("scheduled_for", todayDate)
       .order("scheduled_for", { ascending: true })
       .limit(5),
     supabase
       .from("wods")
       .select("id, title, scheduled_for")
-      .eq("trainer_id", user.id)
+      .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
       .lt("scheduled_for", todayDate)
       .order("scheduled_for", { ascending: false })
       .limit(7),

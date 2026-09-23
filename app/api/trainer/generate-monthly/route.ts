@@ -55,10 +55,13 @@ export async function POST(request: NextRequest) {
   const label = `${MES_PT[due.getMonth()]}/${due.getFullYear()}`;
   const description = `${tpl.name} — ${label}`;
 
+  const { data: scopeData } = await auth.supabase.rpc("trainer_scope_ids");
+  const scopeIds = ((scopeData as string[] | null) ?? [auth.user.id]) as string[];
+
   const { data: students } = await auth.supabase
     .from("student_profiles")
     .select("user_id")
-    .eq("trainer_id", auth.user.id)
+    .in("trainer_id", scopeIds)
     .eq("status", "active");
 
   if (!students || students.length === 0) {

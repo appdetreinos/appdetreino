@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { Card } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button-link";
 import { AppointmentTypeRow } from "./appointment-type-row";
@@ -14,7 +15,7 @@ export default async function AppointmentTypesPage() {
   const { data: types, error } = await supabase
     .from("appointment_types")
     .select("id, name, duration_minutes, type, price_cents, color, active")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .order("active", { ascending: false })
     .order("created_at", { ascending: true });
 

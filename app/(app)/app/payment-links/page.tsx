@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatBRL, formatCents } from "@/lib/types/billing";
@@ -17,7 +18,7 @@ export default async function PaymentLinksPage() {
   const { data: links } = await supabase
     .from("payment_links")
     .select("id, description, amount_cents, public_code, url, paid_at, expires_at, created_at")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .order("created_at", { ascending: false })
     .limit(50);
 

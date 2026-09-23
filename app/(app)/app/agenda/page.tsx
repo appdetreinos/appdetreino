@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { Card } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,7 @@ export default async function AgendaPage() {
   const { data: types } = await supabase
     .from("appointment_types")
     .select("id, name, duration_minutes, type, price_cents, color, active")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .order("active", { ascending: false })
     .order("created_at", { ascending: true })
     .limit(20);
@@ -32,7 +33,7 @@ export default async function AgendaPage() {
        appointment_types:appointment_type_id(name, type, color),
        student:student_id(full_name)`,
     )
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .gte("starts_at", nowIso)
     .order("starts_at", { ascending: true })
     .limit(20);
@@ -41,7 +42,7 @@ export default async function AgendaPage() {
   const { data: availability } = await supabase
     .from("trainer_availability")
     .select("id, weekday, start_time, end_time")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .order("weekday", { ascending: true })
     .order("start_time", { ascending: true });
 

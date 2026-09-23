@@ -48,10 +48,12 @@ export default function NewDietPage() {
         setLoadingStudents(false);
         return;
       }
+      const { data: scopeData } = await supabase.rpc("trainer_scope_ids");
+      const scopeIds = ((scopeData as string[] | null) ?? [user.id]) as string[];
       const { data } = await supabase
         .from("student_profiles")
         .select("user_id, full_name")
-        .eq("trainer_id", user.id)
+        .in("trainer_id", scopeIds)
         .order("full_name");
       setStudents(
         (data ?? []).map((s) => ({ id: s.user_id as string, name: (s.full_name as string) ?? "Aluno" })),

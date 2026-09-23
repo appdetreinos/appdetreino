@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -61,7 +62,7 @@ export default async function HabitosPage() {
     supabase
       .from("habits")
       .select("id, name, icon, target_count, unit, student_id")
-      .eq("trainer_id", user.id)
+      .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
       .eq("active", true)
       .order("name"),
     supabase

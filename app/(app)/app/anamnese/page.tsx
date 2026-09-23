@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ClipboardList, ArrowLeft, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { AnamnesisBuilder } from "./builder";
 import { TemplateActions } from "./actions";
 
@@ -20,7 +21,7 @@ export default async function AnamnesePage() {
   const { data: templates } = await supabase
     .from("anamnesis_templates")
     .select("id, title, questions, active, created_at")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .order("created_at", { ascending: false });
 
   const list = ((templates ?? []) as Array<{
@@ -35,7 +36,7 @@ export default async function AnamnesePage() {
   const { data: answers } = await supabase
     .from("anamnesis")
     .select("id, student_id, answers, completed_at, student:student_id(full_name)")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .order("completed_at", { ascending: false })
     .limit(30);
 

@@ -35,11 +35,13 @@ export default function NewChargePage() {
         setLoadingStudents(false);
         return;
       }
-      // FILTRA por trainer_id — sem isso, trainer vê alunos de outros treinadores (privacy leak)
+      // FILTRA por escopo (próprios + equipe) — sem isso, trainer vê alunos de outros (privacy leak)
+      const { data: scopeData } = await supabase.rpc("trainer_scope_ids");
+      const scopeIds = ((scopeData as string[] | null) ?? [user.id]) as string[];
       const { data } = await supabase
         .from("student_profiles")
         .select("user_id, full_name")
-        .eq("trainer_id", user.id)
+        .in("trainer_id", scopeIds)
         .eq("status", "active")
         .order("full_name");
       setStudents(

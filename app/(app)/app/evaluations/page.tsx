@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity, TrendingDown, TrendingUp, Minus } from "lucide-react";
@@ -17,7 +18,7 @@ export default async function EvaluationsPage() {
   const { data: students } = await supabase
     .from("student_profiles")
     .select("user_id, full_name, status")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .neq("status", "cancelled")
     .order("full_name", { ascending: true });
 

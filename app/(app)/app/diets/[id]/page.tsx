@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { Card } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button-link";
 import { ArrowLeft, Salad, User } from "lucide-react";
@@ -24,7 +25,7 @@ export default async function DietDetailPage({ params }: PageProps) {
        meals:meals(id, name, time, position, meal_items(id, grams, position, foods:food_id(name), substitutes:meal_item_substitutes(id, food_name, grams)))`,
     )
     .eq("id", id)
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .maybeSingle();
 
   if (!diet) notFound();

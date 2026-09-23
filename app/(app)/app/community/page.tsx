@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -22,7 +23,7 @@ export default async function CommunityPage() {
        likes:community_likes(count),
        comments:community_comments(count)`,
     )
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .order("pinned", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(30);
@@ -56,7 +57,7 @@ export default async function CommunityPage() {
   const { data: challenges } = await supabase
     .from("challenges")
     .select("id, title, description, ends_at, reward_xp")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .order("created_at", { ascending: false })
     .limit(5);
 
@@ -64,7 +65,7 @@ export default async function CommunityPage() {
   const { data: topStudents } = await supabase
     .from("student_profiles")
     .select("user_id, full_name, xp_total")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .order("xp_total", { ascending: false })
     .limit(5);
 

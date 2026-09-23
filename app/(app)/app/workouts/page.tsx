@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { safeLog } from "@/lib/log/safe";
 import { unstable_rethrow } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -65,7 +66,7 @@ async function WorkoutsPageInner() {
     .select(
       "id, title, goal, student_id, updated_at, workout_days(id, day_of_week), student_profiles(full_name)",
     )
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .order("updated_at", { ascending: false, nullsFirst: false })
     .limit(100);
 
@@ -81,7 +82,7 @@ async function WorkoutsPageInner() {
       .select(
         "id, title, goal, student_id, workout_days(id, day_of_week), student_profiles(full_name)",
       )
-      .eq("trainer_id", user.id)
+      .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
       .order("created_at", { ascending: false })
       .limit(100);
     workouts = fallback.data;

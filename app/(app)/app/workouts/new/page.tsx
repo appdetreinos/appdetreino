@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { resolveExerciseMediaUrl } from "@/lib/exercise-images";
 import { WorkoutForm } from "./workout-form";
 import type {
@@ -21,7 +22,7 @@ export default async function NewWorkoutPage() {
   const { data: students } = await supabase
     .from("student_profiles")
     .select("user_id, full_name")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .eq("status", "active")
     .order("full_name", { ascending: true });
 

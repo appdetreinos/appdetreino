@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -37,7 +38,7 @@ export default async function DietsPage() {
   const { data: studentsRaw } = await supabase
     .from("student_profiles")
     .select("user_id, full_name")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .eq("status", "active")
     .order("full_name");
   const students = (studentsRaw ?? []).map((s) => ({
@@ -49,7 +50,7 @@ export default async function DietsPage() {
   const { data: assignedRaw, error } = await supabase
     .from("diets")
     .select("id, title, kcal_target, p_target, student_id, student_profiles(full_name)")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .not("student_id", "is", null)
     .order("created_at", { ascending: false })
     .limit(100);

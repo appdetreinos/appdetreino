@@ -30,17 +30,19 @@ export default function NewAppointmentPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
+      const { data: scopeData } = await supabase.rpc("trainer_scope_ids");
+      const scopeIds = ((scopeData as string[] | null) ?? [user.id]) as string[];
       const [{ data: t }, { data: s }] = await Promise.all([
         supabase
           .from("appointment_types")
           .select("id, name")
-          .eq("trainer_id", user.id)
+          .in("trainer_id", scopeIds)
           .eq("active", true)
           .order("name"),
         supabase
           .from("student_profiles")
           .select("user_id, full_name")
-          .eq("trainer_id", user.id)
+          .in("trainer_id", scopeIds)
           .eq("status", "active")
           .order("full_name"),
       ]);
