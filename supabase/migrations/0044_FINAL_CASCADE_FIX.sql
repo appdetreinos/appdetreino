@@ -1,5 +1,5 @@
 -- Migration 0044_FINAL_CASCADE_FIX.sql
--- RESOLUÇÃO: Usa CASCADE para remover o trigger e a função problemáticos
+-- RESOLUÇÃO: Remove a função problemática e vincula os alunos corretamente
 
 -- 1. Removemos a função e todos os triggers dependentes de uma vez só
 DROP FUNCTION IF EXISTS public.handle_new_profile() CASCADE;
@@ -21,12 +21,12 @@ AND NOT EXISTS (
 INSERT INTO public.student_profiles (user_id, trainer_id, status, full_name)
 SELECT 
     si.accepted_by, 
-    '4f30f9c8-3f46-4e1e-88ce-0598941d6528', 
+    si.trainer_id, 
     'active', 
     si.full_name
 FROM public.student_invites si
 WHERE si.status = 'accepted' 
 AND si.accepted_by IS NOT NULL
 ON CONFLICT (user_id) DO UPDATE 
-SET trainer_id = '4f30f9c8-3f46-4e1e-88ce-0598941d6528', 
+SET trainer_id = EXCLUDED.trainer_id, 
     status = 'active';
