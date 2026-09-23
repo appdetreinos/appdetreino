@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { PostComposer } from "./post-composer";
+import { PushSender } from "./push-sender";
 import { Heart, MessageCircle, Plus, Trophy, Flame } from "lucide-react";
 import { Stagger, StaggerItem } from "@/components/ui/stagger";
 
@@ -35,6 +36,11 @@ export default async function CommunityPage() {
     likes: { count: number }[] | null;
     comments: { count: number }[] | null;
   };
+
+  // Push configurado?
+  const pushConfigured = Boolean(
+    process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY,
+  );
 
   const list = ((posts ?? []) as Post[]).map((p) => ({
     id: p.id,
@@ -133,6 +139,7 @@ export default async function CommunityPage() {
 
         {/* Sidebar */}
         <div className="space-y-4">
+          <PushSender configured={pushConfigured} />
           {/* Desafios */}
           <Card className="bg-card border-white/5 p-5">
             <h2 className="font-semibold mb-3 flex items-center gap-2">

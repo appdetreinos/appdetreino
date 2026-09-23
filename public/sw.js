@@ -1,45 +1,33 @@
-/* Service Worker stub — Viva FIT PWA
- *
- * Estratégia: network-first pra API, cache-first pra assets.
- * Em produção, versionar CACHE_NAME e limpar caches antigos.
- */
-
-const CACHE_NAME = "viva-fit-v1";
-const PRECACHE = ["/", "/logo.svg", "/manifest.json"];
-
-self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(PRECACHE)));
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", (event) => {
+/* Service worker — push notifications do Viva FIT APP. */
+self.addEventListener("push", (event) => {
+  let data = { title: "Viva FIT APP", body: "Você tem novidade no app.", url: "/aluno" };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch {
+    // mantém defaults
+  }
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))),
-    ),
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: { url: data.url },
+    }),
   );
-  self.clients.claim();
 });
 
-self.addEventListener("fetch", (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
-
-  // Bypass pra webhooks e API mutante
-  if (url.pathname.startsWith("/api/")) {
-    return; // default network
-  }
-
-  // Network-first pra navegação
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request).catch(() => caches.match(request).then((r) => r ?? caches.match("/"))),
-    );
-    return;
-  }
-
-  // Cache-first pra assets
-  event.respondWith(
-    caches.match(request).then((cached) => cached ?? fetch(request)),
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/aluno";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ("navigate" in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
   );
 });

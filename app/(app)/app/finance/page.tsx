@@ -16,6 +16,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { formatBRL } from "@/lib/types/billing";
 import { relativeTime } from "@/lib/utils/date";
 import { Sparkline } from "@/components/ui/sparkline";
@@ -60,6 +61,8 @@ export default async function FinancePage() {
 
   const temPix = Boolean(settings?.pix_key);
 
+  const scopeIds = await getTrainerScopeIds(supabase, user.id);
+
   // Cobranças do trainer (com join no aluno — phone fica em profiles, não student_profiles)
   const { data: paymentsRaw } = await supabase
     .from("payments")
@@ -67,7 +70,7 @@ export default async function FinancePage() {
       id, amount, status, due_date, paid_at, billing_type, description,
       student_profiles!inner(user_id, full_name, trainer_id, profiles:profiles!inner(phone))
     `)
-    .eq("student_profiles.trainer_id", user.id)
+    .in("student_profiles.trainer_id", scopeIds)
     .order("due_date", { ascending: false })
     .limit(20);
 
@@ -122,7 +125,7 @@ export default async function FinancePage() {
   const { data: recentPaymentsRaw } = await supabase
     .from("payments")
     .select("amount, paid_at, status, student_profiles!inner(trainer_id)")
-    .eq("student_profiles.trainer_id", user.id)
+    .in("student_profiles.trainer_id", scopeIds)
     .eq("status", "paid")
     .gte("paid_at", sixMonthsAgo.toISOString());
 

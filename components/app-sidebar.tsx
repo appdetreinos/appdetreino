@@ -17,6 +17,8 @@ import {
   CheckSquare,
   History,
   FileText,
+  Briefcase,
+  Store,
 } from "lucide-react";
 import {
   Sidebar,
@@ -55,6 +57,8 @@ const trainerMenu: MenuItem[] = [
   { title: "Financeiro", url: "/app/finance", icon: Wallet },
   { title: "WhatsApp", url: "/app/whatsapp", icon: MessageCircle, badge: "novo" },
   { title: "Comunidade", url: "/app/community", icon: Trophy },
+  { title: "Equipe", url: "/app/equipe", icon: Briefcase, badge: "top" },
+  { title: "Vitrine", url: "/app/marketplace", icon: Store },
 ];
 
 const adminMenu: MenuItem[] = [

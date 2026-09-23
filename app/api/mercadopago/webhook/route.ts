@@ -34,7 +34,14 @@ export async function POST(request: NextRequest) {
   }
   if (!body) return NextResponse.json({ ok: false, error: "empty_body" }, { status: 400 });
 
-  // 3) Só processa payment events
+  // 3) Aprovação de assinatura (preapproval) — libera o plano na hora
+  if (body.type === "subscription_preapproval" && body.data?.id != null) {
+    const supabasePre = await createServiceClient();
+    await handleSubscriptionAuthorized(supabasePre, String(body.data.id));
+    return NextResponse.json({ ok: true, subscription: true });
+  }
+
+  // 3.1) Só processa payment events daqui em diante
   if (body.type !== "payment" || body.data?.id == null) {
     return NextResponse.json({ ok: true, ignored: true });
   }
@@ -73,12 +80,27 @@ export async function POST(request: NextRequest) {
       paid_at: new Date().toISOString(),
     })
     .eq("external_id", externalId)
-    .select("trainer_id, id")
+    .select("trainer_id, id, description")
     .maybeSingle();
 
   if (error) {
     safeLog.error("[mp-webhook] update failed", error.message);
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  }
+
+  const desc = payment && "description" in payment ? String(payment.description ?? "") : "";
+
+  // 5.1) MARKETPLACE: clona a planilha comprada pro comprador
+  if (payment && desc.startsWith("Marketplace ") && "trainer_id" in payment && payment.trainer_id) {
+    try {
+      await fulfillMarketplace(
+        supabase,
+        payment.trainer_id as string,
+        desc.replace("Marketplace ", ""),
+      );
+    } catch (e) {
+      safeLog.error("[mp-webhook] marketplace fulfill failed", e instanceof Error ? e.message : "unknown");
+    }
   }
 
   // 5.1) DESTRAVAR O TRAINER: Marca como pago no perfil para remover lockout do trial
@@ -106,7 +128,158 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ ok: true, payment_id: payment?.id ?? null });
 }
 
+type ServiceClient = Awaited<ReturnType<typeof createServiceClient>>;
+
+/**
+ * Entrega da vitrine: "workout:<uuid>" ou "diet:<uuid>".
+ * Copia o template (só o que está à venda) para o comprador
+ * como template próprio, fora da vitrine.
+ */
+async function fulfillMarketplace(supabase: ServiceClient, buyerId: string, ref: string) {
+  const [kind, templateId] = ref.split(":");
+  if ((kind !== "workout" && kind !== "diet") || !templateId) return;
+
+  if (kind === "workout") {
+    const { data: tpl } = await supabase
+      .from("workout_templates")
+      .select("id, title, description, category, difficulty, estimated_minutes")
+      .eq("id", templateId)
+      .eq("is_for_sale", true)
+      .maybeSingle();
+    if (!tpl) return;
+    const t = tpl as Record<string, unknown>;
+    const { data: copy } = await supabase
+      .from("workout_templates")
+      .insert({
+        slug: `adquirido-${Date.now()}-${String(t.id).slice(0, 8)}`,
+        title: `${t.title} (adquirido)`,
+        description: t.description,
+        category: t.category,
+        difficulty: t.difficulty,
+        estimated_minutes: t.estimated_minutes,
+        is_global: false,
+        created_by: buyerId,
+        is_for_sale: false,
+      })
+      .select("id")
+      .single();
+    if (!copy) return;
+    const newId = (copy as { id: string }).id;
+    const { data: items } = await supabase
+      .from("workout_template_items")
+      .select("exercise_id, position, sets, reps, load, rest_seconds, rpe, notes")
+      .eq("template_id", templateId);
+    if (items && (items as unknown[]).length > 0) {
+      await supabase
+        .from("workout_template_items")
+        .insert(
+          (items as Array<Record<string, unknown>>).map((i) => ({ ...i, template_id: newId })),
+        );
+    }
+    return;
+  }
+
+  const { data: dtpl } = await supabase
+    .from("diet_templates")
+    .select("id, title, description, kcal_target, p_target, c_target, g_target, goal")
+    .eq("id", templateId)
+    .eq("is_for_sale", true)
+    .maybeSingle();
+  if (!dtpl) return;
+  const d = dtpl as Record<string, unknown>;
+  const { data: dcopy } = await supabase
+    .from("diet_templates")
+    .insert({
+      trainer_id: buyerId,
+      title: `${d.title} (adquirido)`,
+      description: d.description,
+      kcal_target: d.kcal_target,
+      p_target: d.p_target,
+      c_target: d.c_target,
+      g_target: d.g_target,
+      goal: d.goal,
+      is_global: false,
+      is_for_sale: false,
+    })
+    .select("id")
+    .single();
+  if (!dcopy) return;
+  const newDietId = (dcopy as { id: string }).id;
+  const { data: meals } = await supabase
+    .from("diet_template_meals")
+    .select("id, name, time, position")
+    .eq("template_id", templateId)
+    .order("position");
+  for (const m of (meals ?? []) as Array<Record<string, unknown>>) {
+    const { data: nm } = await supabase
+      .from("diet_template_meals")
+      .insert({ template_id: newDietId, name: m.name, time: m.time, position: m.position })
+      .select("id")
+      .single();
+    if (!nm) continue;
+    const { data: items } = await supabase
+      .from("diet_template_items")
+      .select("food_name, grams, position")
+      .eq("meal_id", m.id);
+    if (items && (items as unknown[]).length > 0) {
+      await supabase
+        .from("diet_template_items")
+        .insert(
+          (items as Array<Record<string, unknown>>).map((i) => ({
+            ...i,
+            meal_id: (nm as { id: string }).id,
+          })),
+        );
+    }
+  }
+}
+
 export async function GET() {
   // Healthcheck (Mercado Pago pinga via GET em alguns fluxos)
   return NextResponse.json({ ok: true, service: "mercadopago-webhook" });
+}
+
+/**
+ * Assinatura autorizada no cartão: busca o preapproval na API do MP,
+ * confere status e destrava o trainer (plano + trial off).
+ */
+async function handleSubscriptionAuthorized(supabase: ServiceClient, preapprovalId: string) {
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  if (!accessToken) return;
+  try {
+    const res = await fetch(`https://api.mercadopago.com/preapproval/${preapprovalId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return;
+    const data = (await res.json()) as {
+      status?: string;
+      external_reference?: string;
+      auto_recurring?: { transaction_amount?: number };
+    };
+    if (data.status !== "authorized") return;
+    const [userId, planId] = String(data.external_reference ?? "").split(":");
+    if (!userId || !["start", "pro", "top"].includes(planId)) return;
+
+    await supabase
+      .from("payment_links")
+      .update({ paid_at: new Date().toISOString() })
+      .eq("trainer_id", userId)
+      .like("description", "Plano %assinatura%")
+      .is("paid_at", null);
+
+    await supabase
+      .from("trainer_profiles")
+      .update({ plan_tier: planId, trial_ends_at: null })
+      .eq("user_id", userId);
+
+    await auditLog({
+      userId,
+      action: "webhook_mp",
+      resourceType: "subscription",
+      resourceId: preapprovalId,
+      metadata: { plan: planId },
+    });
+  } catch (e) {
+    safeLog.error("[mp-webhook] subscription check failed", e instanceof Error ? e.message : "unknown");
+  }
 }

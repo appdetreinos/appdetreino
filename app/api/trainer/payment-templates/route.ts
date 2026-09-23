@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { requireAuthenticated, parseJsonBody } from "@/lib/security/guards";
+import { createClient } from "@/lib/supabase/server";
 import { safeLog } from "@/lib/log/safe";
+
+type Sb = Awaited<ReturnType<typeof createClient>>;
 
 const createSchema = z
   .object({
@@ -11,13 +14,14 @@ const createSchema = z
   })
   .strict();
 
-async function requireTrainer(auth: { supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>; user: { id: string } }) {
-  const { data: me } = await auth.supabase
+async function requireTrainer(supabase: Sb, userId: string) {
+  const { data: me } = await supabase
     .from("profiles")
     .select("role")
-    .eq("id", auth.user.id)
+    .eq("id", userId)
     .maybeSingle();
-  return me?.role === "trainer" || me?.role === "admin";
+  const role = (me as { role?: string } | null)?.role;
+  return role === "trainer" || role === "admin";
 }
 
 /**
@@ -27,7 +31,7 @@ async function requireTrainer(auth: { supabase: Awaited<ReturnType<typeof import
 export async function GET(request: NextRequest) {
   const auth = await requireAuthenticated(request);
   if (!auth.ok) return auth.response;
-  if (!(await requireTrainer(auth as never))) {
+  if (!(await requireTrainer(auth.supabase, auth.user.id))) {
     return NextResponse.json({ ok: false, error: "Só profissional." }, { status: 403 });
   }
   const { data, error } = await auth.supabase
@@ -42,7 +46,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await requireAuthenticated(request);
   if (!auth.ok) return auth.response;
-  if (!(await requireTrainer(auth as never))) {
+  if (!(await requireTrainer(auth.supabase, auth.user.id))) {
     return NextResponse.json({ ok: false, error: "Só profissional." }, { status: 403 });
   }
   const body = await parseJsonBody(request, createSchema);

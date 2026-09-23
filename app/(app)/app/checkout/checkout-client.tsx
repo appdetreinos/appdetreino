@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { Lock, Loader2 } from "lucide-react";
+import { Lock, Loader2, RefreshCw } from "lucide-react";
 import { formatBRL } from "@/lib/types/billing";
 import { safeLog } from "@/lib/log/safe";
 
@@ -32,6 +32,7 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
   const [method, setMethod] = useState<PaymentMethod>("card");
   const [sdkLoaded, setSdkLoaded] = useState(false);
   const [brickRendered, setBrickRendered] = useState(false);
+  const [subLoading, setSubLoading] = useState(false);
 
   useEffect(() => {
     if (window.MercadoPago) {
@@ -184,6 +185,54 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
       )}
 
       <div id="payment-brick" className="mt-6" />
+
+      <div className="mt-4 rounded-lg border border-white/10 bg-background/40 p-4 text-center">
+        <p className="text-sm font-semibold flex items-center justify-center gap-1.5">
+          <RefreshCw className="size-4 text-primary" />
+          Prefere não pagar todo mês?
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Assinatura no cartão: cobra {formatBRL(amountCents / 100)}/mês no automático.
+        </p>
+        <Button
+          variant="outline"
+          className="mt-3 font-semibold"
+          disabled={subLoading || pending}
+          onClick={async () => {
+            setError(null);
+            setSubLoading(true);
+            try {
+              const getCookie = (name: string) => {
+                const value = "; " + document.cookie;
+                const parts = value.split("; " + name + "=");
+                if (parts.length === 2) return parts.pop()?.split(";").shift();
+                return null;
+              };
+              const res = await fetch("/api/mercadopago/subscription", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-csrf-token": getCookie("csrf") ?? "",
+                },
+                body: JSON.stringify({ plan_id: planId }),
+              });
+              const data = (await res.json()) as { ok: boolean; init_point?: string; error?: string };
+              if (!res.ok || !data.ok || !data.init_point) {
+                setError(data.error === "mercadopago_not_configured" ? "Pagamento indisponível no momento." : "Não deu pra criar a assinatura.");
+              } else {
+                window.location.href = data.init_point;
+              }
+            } catch {
+              setError("Falha de conexão.");
+            } finally {
+              setSubLoading(false);
+            }
+          }}
+        >
+          {subLoading ? <Loader2 className="size-4 animate-spin" /> : null}
+          Assinar {formatBRL(amountCents / 100)}/mês no cartão
+        </Button>
+      </div>
 
       <p className="mt-3 text-center text-xs text-muted-foreground">
         Pagamento processado com segurança via Mercado Pago Bricks.

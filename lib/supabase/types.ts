@@ -88,6 +88,33 @@ export interface StudentProfilesRow {
   created_at: ISO8601;
 }
 
+// ---------- Templates de treino (vitrine) ----------
+export interface WorkoutTemplatesRow {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  category: string;
+  difficulty: string;
+  estimated_minutes: number | null;
+  is_global: boolean;
+  created_by: string | null;
+  is_for_sale: boolean;
+  price_cents: number | null;
+  created_at: ISO8601;
+}
+export interface WorkoutTemplateItemsRow {
+  id: string;
+  template_id: string;
+  exercise_id: string;
+  position: number;
+  sets: number;
+  reps: string;
+  load: string | null;
+  rest_seconds: number | null;
+  rpe: number | null;
+  notes: string | null;
+}
 // ---------- Workouts ----------
 export interface ExercisesRow {
   id: string;
@@ -157,6 +184,8 @@ export interface DietTemplatesRow {
   g_target: number | null;
   goal: string | null;
   is_global: boolean;
+  is_for_sale: boolean;
+  price_cents: number | null;
   created_at: ISO8601;
 }
 export interface DietTemplateMealsRow {
@@ -585,6 +614,8 @@ interface PublicSchema {
     student_profiles: TableSchema<StudentProfilesRow, { user_id: string; trainer_id: string; full_name: string }>;
     exercises: TableSchema<ExercisesRow, { name: string; trainer_id?: string | null }>;
     workouts: TableSchema<WorkoutsRow, { trainer_id: string; title: string; student_id?: string | null; goal?: string | null }>;
+    workout_templates: TableSchema<WorkoutTemplatesRow, { slug: string; title: string; category: string }>;
+    workout_template_items: TableSchema<WorkoutTemplateItemsRow, { template_id: string; exercise_id: string; position: number; sets: number; reps: string }>;
     workout_days: TableSchema<WorkoutDaysRow, { workout_id: string; day_of_week: number; title?: string | null }>;
     workout_items: TableSchema<WorkoutItemsRow, { workout_day_id: string; exercise_id: string; position: number; sets: number; reps: string }>;
     workout_sessions: TableSchema<WorkoutSessionsRow, { workout_id: string; student_id: string; date: DateStr; status?: string }>;

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Stagger, StaggerItem } from "@/components/ui/stagger";
 import { TemplateUseButton } from "./template-use-button";
+import { AiSuggest } from "./ai-suggest";
 
 /**
  * Biblioteca de templates — mostra os 4 templates globais + opção
@@ -69,6 +70,7 @@ export default async function TemplatesPage() {
       </header>
 
       <main className="p-6 max-w-5xl mx-auto space-y-4">
+        <AiSuggest />
         {/* CTA primário */}
         <Card className="bg-card/80 border-white/10 p-6">
           <div className="flex items-start gap-4">

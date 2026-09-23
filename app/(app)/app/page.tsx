@@ -16,6 +16,7 @@ import {
   MessageCircle
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { LogoutButton } from "@/components/logout-button";
 import { KpiCard } from "./_components/kpi-card";
 import { DashboardEntrance } from "./dashboard-entrance";
@@ -61,12 +62,12 @@ export default async function TrainerDashboard() {
   }
 
   try {
-    const currentTrainerId = user.id;
+    const scopeIds = await getTrainerScopeIds(supabase, user.id);
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("full_name")
-      .eq("id", currentTrainerId)
+      .eq("id", user.id)
       .maybeSingle();
 
     const firstName = (profile?.full_name ?? user.email?.split("@")[0] ?? "Treinador");
@@ -77,7 +78,7 @@ export default async function TrainerDashboard() {
       const { data: students, error: sErr } = await supabase
         .from("student_profiles")
         .select("user_id, full_name, status, goal")
-        .eq("trainer_id", currentTrainerId)
+        .in("trainer_id", scopeIds)
         .order("created_at", { ascending: false });
       
       if (!sErr && students) {
@@ -97,7 +98,7 @@ export default async function TrainerDashboard() {
       const { data: payments } = await supabase
         .from("payment_links")
         .select("amount_cents")
-        .eq("trainer_id", currentTrainerId)
+        .in("trainer_id", scopeIds)
         .not("paid_at", "is", null);
       if (payments) {
         receitaMes = payments.reduce((acc, p) => acc + (p.amount_cents / 100), 0);

@@ -5,6 +5,7 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Plus, ArrowUpRight, UserPlus, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { DeleteInviteButton } from "./delete-invite-button";
 import { ClaimStudentForm } from "./claim-student-form";
 
@@ -22,12 +23,15 @@ export default async function StudentsPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // Escopo: próprios + consultorias onde sou staff
+  const scopeIds = await getTrainerScopeIds(supabase, user.id);
+
   // Convites pendentes (só pending aparecem aqui).
   // Aceitos somem daqui e aparecem em "Alunos ativos" via student_profiles.
   const { data: invitesRaw } = await supabase
     .from("student_invites")
     .select("id, code, full_name, phone, goal, status, created_at, accepted_at, accepted_by")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", scopeIds)
     .eq("status", "pending")
     .order("created_at", { ascending: false });
 
@@ -35,14 +39,14 @@ export default async function StudentsPage() {
   const { data: acceptedOrphans } = await supabase
     .from("student_invites")
     .select("id, accepted_by")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", scopeIds)
     .eq("status", "accepted");
 
   // Alunos já vinculados
   const { data: studentsRaw, error: studentsError } = await supabase
     .from("student_profiles")
     .select("user_id, full_name, status, goal, joined_at, phone")
-    .eq("trainer_id", user.id)
+    .in("trainer_id", scopeIds)
     .order("joined_at", { ascending: false });
 
   if (studentsError) {
@@ -79,10 +83,15 @@ export default async function StudentsPage() {
               {invites.filter((i) => i.status === "pending").length === 1 ? "" : "s"} pendente
             </p>
           </div>
-          <ButtonLink href="/app/students/new" className="font-semibold">
-            <Plus className="size-4" />
-            <span className="hidden sm:inline">Novo aluno</span>
-          </ButtonLink>
+          <div className="flex items-center gap-2">
+            <ButtonLink href="/app/students/import" variant="outline" size="sm">
+              <span className="hidden sm:inline">Importar</span>
+            </ButtonLink>
+            <ButtonLink href="/app/students/new" className="font-semibold">
+              <Plus className="size-4" />
+              <span className="hidden sm:inline">Novo aluno</span>
+            </ButtonLink>
+          </div>
         </div>
       </header>
 

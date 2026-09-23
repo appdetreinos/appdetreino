@@ -24,6 +24,7 @@ import { Sparkline } from "@/components/ui/sparkline";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { Stagger, StaggerItem, AnimatedNumber } from "@/components/ui/stagger";
 import { createClient } from "@/lib/supabase/server";
+import { PushOptIn } from "./push-opt-in";
 import { isToday } from "@/lib/utils/date";
 import { calcHabitStreak } from "@/lib/utils/streak";
 
@@ -214,6 +215,7 @@ export default async function StudentHome() {
   const mealCount = Array.isArray(todayDiet?.meals) ? todayDiet.meals.length : 0;
 
   const xp = student?.xp_total ?? 0;
+  const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null;
 
   // Recados do coach (últimos posts) + WOD de hoje
   const trainerId = (student as { trainer_id?: string } | null)?.trainer_id ?? null;
@@ -265,6 +267,14 @@ export default async function StudentHome() {
       </header>
 
       <Stagger className="px-5 md:px-8 mt-6 max-w-3xl mx-auto" delay={0.05}>
+        {/* Push opt-in */}
+        {vapidKey && (
+          <StaggerItem>
+            <div className="mb-3">
+              <PushOptIn vapidKey={vapidKey} />
+            </div>
+          </StaggerItem>
+        )}
         {/* Treino + ProgressRing de hábitos */}
         <StaggerItem>
           <div className="grid sm:grid-cols-[1fr_auto] gap-3">
