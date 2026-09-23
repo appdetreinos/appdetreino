@@ -108,10 +108,10 @@ export default async function FinancePage() {
 
   const recebido = payments
     .filter((p) => p.status === "paid")
-    .reduce((s, p) => s + p.valor, 0);
+    .reduce((s, p) => s + Number(p.valor), 0);
   const atrasado = payments
     .filter((p) => p.status === "overdue")
-    .reduce((s, p) => s + p.valor, 0);
+    .reduce((s, p) => s + Number(p.valor), 0);
 
   const pendentes = payments.filter(
     (p) => p.status === "pending" || p.status === "overdue",
@@ -220,7 +220,7 @@ export default async function FinancePage() {
               <Kpi
                 icon={Clock}
                 label="Aguardando"
-                value={payments.filter((p) => p.status === "pending").reduce((s, p) => s + p.valor, 0)}
+                value={payments.filter((p) => p.status === "pending").reduce((s, p) => s + Number(p.valor), 0)}
                 format={(v) => formatBRL(v)}
                 tone="warning"
               />

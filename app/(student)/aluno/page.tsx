@@ -138,7 +138,7 @@ export default async function StudentHome() {
     .reverse()
     .map((m) => ({
       mes: new Date(m.date).toLocaleDateString("pt-BR", { month: "short" }),
-      peso: m.weight_kg ?? 0,
+      peso: Number(m.weight_kg ?? 0),
     }))
     .filter((p) => p.peso > 0);
 
@@ -171,7 +171,7 @@ export default async function StudentHome() {
     logs: { count: number; logged_at: string }[] | null;
   }>).map((h) => {
     const byDate = new Map<string, number>();
-    for (const l of h.logs ?? []) byDate.set(l.logged_at, l.count);
+    for (const l of h.logs ?? []) byDate.set(l.logged_at, Number(l.count));
     return { ...h, byDate };
   });
 
@@ -186,7 +186,7 @@ export default async function StudentHome() {
   const todayBR = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
   let habitsDone = 0;
   for (const h of habitList) {
-    if ((h.byDate.get(todayBR) ?? 0) >= h.target_count) habitsDone++;
+    if (Number(h.byDate.get(todayBR) ?? 0) >= Number(h.target_count)) habitsDone++;
   }
   const habitsProgress = habitList.length === 0 ? 0 : (habitsDone / habitList.length) * 100;
 

@@ -73,7 +73,7 @@ export default async function StudentDetailPage({
 
   const pesoSerie = measurementsCresc
     .filter((m) => m.weight_kg != null)
-    .map((m) => m.weight_kg as number);
+    .map((m) => Number(m.weight_kg));
   
   const pesoLabels = measurementsCresc
     .filter((m) => m.weight_kg != null)
@@ -394,8 +394,8 @@ export default async function StudentDetailPage({
                            })}
                          </span>
                          <span className="font-mono">
-                           {m.weight_kg != null && `${m.weight_kg.toFixed(1)} kg`}
-                           {m.body_fat_pct != null && ` · ${m.body_fat_pct.toFixed(1)}%`}
+                           {m.weight_kg != null && `${Number(m.weight_kg).toFixed(1)} kg`}
+                           {m.body_fat_pct != null && ` · ${Number(m.body_fat_pct).toFixed(1)}%`}
                            {m.waist_cm != null && ` · ${m.waist_cm}cm`}
                          </span>
                        </div>

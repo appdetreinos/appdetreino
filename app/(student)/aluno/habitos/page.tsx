@@ -64,9 +64,9 @@ export default async function HabitosAlunoPage() {
   };
 
   const list = ((habits ?? []) as HabitRow[]).map((h) => {
-    // Mapa: data → count
+    // Mapa: data → count (NUMERIC volta como string — coage)
     const byDate = new Map<string, number>();
-    for (const l of h.logs ?? []) byDate.set(l.logged_at, l.count);
+    for (const l of h.logs ?? []) byDate.set(l.logged_at, Number(l.count));
 
     const todayCount = byDate.get(today) ?? 0;
 

@@ -116,7 +116,7 @@ export default async function EvaluationsPage() {
                             label="Peso"
                             value={
                               latest.weight_kg != null
-                                ? `${latest.weight_kg.toFixed(1)} kg`
+                                ? `${Number(latest.weight_kg).toFixed(1)} kg`
                                 : "—"
                             }
                             delta={weightDelta}
@@ -126,7 +126,7 @@ export default async function EvaluationsPage() {
                             label="Gordura"
                             value={
                               latest.body_fat_pct != null
-                                ? `${latest.body_fat_pct.toFixed(1)}%`
+                                ? `${Number(latest.body_fat_pct).toFixed(1)}%`
                                 : "—"
                             }
                           />

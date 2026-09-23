@@ -28,11 +28,11 @@ export default async function ProgressoPage() {
 
   const list = ((measurements ?? []) as MeasurementRow[]).slice().reverse(); // cronológico pra gráficos
 
-  // Séries por métrica
-  const peso = list.filter((m) => m.weight_kg != null).map((m) => m.weight_kg!);
-  const gordura = list.filter((m) => m.body_fat_pct != null).map((m) => m.body_fat_pct!);
-  const cintura = list.filter((m) => m.waist_cm != null).map((m) => m.waist_cm!);
-  const peito = list.filter((m) => m.chest_cm != null).map((m) => m.chest_cm!);
+  // Séries por métrica (NUMERIC volta como string — coage na borda)
+  const peso = list.filter((m) => m.weight_kg != null).map((m) => Number(m.weight_kg));
+  const gordura = list.filter((m) => m.body_fat_pct != null).map((m) => Number(m.body_fat_pct));
+  const cintura = list.filter((m) => m.waist_cm != null).map((m) => Number(m.waist_cm));
+  const peito = list.filter((m) => m.chest_cm != null).map((m) => Number(m.chest_cm));
 
   // Variação (primeiro → último)
   const variacao = (arr: number[]) =>
@@ -172,8 +172,8 @@ export default async function ProgressoPage() {
                       )}
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                      {m.weight_kg != null && <Stat label="Peso" value={`${m.weight_kg.toFixed(1)} kg`} />}
-                      {m.body_fat_pct != null && <Stat label="Gordura" value={`${m.body_fat_pct.toFixed(1)}%`} />}
+                      {m.weight_kg != null && <Stat label="Peso" value={`${Number(m.weight_kg).toFixed(1)} kg`} />}
+                      {m.body_fat_pct != null && <Stat label="Gordura" value={`${Number(m.body_fat_pct).toFixed(1)}%`} />}
                       {m.waist_cm != null && <Stat label="Cintura" value={`${m.waist_cm} cm`} />}
                       {m.chest_cm != null && <Stat label="Peito" value={`${m.chest_cm} cm`} />}
                       {m.arm_cm != null && <Stat label="Braço" value={`${m.arm_cm} cm`} />}
