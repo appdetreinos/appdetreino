@@ -119,12 +119,11 @@ interface WikiFile {
  * Filtra por licença livre (CC0/PD/CC-BY/CC-BY-SA).
  */
 async function searchWikimediaMedia(term: string): Promise<{ file: WikiFile; kind: "video" | "gif" } | null> {
-  // 1) Tenta vídeo primeiro
-  const video = await searchOnce(term, "video");
-  if (video) return { file: video, kind: "video" };
-  // 2) Cai pro GIF
+  // GIF primeiro (resultados mais confiáveis); vídeo depois com trava dupla.
   const gif = await searchOnce(term, "gif");
   if (gif) return { file: gif, kind: "gif" };
+  const video = await searchOnce(term, "video");
+  if (video) return { file: video, kind: "video" };
   return null;
 }
 
@@ -134,7 +133,11 @@ async function searchOnce(term: string, filetype: "video" | "gif"): Promise<Wiki
   url.searchParams.set("format", "json");
   url.searchParams.set("generator", "search");
   url.searchParams.set("gsrnamespace", "6"); // File namespace
-  url.searchParams.set("gsrsearch", `${term} filetype:${filetype}`);
+  // Sintaxe correta do CirrusSearch: filemime:image/gif, filetype:video
+  url.searchParams.set(
+    "gsrsearch",
+    filetype === "gif" ? `${term} filemime:image/gif` : `${term} filetype:video`,
+  );
   url.searchParams.set("gsrlimit", "8");
   url.searchParams.set("prop", "imageinfo");
   url.searchParams.set("iiprop", "url|mime|size|extmetadata");
@@ -156,7 +159,23 @@ async function searchOnce(term: string, filetype: "video" | "gif"): Promise<Wiki
   const pages = data?.query?.pages;
   if (!pages) return null;
 
-  for (const page of Object.values(pages) as WikiFile[]) {
+  for (const raw of Object.values(pages) as Array<Record<string, unknown>>) {
+    // imageinfo vem aninhado: pages[].imageinfo[0] = {url, mime, size...}
+    const info = (Array.isArray(raw.imageinfo) ? raw.imageinfo[0] : null) as {
+      url?: string;
+      mime?: string;
+      width?: number;
+      height?: number;
+    } | null;
+    if (!info?.url) continue;
+    const title = String(raw.title ?? "");
+    const page: WikiFile = {
+      title,
+      url: info.url,
+      mime: info.mime ?? "",
+      width: info.width,
+      height: info.height,
+    };
     // Aceita gif ou vídeo web (mp4/webm/ogv — ogv vira fallback, player tenta)
     const isGif = page.mime === "image/gif";
     const isVideo =
@@ -169,24 +188,41 @@ async function searchOnce(term: string, filetype: "video" | "gif"): Promise<Wiki
     // Pula thumb minúscula
     if ((page.width ?? 0) < 120 && (page.height ?? 0) < 120) continue;
 
-    // Filtra licença: CC0 ou Public Domain
-    // Wikimedia retorna extmetadata com strings já "achatadas" quando
-    // iiprop=extmetadata é chamado via prop=imageinfo (não tem .value).
-    const meta = (page as unknown as { extmetadata?: Record<string, string> }).extmetadata;
-    if (meta) {
-      const licenseShort = (meta.LicenseShortName ?? "").toLowerCase();
-      const isFree =
-        licenseShort.includes("cc0") ||
-        licenseShort.includes("public domain") ||
-        licenseShort.includes("pd") ||
-        licenseShort.includes("cc-by-sa") ||
-        licenseShort.includes("cc-by");
-      if (!isFree) continue;
-    }
+    // Trava de qualidade: o título do arquivo precisa conter ao menos
+    // uma palavra relevante do termo buscado (evita "Hover-effekt",
+    // "Mapframe" e cia. que o full-text traz de carona).
+    // Termo composto ("front raise") exige 2+ palavras: "SeatedLegRaise"
+    // mostra perna, não ombro. Pra VÍDEO a trava é a mesma (full-text
+    // de vídeo é ruidoso).
+    if (!titleMatches(term, title)) continue;
 
+    // Commons só hospeda conteúdo livre — sem filtro de licença
+    // (o filtro anterior lia extmetadata no formato errado e rejeitava tudo).
     return page;
   }
   return null;
+}
+
+/** Termo "front raise" exige front+raise (SeatedLegRaise mostra perna).
+ *  Termo simples ("deadlift") exige 1. Denylist corta lixo famoso. */
+const DENY = [
+  "dam", "boulder", "motorcade", "trump", "flag", "fox", "nasa", "mars",
+  "music", "kartographer", "mapframe", "hover", "recycle", "boat", "blade",
+  "regatta", "canoe", "rover", "guitar", "marshall", "satisfaction",
+  "cricket", "telephone", "adapter", "trolley", "kbs", "musicbank",
+];
+
+function titleMatches(term: string, title: string): boolean {
+  const stop = new Set(["the", "and", "with", "exercise", "demonstration", "video"]);
+  const words = term
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((w) => w.length > 3 && !stop.has(w));
+  if (words.length === 0) return true;
+  const t = title.toLowerCase();
+  if (DENY.some((d) => t.includes(d))) return false;
+  const hits = words.filter((w) => t.includes(w)).length;
+  return hits >= Math.min(2, words.length);
 }
 
 async function main() {
