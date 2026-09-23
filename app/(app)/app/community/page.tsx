@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { PostComposer } from "./post-composer";
 import { PushSender } from "./push-sender";
+import { ChallengeRewardButton } from "./challenge-reward-button";
 import { Heart, MessageCircle, Plus, Trophy, Flame } from "lucide-react";
 import { Stagger, StaggerItem } from "@/components/ui/stagger";
 
@@ -166,7 +167,10 @@ export default async function CommunityPage() {
               <ul className="space-y-2 text-sm">
                 {challenges.map((c) => (
                   <li key={c.id} className="border-b border-white/5 last:border-0 pb-2 last:pb-0">
-                    <div className="font-medium">{c.title}</div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-medium">{c.title}</div>
+                      <ChallengeRewardButton challengeId={c.id} />
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {partCountByChallenge.get(c.id) ?? 0} participando
                       {c.reward_xp ? (

@@ -113,6 +113,27 @@ export default async function StudentDetailPage({
     .limit(1)
     .maybeSingle();
 
+  // Anamnese do aluno (respostas + perguntas do template ativo do trainer)
+  const { data: anamnesis } = await supabase
+    .from("anamnesis")
+    .select("answers, completed_at")
+    .eq("student_id", id)
+    .maybeSingle();
+
+  let anamnesisLabels = new Map<string, string>();
+  if (anamnesis) {
+    const { data: tpl } = await supabase
+      .from("anamnesis_templates")
+      .select("questions")
+      .eq("trainer_id", user.id)
+      .eq("active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const qs = ((tpl as { questions?: Array<{ key: string; label: string }> } | null)?.questions) ?? [];
+    anamnesisLabels = new Map(qs.map((q) => [q.key, q.label]));
+  }
+
   const initials = profile.full_name?.slice(0, 2).toUpperCase() ?? "??";
   const statusLabel = studentProfile.status === "active" ? "Ativo" : studentProfile.status ?? "—";
   const xp = studentProfile.xp_total ?? 0;
@@ -358,6 +379,32 @@ export default async function StudentDetailPage({
             </Card>
           </div>
         </StaggerItem>
+
+        {anamnesis && (
+          <StaggerItem>
+            <Card className="bg-card border-white/5 p-5">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <h2 className="font-semibold">Anamnese</h2>
+                {(anamnesis as { completed_at?: string | null }).completed_at && (
+                  <span className="text-xs text-muted-foreground">
+                    {new Date((anamnesis as { completed_at: string }).completed_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                  </span>
+                )}
+              </div>
+              <dl className="space-y-2">
+                {Object.entries(((anamnesis as { answers?: Record<string, unknown> }).answers) ?? {}).slice(0, 8).map(([k, v]) => (
+                  <div key={k} className="text-sm">
+                    <dt className="text-muted-foreground text-xs">{anamnesisLabels.get(k) ?? k}</dt>
+                    <dd className="font-medium break-words">{String(v ?? "—").slice(0, 300)}</dd>
+                  </div>
+                ))}
+              </dl>
+              <ButtonLink href="/app/anamnese" size="sm" variant="outline" className="mt-3">
+                Ver todas as respostas
+              </ButtonLink>
+            </Card>
+          </StaggerItem>
+        )}
 
         <StaggerItem>
           <Card className="bg-card border-white/5 p-5">

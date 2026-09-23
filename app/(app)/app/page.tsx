@@ -106,7 +106,32 @@ export default async function TrainerDashboard() {
       }
     } catch (e) { console.error("Error fetching revenue:", e); }
 
-    // Checklist de ativação (primeiros passos)
+    // Mensagens 1:1 não lidas (agrupadas por aluno)
+    let unreadChats: Array<{ student_id: string; name: string; count: number }> = [];
+    try {
+      const { data: unread } = await supabase
+        .from("direct_messages")
+        .select("student_id")
+        .in("trainer_id", scopeIds)
+        .neq("sender_id", user.id)
+        .is("read_at", null)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      const byStudent = new Map<string, number>();
+      for (const m of (unread ?? []) as Array<{ student_id: string }>) {
+        byStudent.set(m.student_id, (byStudent.get(m.student_id) ?? 0) + 1);
+      }
+      if (byStudent.size > 0) {
+        const nameMap = new Map(studentsList.map((s) => [s.id, s.nome]));
+        unreadChats = Array.from(byStudent.entries()).map(([student_id, count]) => ({
+          student_id,
+          name: nameMap.get(student_id) ?? "Aluno",
+          count,
+        }));
+      }
+    } catch {
+      // opcional
+    }
     let checklist: ChecklistState | null = null;
     try {
       const [{ count: wCount }, { count: dCount }, { data: tSettings }] = await Promise.all([
@@ -218,6 +243,26 @@ export default async function TrainerDashboard() {
           </div>
 
           <div className="space-y-6">
+            {unreadChats.length > 0 && (
+              <Card className="p-6 bg-primary/5 border-primary/20">
+                <h2 className="text-lg font-bold mb-1 flex items-center gap-2">
+                  <MessageCircle className="size-5 text-primary" /> Conversas
+                </h2>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Mensagens novas pra responder
+                </p>
+                <div className="space-y-2">
+                  {unreadChats.slice(0, 5).map((c) => (
+                    <QuickAction
+                      key={c.student_id}
+                      icon={MessageCircle}
+                      label={`${c.name} · ${c.count} nova${c.count === 1 ? "" : "s"}`}
+                      href={`/app/students/${c.student_id}/mensagens`}
+                    />
+                  ))}
+                </div>
+              </Card>
+            )}
             <Card className="p-6 bg-card/50 border-white/10">
               <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                 <Plus className="size-5 text-primary" /> Ações Rápidas
