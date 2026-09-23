@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, ArrowLeft } from "lucide-react";
 import { PLANS, formatBRL } from "@/lib/types/billing";
 import { createClient } from "@/lib/supabase/server";
+import { getTrainerTrialState } from "@/lib/billing/trial";
 import { CancelSubscriptionButton } from "../cancel-subscription-button";
 
 export default async function UpgradePage() {
@@ -22,6 +23,13 @@ export default async function UpgradePage() {
     : { data: null };
 
   const currentTier = trainer?.plan_tier ?? "start";
+
+  let hasPaid = false;
+  try {
+    if (user) hasPaid = (await getTrainerTrialState(user.id)).hasPaid;
+  } catch {
+    // sem travar a página
+  }
 
   const { data: activeSub } = user
     ? await supabase
@@ -106,9 +114,19 @@ export default async function UpgradePage() {
                 </ul>
 
                 {isCurrent ? (
-                  <div className="mt-6 rounded-md border border-white/10 bg-background/40 px-3 py-2 text-center text-sm font-semibold text-foreground/70">
-                    Plano atual
-                  </div>
+                  hasPaid ? (
+                    <div className="mt-6 rounded-md border border-white/10 bg-background/40 px-3 py-2 text-center text-sm font-semibold text-foreground/70">
+                      Plano atual
+                    </div>
+                  ) : (
+                    <ButtonLink
+                      href={`/app/checkout?plan=${p.id}`}
+                      variant={p.highlight ? "default" : "outline"}
+                      className="mt-6 font-bold"
+                    >
+                      Assinar {p.name}
+                    </ButtonLink>
+                  )
                 ) : (
                   <ButtonLink
                     href={`/app/checkout?plan=${p.id}`}
