@@ -244,34 +244,35 @@ export default async function StudentDetailPage({
             <Card className="bg-card border-white/5 p-5">
               <h2 className="font-semibold mb-3">Últimas medições</h2>
               <MeasurementForm studentId={id} />
-              {measurementsList.length === 0 ? (
-                <p className="text-sm text-muted-foreground mt-3">
-                  Nenhuma medição registrada.
-                </p>
-              ) : (
-                <ul className="space-y-2 mt-4">
-                  {measurementsList.map((m) => (
-                    <li
-                      key={m.id}
-                      className="text-sm border-b border-white/5 last:border-0 pb-2 last:pb-0"
-                    >
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          {new Date(m.date).toLocaleDateString("pt-BR", {
-                            day: "2-digit",
-                            month: "short",
-                          })}
-                        </span>
-                        <span className="font-mono">
-                          {m.weight_kg != null && `${m.weight_kg.toFixed(1)} kg`}
+               {measurementsList.length === 0 ? (
+                 <p className="text-sm text-muted-foreground mt-3">
+                   Nenhuma medição registrada.
+                 </p>
+               ) : (
+                 <ul className="space-y-2 mt-4">
+                   {measurementsList.map((m) => (
+                     <li
+                       key={m.id}
+                       className="text-sm border-b border-white/5 last:border-0 pb-2 last:pb-0"
+                     >
+                       <div className="flex justify-between">
+                         <span className="text-muted-foreground">
+                           {new Date(m.date).toLocaleDateString("pt-BR", {
+                             day: "2-digit",
+                             month: "short",
+                           })}
+                         </span>
+                         <span className="font-mono">
+                           {m.weight_kg != null && `${m.weight_kg.toFixed(1)} kg`}
                            {m.body_fat_pct != null && ` · ${m.body_fat_pct.toFixed(1)}%`}
-                          {m.waist_cm != null && ` · ${m.waist_cm}cm`}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
+                           {m.waist_cm != null && ` · ${m.waist_cm}cm`}
+                         </span>
+                       </div>
+                     </li>
+                   ))}
+                 </ul>
+               )}
+             </Card>
             </Card>
 
             <Card className="bg-card border-white/5 p-5">
