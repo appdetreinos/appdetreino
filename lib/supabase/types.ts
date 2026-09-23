@@ -80,6 +80,8 @@ export interface StudentProfilesRow {
   birthdate: DateStr | null;
   gender: string | null;
   height_cm: number | null;
+  emergency_contact: string | null;
+  medical_notes: string | null;
   goal: string | null;
   xp_total: number;
   streak_current: number;

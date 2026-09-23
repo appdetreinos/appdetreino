@@ -42,7 +42,7 @@ export default async function StudentDetailPage({
 
   const { data: studentProfile } = await supabase
     .from("student_profiles")
-    .select("status, birthdate, goal, xp_total, joined_at, full_name")
+    .select("status, birthdate, goal, xp_total, joined_at, full_name, gender, height_cm, emergency_contact, medical_notes")
     .eq("user_id", id)
     .maybeSingle();
 
@@ -168,7 +168,9 @@ export default async function StudentDetailPage({
     },
     {
       label: "Dados completos",
-      done: Boolean(profile.full_name && profile.phone),
+      done: Boolean(
+        profile.full_name && profile.phone && studentProfile.birthdate && studentProfile.height_cm != null,
+      ),
       href: null as string | null,
     },
     {
@@ -243,6 +245,18 @@ export default async function StudentDetailPage({
                 "{studentProfile.goal as string}"
               </p>
             )}
+            {(studentProfile.gender || studentProfile.height_cm != null) && (
+              <p className="text-xs mt-2 text-muted-foreground">
+                {studentProfile.gender && <span className="capitalize">{studentProfile.gender as string}</span>}
+                {studentProfile.gender && studentProfile.height_cm != null && " · "}
+                {studentProfile.height_cm != null && <span>{Number(studentProfile.height_cm)} cm</span>}
+              </p>
+            )}
+            {studentProfile.medical_notes ? (
+              <p className="text-xs mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-amber-200">
+                ⚠ {String(studentProfile.medical_notes).slice(0, 200)}
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-col gap-2 shrink-0">
             <ButtonLink href={`/app/workouts/new?student=${id}`} size="sm" variant="outline">
@@ -286,6 +300,11 @@ export default async function StudentDetailPage({
           phone: profile.phone ?? "",
           goal: (studentProfile.goal as string) ?? "",
           status: studentProfile.status ?? "active",
+          birthdate: (studentProfile.birthdate as string) ?? "",
+          gender: (studentProfile.gender as string) ?? "",
+          heightCm: studentProfile.height_cm != null ? String(studentProfile.height_cm) : "",
+          emergencyContact: ((studentProfile.emergency_contact ?? "") as string) ?? "",
+          medicalNotes: ((studentProfile.medical_notes ?? "") as string) ?? "",
         }}
       />
 
