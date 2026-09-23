@@ -264,8 +264,7 @@ export default async function StudentDetailPage({
                         </span>
                         <span className="font-mono">
                           {m.weight_kg != null && `${m.weight_kg.toFixed(1)} kg`}
-                          {m.body_fat_pct != null && ` · ${m.body_// a la l'ancien code, on a:
-                          {m.body_fat_pct.toFixed(1)}%`}
+                           {m.body_fat_pct != null && ` · ${m.body_fat_pct.toFixed(1)}%`}
                           {m.waist_cm != null && ` · ${m.waist_cm}cm`}
                         </span>
                       </div>
