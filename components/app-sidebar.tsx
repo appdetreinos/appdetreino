@@ -19,6 +19,7 @@ import {
   FileText,
   Briefcase,
   Store,
+  CreditCard,
 } from "lucide-react";
 import {
   Sidebar,
@@ -118,6 +119,12 @@ export function AppSidebar({ role }: Props) {
 
       <SidebarFooter className="border-t border-white/5">
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton render={<Link href="/app/settings/upgrade" />}>
+              <CreditCard className="size-4" />
+              <span>Planos</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton render={<Link href="/app/settings" />}>
               <Settings className="size-4" />

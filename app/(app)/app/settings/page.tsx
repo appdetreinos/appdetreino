@@ -3,10 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
 import { PixSettingsForm } from "./pix-settings-form";
 import { ProfileForm } from "./profile-form";
-import { CancelSubscriptionButton } from "./cancel-subscription-button";
 import { LgpdActions } from "./lgpd-actions";
-import Link from "next/link";
-import { PLANS } from "@/lib/types/billing";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -21,12 +18,6 @@ export default async function SettingsPage() {
     .eq("id", user.id)
     .single();
 
-  const { data: trainer } = await supabase
-    .from("trainer_profiles")
-    .select("plan_tier, trial_ends_at")
-    .eq("user_id", user.id)
-    .single();
-
   const { data: settings } = await supabase
     .from("trainer_settings")
     .select("pix_key, pix_key_type, pix_beneficiary_name, default_charge_message, default_overdue_message")
@@ -34,24 +25,6 @@ export default async function SettingsPage() {
     .maybeSingle();
 
   const currentPlan = PLANS.find((p) => p.id === trainer?.plan_tier) ?? PLANS[0];
-
-  // Assinatura recorrente ativa? (renovação automática no cartão)
-  const { data: activeSub } = await supabase
-    .from("payment_links")
-    .select("id")
-    .eq("trainer_id", user.id)
-    .like("description", "Plano %assinatura%")
-    .not("paid_at", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  // Status do trial: pending, active, expired, none
-  const trialEnd = trainer?.trial_ends_at ? new Date(trainer.trial_ends_at) : null;
-  const isInTrial = trialEnd ? trialEnd > new Date() : false;
-  const trialDaysLeft = trialEnd
-    ? Math.max(0, Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-    : 0;
 
   return (
     <div className="min-h-screen">
@@ -87,46 +60,6 @@ export default async function SettingsPage() {
               default_overdue_message: settings?.default_overdue_message ?? "",
             }}
           />
-        </Card>
-
-        {/* Plano — com lógica de trial separada */}
-        <Card className="bg-card/80 border-white/10 p-6">
-          <h2 className="text-lg font-bold">Plano</h2>
-          <div
-            className={`mt-4 rounded-xl border p-4 flex items-center justify-between ${
-              isInTrial
-                ? "border-emerald-500/30 bg-emerald-500/5"
-                : "border-primary/30 bg-primary/10"
-            }`}
-          >
-            <div>
-              <div className="font-extrabold capitalize">
-                {isInTrial
-                  ? `🎁 Trial grátis · ${trialDaysLeft} dia${trialDaysLeft === 1 ? "" : "s"} restante${trialDaysLeft === 1 ? "" : "s"}`
-                  : `${currentPlan.name} · R$ ${currentPlan.priceMonthly.toFixed(2).replace(".", ",")}/mês`}
-              </div>
-              <div className="text-xs text-foreground/65">
-                {isInTrial
-                  ? `Você tem até ${trialEnd?.toLocaleDateString("pt-BR")} pra explorar tudo. Sem cartão, sem cobrança.`
-                  : `${currentPlan.studentLimit ? `${currentPlan.studentLimit} alunos ativos` : "Alunos ilimitados"}`}
-              </div>
-              {activeSub && !isInTrial && (
-                <div className="mt-2">
-                  <CancelSubscriptionButton />
-                </div>
-              )}
-            </div>
-            <Link
-              href="/app/settings/upgrade"
-              className={`inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
-                isInTrial
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "border border-white/10 bg-background/60 hover:border-primary/40"
-              }`}
-            >
-              {isInTrial ? "Escolher plano" : "Upgrade"}
-            </Link>
-          </div>
         </Card>
 
         {/* Conta */}

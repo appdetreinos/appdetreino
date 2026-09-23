@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, ArrowLeft } from "lucide-react";
 import { PLANS, formatBRL } from "@/lib/types/billing";
 import { createClient } from "@/lib/supabase/server";
+import { CancelSubscriptionButton } from "../cancel-subscription-button";
 
 export default async function UpgradePage() {
   const supabase = await createClient();
@@ -21,6 +22,18 @@ export default async function UpgradePage() {
     : { data: null };
 
   const currentTier = trainer?.plan_tier ?? "start";
+
+  const { data: activeSub } = user
+    ? await supabase
+        .from("payment_links")
+        .select("id")
+        .eq("trainer_id", user.id)
+        .like("description", "Plano %assinatura%")
+        .not("paid_at", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
 
   return (
     <div className="min-h-screen">
@@ -114,6 +127,17 @@ export default async function UpgradePage() {
           Pagamento processado pelo Mercado Pago. Pix, cartão ou boleto — você
           escolhe na hora.
         </p>
+
+        {activeSub && (
+          <div className="mt-4 text-center">
+            <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 mb-2">
+              Assinatura ativa no cartão
+            </Badge>
+            <div>
+              <CancelSubscriptionButton />
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
