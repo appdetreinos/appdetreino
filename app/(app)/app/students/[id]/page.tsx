@@ -261,13 +261,13 @@ export default async function StudentDetailPage({
             icon={Flame}
             label="XP acumulado"
             value={xp}
-            format={(v) => v.toLocaleString("pt-BR")}
+            formatKind="int"
           />
           <Mini
             icon={TrendingUp}
             label="Δ peso"
             value={pesoDelta ?? 0}
-            format={(v) => (v > 0 ? "+" : "") + v.toFixed(1)}
+            formatKind="signed1"
             extra="kg"
             tone={pesoDelta == null ? "muted" : pesoDelta < 0 ? "good" : "neutral"}
           />
@@ -541,7 +541,7 @@ function Mini({
   label,
   value,
   valueText,
-  format,
+  formatKind,
   extra,
   tone = "muted",
 }: {
@@ -549,7 +549,7 @@ function Mini({
   label: string;
   value?: number;
   valueText?: string;
-  format?: (n: number) => string;
+  formatKind?: "int" | "signed1";
   extra?: string;
   tone?: "muted" | "good" | "neutral";
 }) {
@@ -566,7 +566,7 @@ function Mini({
         {label}
       </div>
       <div className={`mt-1 text-xl font-extrabold ${toneClass}`}>
-        {valueText ?? <AnimatedNumber value={value ?? 0} format={format} />}
+        {valueText ?? <AnimatedNumber value={value ?? 0} formatKind={formatKind ?? "int"} />}
         {extra && <span className="text-sm text-muted-foreground ml-1">{extra}</span>}
       </div>
     </div>

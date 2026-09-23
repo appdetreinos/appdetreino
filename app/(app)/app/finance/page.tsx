@@ -214,21 +214,18 @@ export default async function FinancePage() {
                 icon={CheckCircle2}
                 label="Recebido"
                 value={recebido}
-                format={(v) => formatBRL(v)}
                 tone="good"
               />
               <Kpi
                 icon={Clock}
                 label="Aguardando"
                 value={payments.filter((p) => p.status === "pending").reduce((s, p) => s + Number(p.valor), 0)}
-                format={(v) => formatBRL(v)}
                 tone="warning"
               />
               <Kpi
                 icon={AlertTriangle}
                 label="Em atraso"
                 value={atrasado}
-                format={(v) => formatBRL(v)}
                 tone="bad"
               />
             </div>
@@ -373,13 +370,11 @@ function Kpi({
   icon: Icon,
   label,
   value,
-  format,
   tone,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: number;
-  format?: (n: number) => string;
   tone?: "good" | "warning" | "bad";
 }) {
   const toneClass =
@@ -396,7 +391,7 @@ function Kpi({
         <Icon className="size-4" />
       </div>
       <div className={`mt-3 text-xl font-extrabold tracking-tight ${toneClass}`}>
-        <AnimatedNumber value={value} format={format} />
+        <AnimatedNumber value={Number(value)} formatKind="currency" />
       </div>
       <div className="text-xs text-foreground/65">{label}</div>
     </Card>

@@ -72,16 +72,38 @@ export function StaggerItem({
 /**
  * Contador animado de 0 → value.
  * Migrado pra vanilla JS requestAnimationFrame (não usa motion).
+ *
+ * IMPORTANTE (Next 16): props de Server → Client precisam ser
+ * serializáveis. Por isso a formatação usa `formatKind` (string)
+ * em vez de função — passar `format={(v) => ...}` do server quebra
+ * a página com "Functions cannot be passed directly to Client
+ * Components" (digest 435854830).
  */
+export type AnimatedNumberKind = "int" | "decimal1" | "currency" | "signed1";
+
+function formatByKind(kind: AnimatedNumberKind, n: number): string {
+  switch (kind) {
+    case "decimal1":
+      return n.toFixed(1);
+    case "currency":
+      return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+    case "signed1":
+      return (n > 0 ? "+" : "") + n.toFixed(1);
+    case "int":
+    default:
+      return Math.round(n).toLocaleString("pt-BR");
+  }
+}
+
 export function AnimatedNumber({
   value,
   duration = 900,
-  format,
+  formatKind = "int",
   className,
 }: {
   value: number;
   duration?: number;
-  format?: (n: number) => string;
+  formatKind?: AnimatedNumberKind;
   className?: string;
 }) {
   const [display, setDisplay] = useState(0);
@@ -106,7 +128,7 @@ export function AnimatedNumber({
     return () => cancelAnimationFrame(raf);
   }, [value, duration]);
 
-  const text = format ? format(display) : Math.round(display).toString();
+  const text = formatByKind(formatKind, display);
 
   return (
     <span className={className} suppressHydrationWarning>

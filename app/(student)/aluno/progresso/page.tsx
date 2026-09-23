@@ -216,7 +216,7 @@ function Mini({
       </div>
       <div className="mt-1 text-2xl font-extrabold">
         {atual != null ? (
-          <AnimatedNumber value={atual} format={(v) => v.toFixed(1)} />
+          <AnimatedNumber value={Number(atual ?? 0)} formatKind="decimal1" />
         ) : (
           <span className="text-muted-foreground/50">—</span>
         )}
