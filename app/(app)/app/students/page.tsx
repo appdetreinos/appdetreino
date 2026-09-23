@@ -31,11 +31,15 @@ export default async function StudentsPage() {
     .order("created_at", { ascending: false });
 
   // Alunos já vinculados
-  const { data: studentsRaw } = await supabase
+  const { data: studentsRaw, error: studentsError } = await supabase
     .from("student_profiles")
     .select("user_id, full_name, status, goal, joined_at, phone")
     .eq("trainer_id", user.id)
     .order("joined_at", { ascending: false });
+
+  if (studentsError) {
+    console.error("Erro ao buscar alunos:", studentsError);
+  }
 
   const invites = invitesRaw ?? [];
   const students = studentsRaw ?? [];
