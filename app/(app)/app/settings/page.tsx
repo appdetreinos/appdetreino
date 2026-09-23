@@ -24,8 +24,6 @@ export default async function SettingsPage() {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const currentPlan = PLANS.find((p) => p.id === trainer?.plan_tier) ?? PLANS[0];
-
   return (
     <div className="min-h-screen">
       <header className="border-b border-white/10 sticky top-0 z-30 bg-background/85 backdrop-blur-md">
