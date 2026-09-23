@@ -95,6 +95,46 @@ async function awardWorkoutXp(
     .eq("user_id", studentId);
 }
 
+/**
+ * +1 progresso nos desafios ativos em que o aluno participa.
+ * Roda como o próprio aluno (RLS student_all cobre).
+ */
+async function bumpChallengeProgress(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sessionId: string,
+): Promise<void> {
+  const { data: sess } = await supabase
+    .from("workout_sessions")
+    .select("student_id")
+    .eq("id", sessionId)
+    .maybeSingle();
+  const studentId = (sess as { student_id?: string } | null)?.student_id;
+  if (!studentId) return;
+
+  const { data: parts } = await supabase
+    .from("challenge_participants")
+    .select("challenge_id, progress")
+    .eq("student_id", studentId);
+  if (!parts || (parts as unknown[]).length === 0) return;
+
+  const now = new Date().toISOString();
+  for (const p of parts as Array<{ challenge_id: string; progress: number }>) {
+    const { data: ch } = await supabase
+      .from("challenges")
+      .select("id")
+      .eq("id", p.challenge_id)
+      .lte("starts_at", now)
+      .gte("ends_at", now)
+      .maybeSingle();
+    if (!ch) continue;
+    await supabase
+      .from("challenge_participants")
+      .update({ progress: (p.progress ?? 0) + 1 })
+      .eq("challenge_id", p.challenge_id)
+      .eq("student_id", studentId);
+  }
+}
+
 /* =========================================================================
    startWorkoutSession
    ========================================================================= */
@@ -222,6 +262,13 @@ export async function finishWorkoutSession(
       await awardWorkoutXp(ctx.data.supabase, session_id);
     } catch (e) {
       safeLog.error("awardWorkoutXp failed", e instanceof Error ? e.message : "unknown");
+    }
+
+    // Progresso nos desafios ativos do trainer
+    try {
+      await bumpChallengeProgress(ctx.data.supabase, session_id);
+    } catch (e) {
+      safeLog.error("bumpChallengeProgress failed", e instanceof Error ? e.message : "unknown");
     }
 
     revalidatePath("/app/workouts");

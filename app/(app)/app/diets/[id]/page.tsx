@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button-link";
 import { ArrowLeft, Salad, User } from "lucide-react";
 import { SubstituteManager, type Substitute } from "./substitute-manager";
+import { ShoppingGenerateButton } from "./shopping-generate-button";
 import { notFound } from "next/navigation";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -148,7 +149,8 @@ export default async function DietDetailPage({ params }: PageProps) {
           )}
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center">
+          <ShoppingGenerateButton dietId={diet.id} />
           <ButtonLink href="/app/diets" variant="outline">
             Voltar
           </ButtonLink>

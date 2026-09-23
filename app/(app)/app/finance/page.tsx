@@ -93,6 +93,7 @@ export default async function FinancePage() {
       valor: p.amount,
       status: effectiveStatus,
       vencimento: p.due_date ? new Date(p.due_date).toLocaleDateString("pt-BR") : "—",
+      dueRaw: (p.due_date ?? "") as string,
       pagoEm: p.paid_at ? relativeTime(p.paid_at) : null,
     };
   });
@@ -115,6 +116,13 @@ export default async function FinancePage() {
   const pendentes = payments.filter(
     (p) => p.status === "pending" || p.status === "overdue",
   );
+
+  // Vencem hoje (renovações do dia, estilo Prime)
+  const todayStr2 = new Date().toISOString().slice(0, 10);
+  const vencemHoje = payments.filter(
+    (p) => (p.status === "pending" || p.status === "overdue") && p.dueRaw === todayStr2,
+  );
+  const vencemHojeTotal = vencemHoje.reduce((s, p) => s + Number(p.valor), 0);
 
   // Receita últimos 6 meses — sparkline
   const sixMonthsAgo = new Date();
@@ -249,6 +257,27 @@ export default async function FinancePage() {
                   showDots
                   showArea
                 />
+              </div>
+            </Card>
+          </StaggerItem>
+        )}
+
+        {/* Vencem hoje */}
+        {vencemHoje.length > 0 && (
+          <StaggerItem>
+            <Card className="bg-primary/10 border-primary/30 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-bold flex items-center gap-2">
+                    <Clock className="size-4 text-primary" />
+                    Vencem hoje · {vencemHoje.length}
+                  </h2>
+                  <p className="text-sm text-foreground/70 mt-0.5">
+                    {vencemHoje.slice(0, 3).map((p) => p.aluno.split(" ")[0]).join(", ")}
+                    {vencemHoje.length > 3 ? ` e mais ${vencemHoje.length - 3}` : ""}
+                  </p>
+                </div>
+                <span className="num text-xl font-extrabold">{formatBRL(vencemHojeTotal)}</span>
               </div>
             </Card>
           </StaggerItem>

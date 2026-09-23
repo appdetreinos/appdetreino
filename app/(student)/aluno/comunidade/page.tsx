@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { PostCard } from "./post-card";
+import { ChallengeJoin } from "./challenge-join";
 import { Trophy, Award, Users } from "lucide-react";
 
 export default async function ComunidadeAlunoPage() {
@@ -68,6 +69,23 @@ export default async function ComunidadeAlunoPage() {
     .limit(1)
     .maybeSingle();
 
+  // Minha participação + total de participantes
+  const ch = challenge as { id: string } | null;
+  const [{ data: myPart }, { count: partCount }] = ch
+    ? await Promise.all([
+        supabase
+          .from("challenge_participants")
+          .select("progress")
+          .eq("challenge_id", ch.id)
+          .eq("student_id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("challenge_participants")
+          .select("challenge_id", { count: "exact", head: true })
+          .eq("challenge_id", ch.id),
+      ])
+    : [{ data: null }, { count: 0 }];
+
   // Badges do aluno
   const { data: myBadges } = await supabase
     .from("student_badges")
@@ -109,8 +127,15 @@ export default async function ComunidadeAlunoPage() {
                 <span className="font-mono font-bold text-primary">
                   +{challenge.reward_xp} XP
                 </span>
+                {(partCount ?? 0) > 0 && (
+                  <span className="text-muted-foreground"> · {partCount} participando</span>
+                )}
               </p>
             ) : null}
+            <ChallengeJoin
+              challengeId={challenge.id}
+              initialProgress={(myPart as { progress: number } | null)?.progress ?? null}
+            />
           </Card>
         )}
 

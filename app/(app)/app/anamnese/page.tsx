@@ -48,6 +48,22 @@ export default async function AnamnesePage() {
     student: { full_name: string } | { full_name: string }[] | null;
   }>);
 
+  // Mapa chave → pergunta (do questionário ativo mais recente)
+  const { data: labelTpl } = await supabase
+    .from("anamnesis_templates")
+    .select("questions")
+    .eq("trainer_id", user.id)
+    .eq("active", true)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const labelMap = new Map<string, string>(
+    (((labelTpl as { questions?: Array<{ key: string; label: string }> } | null)?.questions) ?? []).map(
+      (q) => [q.key, q.label],
+    ),
+  );
+  const labelOf = (k: string) => labelMap.get(k) ?? k;
+
   return (
     <div className="min-h-screen">
       <header className="border-b border-white/10 sticky top-0 z-30 bg-background/85 backdrop-blur-md">
@@ -119,7 +135,7 @@ export default async function AnamnesePage() {
                       <dl className="mt-2 space-y-1">
                         {entries.map(([k, v]) => (
                           <div key={k} className="text-xs">
-                            <dt className="text-muted-foreground truncate">{k}</dt>
+                            <dt className="text-muted-foreground">{labelOf(k)}</dt>
                             <dd className="font-medium break-words">{String(v ?? "—").slice(0, 200)}</dd>
                           </div>
                         ))}

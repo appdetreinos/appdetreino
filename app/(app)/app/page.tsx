@@ -20,6 +20,7 @@ import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { LogoutButton } from "@/components/logout-button";
 import { KpiCard } from "./_components/kpi-card";
 import { DashboardEntrance } from "./dashboard-entrance";
+import { OnboardingChecklist, type ChecklistState } from "./_components/onboarding-checklist";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -105,7 +106,24 @@ export default async function TrainerDashboard() {
       }
     } catch (e) { console.error("Error fetching revenue:", e); }
 
-    // Sessões últimos 7 dias (real — workout_sessions por alunos do trainer)
+    // Checklist de ativação (primeiros passos)
+    let checklist: ChecklistState | null = null;
+    try {
+      const [{ count: wCount }, { count: dCount }, { data: tSettings }] = await Promise.all([
+        supabase.from("workouts").select("id", { count: "exact", head: true }).in("trainer_id", scopeIds),
+        supabase.from("diets").select("id", { count: "exact", head: true }).in("trainer_id", scopeIds),
+        supabase.from("trainer_settings").select("pix_key").eq("user_id", user.id).maybeSingle(),
+      ]);
+      const state: ChecklistState = {
+        invited_student: totalAlunos > 0,
+        sent_workout: (wCount ?? 0) > 0,
+        sent_diet: (dCount ?? 0) > 0,
+        configured_pay: Boolean((tSettings as { pix_key?: string } | null)?.pix_key),
+      };
+      if (Object.values(state).some((v) => !v)) checklist = state;
+    } catch {
+      // checklist é opcional
+    }
     let sessoes7d = 0;
     try {
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -152,6 +170,8 @@ export default async function TrainerDashboard() {
             <LogoutButton variant="ghost" label="" />
           </div>
         </header>
+
+        {checklist && <OnboardingChecklist initial={checklist} />}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard 
