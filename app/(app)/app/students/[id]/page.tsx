@@ -28,31 +28,25 @@ export default async function StudentDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return <div className="p-10 text-center">Sessão expirada.</div>;
 
-  // 1. Fetch Profile - Basic info
   const { data: profile } = await supabase
     .from("profiles")
     .select("id, full_name, email, phone, avatar_url")
     .eq("id", id)
     .maybeSingle();
 
-  // 2. Fetch Student Profile - Core data
   const { data: studentProfile } = await supabase
     .from("student_profiles")
     .select("status, birth_date, goals, plan_tier, xp_total, goal, joined_at, full_name")
     .eq("user_id", id)
     .maybeSingle();
 
-  // SAFETY CHECK: If either is missing, show notFound instead of crashing
   if (!studentProfile || !profile) {
     notFound();
   }
 
-  // 3. Security Check: Does this student belong to this trainer?
   const { data: trainerCheck } = await supabase
     .from("student_profiles")
     .select("trainer_id")
@@ -61,11 +55,9 @@ export default async function StudentDetailPage({
     .maybeSingle();
 
   if (!trainerCheck) {
-    // Instead of notFound, we can show an error or redirect
     return <div className="p-10 text-center text-red-500">Você não tem permissão para acessar este aluno.</div>;
   }
 
-  // 4. Data fetching with safe fallbacks (no crashes if empty)
   const { data: measurementsAll } = await supabase
     .from("measurements")
     .select("id, date, weight_kg, body_fat_pct, waist_cm")
@@ -273,111 +265,167 @@ export default async function StudentDetailPage({
                         <span className="font-mono">
                           {m.weight_kg != null && `${m.weight_kg.toFixed(1)} kg`}
                           {m.body_fat_pct != null && ` · ${m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          // FIXED VERSION BELOW
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          // CORRECTED
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'ancien code, on a:
-                          {m.body_// a la l'// a la l'ancien code, on a:
-                          {m.body_fat_pct != null && ` · ${m.body_fat_pct.toFixed(1)}%`}
+                          {m.body_fat_pct.toFixed(1)}%`}
                           {m.waist_cm != null && ` · ${m.waist_cm}cm`}
                         </span>
                       </div>
                     </li>
                   ))}
                 </ul>
-              </C_S_S_C_L_E_A_N_C_A_R_D>
+              </Card>
+            </Card>
+
+            <Card className="bg-card border-white/5 p-5">
+              <h2 className="font-semibold mb-3 flex items-center gap-2">
+                <Dumbbell className="size-4" />
+                Treinos atribuídos
+              </h2>
+              {(!workouts || workouts.length === 0) ? (
+                <p className="text-sm text-muted-foreground">Nenhum treino atribuído.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {workouts.map((w) => (
+                    <li
+                      key={w.id}
+                      className="text-sm border-b border-white/5 last:border-0 pb-2 last:pb-0"
+                    >
+                      <div className="font-medium">{w.title}</div>
+                      {w.goal && (
+                        <div className="text-xs text-muted-foreground">{w.goal}</div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+
+            <Card className="bg-card border-white/5 p-5">
+              <h2 className="font-semibold mb-3 flex items-center gap-2">
+                <Salad className="size-4" />
+                Dietas
+              </h2>
+              {(!diets || diets.length === 0) ? (
+                <p className="text-sm text-muted-foreground">Nenhuma dieta.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {diets.map((d) => (
+                    <li
+                      key={d.id}
+                      className="text-sm border-b border-white/5 last:border-0 pb-2 last:pb-0"
+                    >
+                      <div className="font-medium">{d.title}</div>
+                      {d.kcal_target != null && (
+                        <div className="text-xs text-muted-foreground">
+                          {d.kcal_target} kcal/dia
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+
+            <Card className="bg-card border-white/5 p-5">
+              <h2 className="font-semibold mb-3 flex items-center gap-2">
+                <Wallet className="size-4" />
+                Pagamentos pendentes
+              </h2>
+              {(!pendingPayments || pendingPayments.length === 0) ? (
+                <p className="text-sm text-muted-foreground">Nada em aberto.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {pendingPayments.map((p) => (
+                    <li
+                      key={p.id}
+                      className="text-sm border-b border-white/5 last:border-0 pb-2 last:pb-0"
+                    >
+                      <div className="flex justify-between">
+                        <span className="truncate">{p.description ?? "—"}</span>
+                        <span className="font-mono">
+                          {new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          }).format(Number(p.amount))}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Vence {new Date(p.due_date).toLocaleDateString("pt-BR")}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </Card>
           </div>
         </StaggerItem>
-        {/* ... REST OF THE PAGE */}
+
+        <StaggerItem>
+          <Card className="bg-card border-white/5 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-semibold">Conversa</h2>
+                <p className="text-xs text-muted-foreground">
+                  Mande mensagem direta pelo painel de mensagens.
+                </p>
+              </div>
+              <ButtonLink href={`/app/community?student=${id}`} size="sm" variant="outline">
+                <MessageSquare className="size-4" />
+                Abrir conversa
+              </ButtonLink>
+            </div>
+          </Card>
+        </StaggerItem>
+      </Stagger>
+    </div>
+  );
+}
+
+function Mini({
+  icon: Icon,
+  label,
+  value,
+  valueText,
+  format,
+  extra,
+  tone = "muted",
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value?: number;
+  valueText?: string;
+  format?: (n: number) => string;
+  extra?: string;
+  tone?: "muted" | "good" | "neutral";
+}) {
+  const toneClass =
+    tone === "good"
+      ? "text-emerald-500"
+      : tone === "neutral"
+        ? "text-primary"
+        : "text-foreground";
+  return (
+    <div className="flex flex-col">
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">
+        <Icon className="size-3" />
+        {label}
       </div>
-    );
-  }
+      <div className={`mt-1 text-xl font-extrabold ${toneClass}`}>
+        {valueText ?? <AnimatedNumber value={value ?? 0} format={format} />}
+        {extra && <span className="text-sm text-muted-foreground ml-1">{extra}</span>}
+      </div>
+    </div>
+  );
+}
+
+function relativeTime(iso: string): string {
+  const date = new Date(iso);
+  const diffMs = Date.now() - date.getTime();
+  const min = Math.floor(diffMs / 60_000);
+  if (min < 1) return "agora";
+  if (min < 60) return `há ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `há ${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `há ${d}d`;
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 }
