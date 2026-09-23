@@ -61,7 +61,16 @@ export default function NewHabitPage() {
     }
 
     const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setError("Sessão expirada. Entra de novo.");
+      setSubmitting(false);
+      return;
+    }
     const { error: insertError } = await supabase.from("habits").insert({
+      trainer_id: user.id,
       name,
       student_id,
       target_count,

@@ -31,7 +31,8 @@ export default async function DietaPage() {
          id, name, time, position,
          meal_items:meal_items(
            id, grams, position,
-           foods:food_id(name)
+           foods:food_id(name),
+           substitutes:meal_item_substitutes(id, food_name, grams)
          )
        )`,
     )
@@ -77,6 +78,7 @@ export default async function DietaPage() {
         grams: number;
         position: number;
         foods: { name: string } | { name: string }[] | null;
+        substitutes: Array<{ id: string; food_name: string; grams: number }> | null;
       }> | null;
     }>
   ).sort((a, b) => a.position - b.position);
@@ -119,15 +121,23 @@ export default async function DietaPage() {
                     {items.map((it) => {
                       const food = Array.isArray(it.foods) ? it.foods[0] : it.foods;
                       const name = food?.name ?? "Alimento";
+                      const subs = it.substitutes ?? [];
                       return (
                         <li
                           key={it.id}
-                          className="text-sm flex justify-between gap-2 px-2 py-1 rounded hover:bg-white/[0.03]"
+                          className="text-sm px-2 py-1 rounded hover:bg-white/[0.03]"
                         >
-                          <span className="truncate">{name}</span>
-                          <span className="text-muted-foreground shrink-0 font-mono">
-                            {it.grams}g
-                          </span>
+                          <div className="flex justify-between gap-2">
+                            <span className="truncate">{name}</span>
+                            <span className="text-muted-foreground shrink-0 font-mono">
+                              {it.grams}g
+                            </span>
+                          </div>
+                          {subs.length > 0 && (
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              Troca: {subs.map((s) => `${s.food_name} ${s.grams}g`).join(" · ")}
+                            </div>
+                          )}
                         </li>
                       );
                     })}

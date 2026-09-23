@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button-link";
 import { ArrowLeft, Salad, User } from "lucide-react";
+import { SubstituteManager, type Substitute } from "./substitute-manager";
 import { notFound } from "next/navigation";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -20,7 +21,7 @@ export default async function DietDetailPage({ params }: PageProps) {
     .select(
       `id, title, kcal_target, p_target, c_target, g_target, goal, student_id,
        student:student_id(full_name),
-       meals:meals(id, name, time, position, meal_items(id, grams, position, foods:food_id(name)))`,
+       meals:meals(id, name, time, position, meal_items(id, grams, position, foods:food_id(name), substitutes:meal_item_substitutes(id, food_name, grams)))`,
     )
     .eq("id", id)
     .eq("trainer_id", user.id)
@@ -39,6 +40,7 @@ export default async function DietDetailPage({ params }: PageProps) {
       grams: number;
       position: number;
       foods: { name: string } | { name: string }[] | null;
+      substitutes: Substitute[] | null;
     }> | null;
   }>)
     .slice()
@@ -125,14 +127,16 @@ export default async function DietDetailPage({ params }: PageProps) {
                       const food = Array.isArray(it.foods) ? it.foods[0] : it.foods;
                       const name = food?.name ?? "Alimento";
                       return (
-                        <li
-                          key={it.id}
-                          className="text-sm flex justify-between gap-2 py-1 border-b border-white/5 last:border-0"
-                        >
-                          <span className="truncate">{name}</span>
-                          <span className="text-muted-foreground shrink-0 num">
-                            {it.grams}g
-                          </span>
+                        <li key={it.id}>
+                          <div
+                            className="text-sm flex justify-between gap-2 py-1 border-b border-white/5 last:border-0"
+                          >
+                            <span className="truncate">{name}</span>
+                            <span className="text-muted-foreground shrink-0 num">
+                              {it.grams}g
+                            </span>
+                          </div>
+                          <SubstituteManager mealItemId={it.id} initial={it.substitutes ?? []} />
                         </li>
                       );
                     })}

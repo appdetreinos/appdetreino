@@ -82,7 +82,7 @@ export default async function StudentHome() {
 
   let { data: student } = await supabase
     .from("student_profiles")
-    .select("id, full_name, goal, xp_total")
+    .select("user_id, trainer_id, full_name, goal, xp_total")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -98,7 +98,7 @@ export default async function StudentHome() {
   // Re-fetch pra pegar dados atualizados após self-heal/backfill
   const { data: studentRetry } = await supabase
     .from("student_profiles")
-    .select("id, full_name, goal, xp_total")
+    .select("user_id, trainer_id, full_name, goal, xp_total")
     .eq("user_id", user.id)
     .maybeSingle();
   if (studentRetry) {
@@ -215,6 +215,29 @@ export default async function StudentHome() {
 
   const xp = student?.xp_total ?? 0;
 
+  // Recados do coach (últimos posts) + WOD de hoje
+  const trainerId = (student as { trainer_id?: string } | null)?.trainer_id ?? null;
+
+  const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+
+  const [{ data: recados }, { data: wodHoje }] = trainerId
+    ? await Promise.all([
+        supabase
+          .from("community_posts")
+          .select("id, content, created_at, pinned")
+          .eq("trainer_id", trainerId)
+          .order("pinned", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(3),
+        supabase
+          .from("wods")
+          .select("id, title, description")
+          .eq("trainer_id", trainerId)
+          .eq("scheduled_for", todayStr)
+          .maybeSingle(),
+      ])
+    : [{ data: null }, { data: null }];
+
   return (
     <main className="min-h-screen pb-24">
       <header className="px-5 md:px-8 pt-8 pb-2 max-w-3xl mx-auto flex items-start justify-between gap-3">
@@ -330,6 +353,50 @@ export default async function StudentHome() {
             </Link>
           </section>
         </StaggerItem>
+
+        {/* Recados do coach + WOD de hoje */}
+        {((recados ?? []).length > 0 || wodHoje) && (
+          <StaggerItem>
+            <section className="mt-4 space-y-3">
+              {wodHoje && (
+                <Link
+                  href="/aluno/wod"
+                  className="flex items-center gap-4 rounded-xl border border-orange-500/20 bg-orange-500/5 p-4 hover:border-orange-500/40 transition-colors"
+                >
+                  <div className="grid size-10 place-items-center rounded-full bg-orange-500/15 text-orange-500">
+                    <Trophy className="size-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold">WOD de hoje: {(wodHoje as { title: string }).title}</div>
+                    <div className="text-sm text-muted-foreground truncate">
+                      {(wodHoje as { description?: string | null }).description ?? "Bora suar junto"}
+                    </div>
+                  </div>
+                  <ArrowRight className="size-4 text-muted-foreground" />
+                </Link>
+              )}
+              {(recados ?? []).length > 0 && (
+                <Card className="border-white/5 bg-card p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MessagesSquare className="size-4 text-primary" />
+                    <h3 className="font-semibold text-sm">Recados do coach</h3>
+                  </div>
+                  <ul className="space-y-2">
+                    {(recados as Array<{ id: string; content: string; created_at: string; pinned: boolean }> ?? []).map((r) => (
+                      <li key={r.id} className="text-sm text-foreground/85 border-l-2 border-primary/40 pl-3">
+                        <span className="line-clamp-2">{r.content}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(r.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                          {r.pinned ? " · fixado" : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+            </section>
+          </StaggerItem>
+        )}
 
         {/* Tiles */}
         <StaggerItem>

@@ -16,6 +16,7 @@ import {
   Flame,
   CheckSquare,
   History,
+  FileText,
 } from "lucide-react";
 import {
   Sidebar,
@@ -50,6 +51,7 @@ const trainerMenu: MenuItem[] = [
   { title: "WOD", url: "/app/wod", icon: Flame },
   { title: "Hábitos", url: "/app/habitos", icon: CheckSquare },
   { title: "Avaliações", url: "/app/evaluations", icon: ClipboardList },
+  { title: "Anamnese", url: "/app/anamnese", icon: FileText },
   { title: "Financeiro", url: "/app/finance", icon: Wallet },
   { title: "WhatsApp", url: "/app/whatsapp", icon: MessageCircle, badge: "novo" },
   { title: "Comunidade", url: "/app/community", icon: Trophy },

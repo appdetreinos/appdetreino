@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -32,12 +33,34 @@ interface StudentSummary {
 }
 
 export default async function TrainerDashboard() {
-  try {
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) return <div className="p-10 text-center">Autenticação necessária.</div>;
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
+  if (authError || !user) return <div className="p-10 text-center">Autenticação necessária.</div>;
+
+  // Lockout de trial ANTES do try geral: redirect() lança exceção e
+  // não pode ser engolido por catch (travaria o redirect em loop).
+  try {
+    const { data: tRow } = await supabase
+      .from("trainer_profiles")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (tRow) {
+      const { getTrainerTrialState } = await import("@/lib/billing/trial");
+      if ((await getTrainerTrialState(user.id)).locked) {
+        redirect("/app/settings/upgrade");
+      }
+    }
+  } catch (e) {
+    const { isRedirectError } = await import(
+      "next/dist/client/components/redirect-error"
+    );
+    if (isRedirectError(e)) throw e;
+    // Qualquer outro erro de billing nunca trava o dashboard
+  }
+
+  try {
     const currentTrainerId = user.id;
 
     const { data: profile } = await supabase

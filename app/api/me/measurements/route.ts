@@ -26,6 +26,7 @@ const bodySchema = z
     arm_cm: z.number().min(15).max(80).nullable().optional(),
     thigh_cm: z.number().min(25).max(100).nullable().optional(),
     notes: z.string().max(500).nullable().optional(),
+    photos_urls: z.array(z.string().url().max(1000)).max(6).nullable().optional(),
   })
   .strict();
 
@@ -68,6 +69,7 @@ export async function POST(request: NextRequest) {
     arm_cm: body.data.arm_cm ?? null,
     thigh_cm: body.data.thigh_cm ?? null,
     notes: body.data.notes ?? null,
+    photos_urls: body.data.photos_urls ?? null,
   });
 
   if (error) {

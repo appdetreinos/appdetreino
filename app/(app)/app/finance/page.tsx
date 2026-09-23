@@ -22,6 +22,7 @@ import { Sparkline } from "@/components/ui/sparkline";
 import { Stagger, StaggerItem, AnimatedNumber } from "@/components/ui/stagger";
 import { PixCobrarButton } from "./pix-cobrar-button";
 import { MarkPaidButton } from "./mark-paid-button";
+import { RecurringBilling, type BillingTemplate } from "./recurring-billing";
 
 /**
  * Financeiro — server component.
@@ -75,17 +76,31 @@ export default async function FinancePage() {
     const pr = sp?.profiles
       ? (Array.isArray(sp.profiles) ? sp.profiles[0] : sp.profiles)
       : null;
+    // Atraso é calculado, não depende de job: pending vencido = overdue
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const effectiveStatus =
+      p.status === "pending" && p.due_date && p.due_date < todayStr
+        ? ("overdue" as const)
+        : (p.status as keyof typeof statusMap);
     return {
       id: p.id,
       aluno: sp?.full_name ?? "Aluno",
       letra: (sp?.full_name ?? "?")[0]?.toUpperCase(),
       telefone: pr?.phone ?? null,
       valor: p.amount,
-      status: p.status as keyof typeof statusMap,
+      status: effectiveStatus,
       vencimento: p.due_date ? new Date(p.due_date).toLocaleDateString("pt-BR") : "—",
       pagoEm: p.paid_at ? relativeTime(p.paid_at) : null,
     };
   });
+
+  // Modelos de cobrança recorrente do trainer
+  const { data: templatesRaw } = await supabase
+    .from("payment_templates")
+    .select("id, name, amount, cycle, billing_type")
+    .eq("trainer_id", user.id)
+    .order("created_at", { ascending: true });
+  const templates = (templatesRaw ?? []) as BillingTemplate[];
 
   const recebido = payments
     .filter((p) => p.status === "paid")
@@ -235,6 +250,11 @@ export default async function FinancePage() {
             </Card>
           </StaggerItem>
         )}
+
+        {/* Cobrança recorrente */}
+        <StaggerItem>
+          <RecurringBilling initial={templates} />
+        </StaggerItem>
 
         {/* Pergunta-chave + lista */}
         <StaggerItem>

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MeasurementForm } from "./measurement-form";
+import { PhotoCompare, type PhotoPoint } from "./photo-compare";
 import { TrendingUp, TrendingDown, Ruler, Sparkles } from "lucide-react";
 import type { Database } from "@/lib/supabase/types";
 import { Sparkline } from "@/components/ui/sparkline";
@@ -52,6 +53,11 @@ export default async function ProgressoPage() {
 
   // Exibição cronológica decrescente (mais recente primeiro)
   const listaExibicao = ((measurements ?? []) as MeasurementRow[]);
+
+  const photoPoints: PhotoPoint[] = listaExibicao
+    .filter((m) => Array.isArray(m.photos_urls) && (m.photos_urls as string[]).length > 0)
+    .map((m) => ({ id: m.id, date: m.date, urls: (m.photos_urls ?? []) as string[] }))
+    .reverse(); // cronológico pro comparador
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6 pb-24">
@@ -123,6 +129,11 @@ export default async function ProgressoPage() {
         {/* Form de nova medição */}
         <StaggerItem>
           <MeasurementForm />
+        </StaggerItem>
+
+        {/* Comparador de fotos */}
+        <StaggerItem>
+          <PhotoCompare points={photoPoints} />
         </StaggerItem>
 
         {/* Histórico */}

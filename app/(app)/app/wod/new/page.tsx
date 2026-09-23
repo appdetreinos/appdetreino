@@ -36,9 +36,18 @@ export default function NewWodPage() {
     }
 
     const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setError("Sessão expirada. Entra de novo.");
+      setSubmitting(false);
+      return;
+    }
     const { data, error: insertError } = await supabase
       .from("wods")
       .insert({
+        trainer_id: user.id,
         title,
         description,
         scheduled_for: scheduledFor,

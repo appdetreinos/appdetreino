@@ -8,14 +8,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Plus, X } from "lucide-react";
 import { safeLog } from "@/lib/log/safe";
+import { createClient } from "@/lib/supabase/client";
 
 /**
  * Form de registro de medição.
  * Cliente Supabase com RLS — só insere se student_id = auth.uid().
+ * Fotos (até 3) sobem pro bucket measurement-photos antes do POST.
  */
 export function MeasurementForm() {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -23,7 +26,8 @@ export function MeasurementForm() {
     e.preventDefault();
     setError(null);
     setSuccess(false);
-    const formData = new FormData(e.currentTarget);
+    const formEl = e.currentTarget;
+    const formData = new FormData(formEl);
 
     const payload = {
       date: new Date().toISOString().split("T")[0],
@@ -37,12 +41,40 @@ export function MeasurementForm() {
       notes: stringOrNull(formData.get("notes")),
     };
 
+    const files = (formEl.querySelector('input[name="photos"]') as HTMLInputElement | null)?.files;
+
     startTransition(async () => {
       try {
+        // Upload das fotos primeiro (best-effort: sem foto não trava o resto)
+        let photos_urls: string[] | null = null;
+        if (files && files.length > 0) {
+          setUploading(true);
+          const supabase = createClient();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (user) {
+            const urls: string[] = [];
+            for (const file of Array.from(files).slice(0, 3)) {
+              const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+              const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+              const { error: upErr } = await supabase.storage
+                .from("measurement-photos")
+                .upload(path, file, { contentType: file.type || "image/jpeg" });
+              if (!upErr) {
+                const { data } = supabase.storage.from("measurement-photos").getPublicUrl(path);
+                if (data?.publicUrl) urls.push(data.publicUrl);
+              }
+            }
+            if (urls.length > 0) photos_urls = urls;
+          }
+          setUploading(false);
+        }
+
         const res = await fetch("/api/me/measurements", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ ...payload, photos_urls }),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => null);
@@ -51,13 +83,13 @@ export function MeasurementForm() {
         }
         setSuccess(true);
         setOpen(false);
-        // router.refresh via hard reload — simples, sem hook extra
         if (typeof window !== "undefined") {
           window.location.reload();
         }
       } catch (e) {
         safeLog.error("[measurement-form] submit failed", e instanceof Error ? e.message : "unknown");
         setError("Falha de conexão");
+        setUploading(false);
       }
     });
   }
@@ -109,12 +141,18 @@ export function MeasurementForm() {
           />
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="photos">Fotos de evolução (até 3)</Label>
+          <Input id="photos" name="photos" type="file" accept="image/*" multiple />
+          <p className="text-xs text-muted-foreground">Frente, lado e costas — pra comparar o antes/depois.</p>
+        </div>
+
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={pending}>
-            {pending ? "Salvando..." : "Salvar"}
+          <Button type="submit" disabled={pending || uploading}>
+            {pending || uploading ? "Salvando..." : "Salvar"}
           </Button>
         </div>
       </form>

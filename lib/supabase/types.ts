@@ -208,6 +208,14 @@ export interface MealItemsRow {
   food_id: string;
   grams: number;
 }
+export interface MealItemSubstitutesRow {
+  id: string;
+  meal_item_id: string;
+  food_name: string;
+  grams: number;
+  position: number;
+  created_at: ISO8601;
+}
 
 // ---------- Avaliação física ----------
 export interface MeasurementsRow {
@@ -588,6 +596,7 @@ interface PublicSchema {
     diets: TableSchema<DietsRow, { trainer_id: string; title: string; student_id?: string | null }>;
     meals: TableSchema<MealsRow, { diet_id: string; position: number; name: string; time?: TimeStr | null }>;
     meal_items: TableSchema<MealItemsRow, { meal_id: string; food_id: string; grams: number }>;
+    meal_item_substitutes: TableSchema<MealItemSubstitutesRow, { meal_item_id: string; food_name: string; grams: number }>;
     measurements: TableSchema<MeasurementsRow, { student_id: string; date: DateStr }>;
     payments: TableSchema<PaymentsRow, { trainer_id: string; student_id: string; amount: number; due_date: DateStr; gateway?: "pix_direto" | "mercadopago" | "manual" }>;
     payment_templates: TableSchema<PaymentTemplatesRow, { trainer_id: string; name: string }>;

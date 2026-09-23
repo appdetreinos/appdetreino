@@ -25,6 +25,17 @@ export default async function MensagensPage() {
         .maybeSingle()
     : { data: null };
 
+  // Recados do coach (posts da comunidade) — canal de feedback 1:N
+  const { data: recados } = studentProfile?.trainer_id
+    ? await supabase
+        .from("community_posts")
+        .select("id, content, created_at, pinned")
+        .eq("trainer_id", studentProfile.trainer_id)
+        .order("pinned", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(5)
+    : { data: null };
+
   const messages: Array<{
     id: string;
     direction: string;
@@ -34,8 +45,7 @@ export default async function MensagensPage() {
     created_at: string;
   }> = [];
 
-  if (studentProfile?.trainer_id && studentProfile?.phone) {
-    const safePhone = sanitizePhone(studentProfile.phone);
+  if (studentProfile?.trainer_id && studentProfile?.phone) {    const safePhone = sanitizePhone(studentProfile.phone);
     const [{ data: toData }, { data: fromData }] = await Promise.all([
       supabase
         .from("evolution_messages")
@@ -76,6 +86,23 @@ export default async function MensagensPage() {
           ) : null}
         </p>
       </header>
+
+      {((recados ?? []).length > 0) && (
+        <Card className="bg-card border-white/5 p-5">
+          <h2 className="font-semibold mb-3">Recados do seu personal</h2>
+          <ul className="space-y-3">
+            {(recados as Array<{ id: string; content: string; created_at: string; pinned: boolean }> ?? []).map((r) => (
+              <li key={r.id} className="text-sm border-l-2 border-primary/40 pl-3">
+                <p className="whitespace-pre-line">{r.content}</p>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(r.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                  {r.pinned ? " · fixado" : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {messages.length === 0 ? (
         <Card className="bg-card border-dashed border-white/10 p-10 text-center">

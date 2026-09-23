@@ -77,7 +77,16 @@ export default function NewAppointmentPage() {
     }
 
     const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setError("Sessão expirada. Entra de novo.");
+      setSubmitting(false);
+      return;
+    }
     const { error: insertError } = await supabase.from("appointments").insert({
+      trainer_id: user.id,
       title,
       starts_at: new Date(starts_at).toISOString(),
       ends_at: new Date(ends_at).toISOString(),
