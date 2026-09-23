@@ -22,11 +22,12 @@ export default async function StudentsPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // Convites do trainer
+  // Convites do trainer (apenas os que ainda não foram aceitos)
   const { data: invitesRaw } = await supabase
     .from("student_invites")
     .select("id, code, full_name, phone, goal, status, created_at, accepted_at")
     .eq("trainer_id", user.id)
+    .eq("status", "pending")
     .order("created_at", { ascending: false });
 
   // Alunos já vinculados
