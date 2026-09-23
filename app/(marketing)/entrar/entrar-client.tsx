@@ -80,7 +80,7 @@ export function EntrarClient() {
       currentSession.role === "student"
         ? "/aluno"
         : currentSession.role === "admin"
-          ? "/admin"
+          ? "/admin/trainers"
           : "/app";
     router.push(destino);
     router.refresh();
@@ -272,7 +272,7 @@ function SessionModal({
     session.role === "student"
       ? "/aluno"
       : session.role === "admin"
-        ? "/admin"
+        ? "/admin/trainers"
         : "/app";
 
   return (

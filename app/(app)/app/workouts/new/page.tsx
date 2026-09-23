@@ -196,6 +196,7 @@ export default async function NewWorkoutPage({
       resolvedUrls[ex.id] = resolveExerciseMediaUrl(
         ex.image_url ?? null,
         ex.name,
+        ex.animation_url ?? null,
       );
     }
   }

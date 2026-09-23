@@ -11,7 +11,7 @@ type Props = {
   exercise: Pick<
     Exercise,
     "id" | "name" | "muscle_group" | "image_url" | "animation_url" | "category" | "media_type"
-  >;
+  > & { video_url?: string | null };
   /** URL já resolvida (vem do server via getExerciseMediaUrl). */
   resolvedUrl?: string | null;
   /** Quando true, renderiza como mídia grande com aspect ratio 4:3. */
@@ -40,7 +40,8 @@ export function ExerciseMedia({
   // nunca thumbnail quebrada (gap reportado no picker).
   const [broken, setBroken] = useState(false);
   const showMedia = !!resolvedUrl && !broken;
-  const isAnimation = isAnimationUrl(exercise.animation_url ?? resolvedUrl);
+  const isVideo = /\.(mp4|webm)$/i.test(resolvedUrl ?? "");
+  const isAnimation = isVideo || isAnimationUrl(exercise.animation_url ?? resolvedUrl);
 
   // Fundo por categoria v2 se tiver, senão por músculo primário.
   const bg =
@@ -63,14 +64,27 @@ export function ExerciseMedia({
         className="block w-full rounded-2xl overflow-hidden border border-white/10"
         aria-label={`Imagem de ${exercise.name}`}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={resolvedUrl}
-          alt={exercise.name}
-          className={imgClass}
-          loading="lazy"
-          onError={() => setBroken(true)}
-        />
+        {isVideo ? (
+          <video
+            src={resolvedUrl as string}
+            className={imgClass}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="metadata"
+            onError={() => setBroken(true)}
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={resolvedUrl}
+            alt={exercise.name}
+            className={imgClass}
+            loading="lazy"
+            onError={() => setBroken(true)}
+          />
+        )}
       </div>
     );
   }
@@ -81,14 +95,27 @@ export function ExerciseMedia({
         className={cn("shrink-0 rounded-2xl overflow-hidden border border-white/10", sizeDims(size))}
         aria-label={`Imagem de ${exercise.name}`}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={resolvedUrl}
-          alt={exercise.name}
-          className={imgClass}
-          loading="lazy"
-          onError={() => setBroken(true)}
-        />
+        {isVideo ? (
+          <video
+            src={resolvedUrl as string}
+            className={imgClass}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="metadata"
+            onError={() => setBroken(true)}
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={resolvedUrl}
+            alt={exercise.name}
+            className={imgClass}
+            loading="lazy"
+            onError={() => setBroken(true)}
+          />
+        )}
       </div>
     );
   }

@@ -102,3 +102,8 @@ export async function GET(request: NextRequest) {
     },
   });
 }
+
+/** POST espelha o GET (botões LGPD usam POST via csrfFetch). */
+export async function POST(request: NextRequest) {
+  return GET(request);
+}

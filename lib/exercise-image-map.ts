@@ -651,13 +651,35 @@ const M: Record<string, ExerciseImageEntry> = {
 export function lookupExerciseImage(name: string | null | undefined): ExerciseImageEntry | null {
   if (!name) return null;
   const key = normalize(name);
-  return M[key] ?? null;
+  const direct = M[key] ?? null;
+  if (direct) return direct;
+  // Fallback sem acento ("supino inclinado halteres" etc.)
+  if (!flatIndex) {
+    flatIndex = {};
+    for (const k of Object.keys(M)) flatIndex[unaccented(k)] = M[k];
+  }
+  return flatIndex[unaccented(key)] ?? null;
 }
 
 /**
- * Normaliza nome para lookup: lowercase + colapsa espaços.
- * Não remove acentos — o banco mantém acentos nos nomes PT-BR.
+ * Normaliza nome para lookup: lowercase + colapsa espaços + remove
+ * acentos (banco tem "Elevação", busca pode vir sem acento).
  */
 function normalize(s: string): string {
-  return s.trim().toLowerCase().replace(/\s+/g, " ");
+  return s
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+/** Índice sem acento (preguiçoso) pra casar "elevacao" com "Elevação". */
+let flatIndex: Record<string, ExerciseImageEntry> | null = null;
+
+function unaccented(key: string): string {
+  return key
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }

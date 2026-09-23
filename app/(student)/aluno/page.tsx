@@ -73,7 +73,7 @@ export default async function StudentHome() {
     .maybeSingle();
 
   if (profileRole?.role === "trainer") redirect("/app");
-  if (profileRole?.role === "admin") redirect("/admin");
+  if (profileRole?.role === "admin") redirect("/admin/trainers");
 
   const { data: profile } = await supabase
     .from("profiles")

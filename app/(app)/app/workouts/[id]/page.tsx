@@ -123,6 +123,7 @@ export default async function WorkoutDetailPage({
       const mediaUrl = resolveExerciseMediaUrl(
         ex.image_url ?? null,
         ex.name,
+        ex.animation_url ?? null,
       );
       itemMedia[ex.id] = mediaUrl;
     }

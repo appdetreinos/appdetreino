@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
   // 3. Verifica convite
   const { data: inviteCheck, error: inviteCheckError } = await admin
     .from("student_invites")
-    .select("id, status, expires_at, trainer_id, full_name, phone, goal, code")
+    .select("id, status, expires_at, trainer_id, full_name, phone, goal, code, monthly_amount, first_due_date")
     .eq("code", body.invite_code)
     .maybeSingle();
 
@@ -256,6 +256,38 @@ export async function POST(request: NextRequest) {
       "[student-signup] invite UPDATE failed (student_profile OK)",
       inviteUpdateError.message,
     );
+  }
+
+  // 10. Primeira cobrança (se o trainer definiu mensalidade no convite)
+  try {
+    const amount = Number((inviteCheck as { monthly_amount?: number | null }).monthly_amount ?? 0);
+    if (amount > 0) {
+      const firstDue = (inviteCheck as { first_due_date?: string | null }).first_due_date;
+      const { data: hasPending } = await admin
+        .from("payments")
+        .select("id")
+        .eq("student_id", studentId)
+        .in("status", ["pending", "overdue"])
+        .limit(1)
+        .maybeSingle();
+      if (!hasPending) {
+        const dueDate =
+          firstDue ??
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        await admin.from("payments").insert({
+          trainer_id: trainerId,
+          student_id: studentId,
+          amount,
+          status: "pending",
+          due_date: dueDate,
+          gateway: "pix_direto",
+          billing_type: "PIX",
+          description: `Mensalidade — ${dueDate.slice(5, 7)}/${dueDate.slice(0, 4)}`,
+        });
+      }
+    }
+  } catch (e) {
+    safeLog.error("[student-signup] first payment failed", e instanceof Error ? e.message : "unknown");
   }
 
   return NextResponse.json({ ok: true, role: "student" });

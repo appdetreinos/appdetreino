@@ -19,9 +19,15 @@ import type { Exercise } from "@/lib/types/workout";
  * pontos a gente resolve no server e só passa a string final).
  */
 export function getExerciseMediaUrl(
-  exercise: Pick<Exercise, "image_url" | "animation_url" | "name">,
+  exercise: Pick<Exercise, "image_url" | "animation_url" | "name"> & {
+    video_url?: string | null;
+  },
 ): string | null {
-  const chosen = exercise.animation_url ?? exercise.image_url ?? null;
+  const chosen =
+    exercise.animation_url ??
+    (exercise.video_url as string | null | undefined) ??
+    exercise.image_url ??
+    null;
   if (chosen) return chosen;
   const mapped = lookupExerciseImage(exercise.name);
   if (mapped?.url) return mapped.url;
@@ -29,11 +35,14 @@ export function getExerciseMediaUrl(
 }
 
 /** Wrapper que aceita `image_url` cru (storage path OU URL) e cai no
- *  mapa se não houver. Útil quando só temos o path/url sem o objeto. */
+ *  mapa se não houver. `animationUrl` (gif/mp4) tem prioridade — mostra
+ *  o movimento, não só a pose. */
 export function resolveExerciseMediaUrl(
   imageUrl: string | null | undefined,
   fallbackName: string | null | undefined,
+  animationUrl?: string | null | undefined,
 ): string | null {
+  if (animationUrl) return animationUrl;
   if (imageUrl) return imageUrl;
   if (fallbackName) {
     const mapped = lookupExerciseImage(fallbackName);

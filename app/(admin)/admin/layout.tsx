@@ -30,7 +30,7 @@ export default async function AdminLayout({
     <div className="min-h-svh flex flex-col">
       <header className="border-b border-white/5">
         <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
-          <Link href="/admin" className="font-extrabold flex items-center gap-2">
+          <Link href="/admin/trainers" className="font-extrabold flex items-center gap-2">
             <Shield className="size-4 text-rose-500" />
             Admin · Viva FIT
           </Link>

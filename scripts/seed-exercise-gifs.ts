@@ -62,6 +62,46 @@ const EXERCISES: Array<{ name: string; searchTerms: string[] }> = [
   { name: "Esteira corrida", searchTerms: ["treadmill running"] },
   { name: "Bike ergométrica", searchTerms: ["stationary bike", "exercise bike"] },
   { name: "Burpee", searchTerms: ["burpee"] },
+  // Pack novo (migration 0056)
+  { name: "Desenvolvimento com halteres", searchTerms: ["seated dumbbell press", "shoulder press"] },
+  { name: "Elevação frontal", searchTerms: ["front raise", "dumbbell front raise"] },
+  { name: "Crucifixo invertido", searchTerms: ["reverse fly", "rear delt fly"] },
+  { name: "Desenvolvimento Arnold", searchTerms: ["arnold press"] },
+  { name: "Remada alta", searchTerms: ["upright row"] },
+  { name: "Encolhimento com barra", searchTerms: ["barbell shrug"] },
+  { name: "Remada baixa", searchTerms: ["seated cable row"] },
+  { name: "Barra fixa supinada", searchTerms: ["chin up"] },
+  { name: "Pullover com halter", searchTerms: ["dumbbell pullover"] },
+  { name: "Serrote na polia", searchTerms: ["one arm cable row"] },
+  { name: "Supino declinado barra", searchTerms: ["decline bench press"] },
+  { name: "Crucifixo inclinado", searchTerms: ["incline fly", "incline dumbbell fly"] },
+  { name: "Cross over", searchTerms: ["cable crossover"] },
+  { name: "Peck deck", searchTerms: ["pec deck", "chest fly machine"] },
+  { name: "Agachamento frontal", searchTerms: ["front squat"] },
+  { name: "Afundo com halteres", searchTerms: ["dumbbell lunge"] },
+  { name: "Leg press horizontal", searchTerms: ["horizontal leg press"] },
+  { name: "Levantamento terra", searchTerms: ["deadlift"] },
+  { name: "Good morning", searchTerms: ["good morning exercise"] },
+  { name: "Stiff unilateral", searchTerms: ["single leg romanian deadlift"] },
+  { name: "Hip thrust", searchTerms: ["hip thrust"] },
+  { name: "Ponte de glúteo", searchTerms: ["glute bridge"] },
+  { name: "Cadeira abdutora", searchTerms: ["hip abduction machine"] },
+  { name: "Glúteo na polia", searchTerms: ["cable kickback", "glute kickback"] },
+  { name: "Cadeira adutora", searchTerms: ["hip adduction machine"] },
+  { name: "Panturrilha sentado", searchTerms: ["seated calf raise"] },
+  { name: "Panturrilha no leg press", searchTerms: ["leg press calf raise"] },
+  { name: "Rosca martelo", searchTerms: ["hammer curl"] },
+  { name: "Rosca concentrada", searchTerms: ["concentration curl"] },
+  { name: "Rosca scott", searchTerms: ["preacher curl"] },
+  { name: "Tríceps corda", searchTerms: ["rope pushdown"] },
+  { name: "Tríceps francês", searchTerms: ["overhead triceps extension"] },
+  { name: "Mergulho no banco", searchTerms: ["bench dip", "tricep dip"] },
+  { name: "Prancha lateral", searchTerms: ["side plank"] },
+  { name: "Crunch bicicleta", searchTerms: ["bicycle crunch"] },
+  { name: "Abdominal infra", searchTerms: ["reverse crunch"] },
+  { name: "Hiperextensão lombar", searchTerms: ["back extension", "hyperextension"] },
+  { name: "Kettlebell swing", searchTerms: ["kettlebell swing"] },
+  { name: "Thruster", searchTerms: ["thruster barbell"] },
 ];
 
 interface WikiFile {
@@ -75,16 +115,27 @@ interface WikiFile {
 
 /**
  * Busca arquivos no Wikimedia Commons por termo.
- * Filtra por mime=image/gif e licença CC0/PD.
+ * Prefere VÍDEO (mp4/webm mostra o movimento) e aceita GIF.
+ * Filtra por licença livre (CC0/PD/CC-BY/CC-BY-SA).
  */
-async function searchWikimediaGif(term: string): Promise<WikiFile | null> {
+async function searchWikimediaMedia(term: string): Promise<{ file: WikiFile; kind: "video" | "gif" } | null> {
+  // 1) Tenta vídeo primeiro
+  const video = await searchOnce(term, "video");
+  if (video) return { file: video, kind: "video" };
+  // 2) Cai pro GIF
+  const gif = await searchOnce(term, "gif");
+  if (gif) return { file: gif, kind: "gif" };
+  return null;
+}
+
+async function searchOnce(term: string, filetype: "video" | "gif"): Promise<WikiFile | null> {
   const url = new URL("https://commons.wikimedia.org/w/api.php");
   url.searchParams.set("action", "query");
   url.searchParams.set("format", "json");
   url.searchParams.set("generator", "search");
   url.searchParams.set("gsrnamespace", "6"); // File namespace
-  url.searchParams.set("gsrsearch", `${term} filetype:gif`);
-  url.searchParams.set("gsrlimit", "5");
+  url.searchParams.set("gsrsearch", `${term} filetype:${filetype}`);
+  url.searchParams.set("gsrlimit", "8");
   url.searchParams.set("prop", "imageinfo");
   url.searchParams.set("iiprop", "url|mime|size|extmetadata");
   url.searchParams.set("iiurlwidth", "480");
@@ -106,7 +157,17 @@ async function searchWikimediaGif(term: string): Promise<WikiFile | null> {
   if (!pages) return null;
 
   for (const page of Object.values(pages) as WikiFile[]) {
-    if (page.mime !== "image/gif") continue;
+    // Aceita gif ou vídeo web (mp4/webm/ogv — ogv vira fallback, player tenta)
+    const isGif = page.mime === "image/gif";
+    const isVideo =
+      page.mime === "video/mp4" ||
+      page.mime === "video/webm" ||
+      page.mime === "video/ogg";
+    if (filetype === "gif" && !isGif) continue;
+    if (filetype === "video" && !isVideo) continue;
+
+    // Pula thumb minúscula
+    if ((page.width ?? 0) < 120 && (page.height ?? 0) < 120) continue;
 
     // Filtra licença: CC0 ou Public Domain
     // Wikimedia retorna extmetadata com strings já "achatadas" quando
@@ -134,7 +195,7 @@ async function main() {
   // Carrega exercícios do banco (só os globais)
   const { data: dbExercises, error: loadErr } = await supabase
     .from("exercises")
-    .select("id, name, video_url")
+    .select("id, name, video_url, animation_url")
     .is("trainer_id", null);
 
   if (loadErr || !dbExercises) {
@@ -154,31 +215,35 @@ async function main() {
       continue;
     }
 
-    if (dbEx.video_url) {
-      console.log(`  ✓ "${ex.name}" já tem vídeo`);
+    if (dbEx.video_url || (dbEx as { animation_url?: string | null }).animation_url) {
+      console.log(`  ✓ "${ex.name}" já tem mídia`);
       skipped++;
       continue;
     }
 
-    let found: WikiFile | null = null;
+    let found: { file: WikiFile; kind: "video" | "gif" } | null = null;
     for (const term of ex.searchTerms) {
-      found = await searchWikimediaGif(term);
+      found = await searchWikimediaMedia(term);
       if (found) break;
       // Pequeno delay pra não martelar a API
       await new Promise((r) => setTimeout(r, 300));
     }
 
     if (!found) {
-      console.log(`  ✗ "${ex.name}" — GIF não encontrado`);
+      console.log(`  ✗ "${ex.name}" — mídia não encontrada`);
       notFound++;
       continue;
     }
 
+    // Movimento vai pra animation_url (cascata do player usa primeiro);
+    // video_url guarda também quando for vídeo de verdade.
+    const isVideo = found.kind === "video";
     const { error: updErr } = await supabase
       .from("exercises")
       .update({
-        video_url: found.url,
-        media_type: "gif",
+        animation_url: found.file.url,
+        ...(isVideo ? { video_url: found.file.url } : {}),
+        media_type: isVideo ? "video" : "gif",
       })
       .eq("id", dbEx.id);
 
@@ -187,7 +252,7 @@ async function main() {
       continue;
     }
 
-    console.log(`  ✓ "${ex.name}" → ${found.title}`);
+    console.log(`  ✓ "${ex.name}" [${found.kind}] → ${found.file.title}`);
     updated++;
 
     // Rate limit gentil

@@ -174,6 +174,7 @@ export default async function RunnerPage({ params }: PageProps) {
       resolvedUrls[p.exerciseId] = resolveExerciseMediaUrl(
         p.image_url,
         p.name,
+        p.animation_url ?? null,
       );
     }
   }
@@ -182,6 +183,7 @@ export default async function RunnerPage({ params }: PageProps) {
       resolvedUrls[l.exerciseId] = resolveExerciseMediaUrl(
         l.image_url,
         l.name,
+        l.animation_url ?? null,
       );
     }
   }

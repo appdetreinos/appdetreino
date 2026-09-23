@@ -36,7 +36,7 @@ export default async function TrainerLayout({
 
   const role = (profile as { role?: string } | null)?.role;
   if (role === "student") redirect("/aluno");
-  if (role === "admin") redirect("/admin");
+  if (role === "admin") redirect("/admin/trainers");
 
   let daysLeft = 0;
   let showOnboarding = false;

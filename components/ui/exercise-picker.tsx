@@ -37,6 +37,13 @@ const CATEGORY_CHIPS: ReadonlyArray<string> = [
   "ombros",
   "biceps",
   "triceps",
+  "abdomen",
+  "lombar",
+  "trapezio",
+  "adutores",
+  "abdutores",
+  "corpo_inteiro",
+  "cardio",
 ];
 
 type Props = {

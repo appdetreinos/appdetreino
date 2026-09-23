@@ -83,6 +83,8 @@ export interface Exercise {
   image_url?: string | null;
   /** GIF/MP4/WebM. Storage path OU URL absoluta. */
   animation_url?: string | null;
+  /** Vídeo de execução (mp4/webm). Mostra o movimento no player. */
+  video_url?: string | null;
   /** v2: categoria fina (vide ExerciseCategory). */
   category?: ExerciseCategory | string | null;
   /** v2: apelidos alternativos pra busca. */

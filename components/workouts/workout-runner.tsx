@@ -347,7 +347,7 @@ export function WorkoutRunner({
           equipment: l.equipment,
           image_url: l.image_url,
           animation_url: l.animation_url,
-          category: null,
+          category: l.muscle_group,
           aliases: null,
         }))}
         resolvedUrls={resolvedUrls}
@@ -482,7 +482,7 @@ function ExerciseBlock({
             image_url: exercise.image_url,
             animation_url: exercise.animation_url,
             media_type: exercise.media_type,
-            category: null,
+            category: exercise.muscle_group,
           }}
           resolvedUrl={resolvedUrl}
           size="lg"
