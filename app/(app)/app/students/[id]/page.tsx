@@ -271,9 +271,8 @@ export default async function StudentDetailPage({
                      </li>
                    ))}
                  </ul>
-               )}
-             </Card>
-            </Card>
+                )}
+              </Card>
 
             <Card className="bg-card border-white/5 p-5">
               <h2 className="font-semibold mb-3 flex items-center gap-2">
