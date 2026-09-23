@@ -17,6 +17,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { MeasurementForm } from "./measurement-form";
+import { StudentEditForm } from "./student-edit-form";
 import { PhotoCompare } from "@/app/(student)/aluno/progresso/photo-compare";
 import { Sparkline } from "@/components/ui/sparkline";
 import { Stagger, StaggerItem, AnimatedNumber } from "@/components/ui/stagger";
@@ -35,7 +36,7 @@ export default async function StudentDetailPage({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, full_name, email, phone, avatar_url")
+    .select("id, full_name, phone, avatar_url")
     .eq("id", id)
     .maybeSingle();
 
@@ -175,12 +176,6 @@ export default async function StudentDetailPage({
               )}
             </div>
             <div className="flex flex-wrap gap-3 mt-2 text-sm text-muted-foreground">
-              {profile.email && (
-                <span className="flex items-center gap-1">
-                  <Mail className="size-3.5" />
-                  {profile.email}
-                </span>
-              )}
               {profile.phone && (
                 <span className="flex items-center gap-1">
                   <Phone className="size-3.5" />
@@ -228,6 +223,16 @@ export default async function StudentDetailPage({
           />
         </div>
       </Card>
+
+      <StudentEditForm
+        studentId={id}
+        initial={{
+          fullName: profile.full_name ?? "",
+          phone: profile.phone ?? "",
+          goal: ((studentProfile.goals ?? studentProfile.goal) as string) ?? "",
+          status: studentProfile.status ?? "active",
+        }}
+      />
 
       <Stagger className="space-y-6" delay={0.05}>
         {pesoSerie.length >= 2 && (
