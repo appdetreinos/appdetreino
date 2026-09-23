@@ -42,7 +42,7 @@ export default async function StudentDetailPage({
 
   const { data: studentProfile } = await supabase
     .from("student_profiles")
-    .select("status, birth_date, goals, plan_tier, xp_total, goal, joined_at, full_name")
+    .select("status, birthdate, goal, xp_total, joined_at, full_name")
     .eq("user_id", id)
     .maybeSingle();
 
@@ -223,11 +223,6 @@ export default async function StudentDetailPage({
               >
                 {statusLabel}
               </Badge>
-              {studentProfile.plan_tier && (
-                <Badge variant="outline" className="border-primary/30 text-primary">
-                  {studentProfile.plan_tier}
-                </Badge>
-              )}
             </div>
             <div className="flex flex-wrap gap-3 mt-2 text-sm text-muted-foreground">
               {profile.phone && (
@@ -236,16 +231,16 @@ export default async function StudentDetailPage({
                   {profile.phone}
                 </span>
               )}
-              {studentProfile.birth_date && (
+              {studentProfile.birthdate && (
                 <span className="flex items-center gap-1">
                   <Calendar className="size-3.5" />
-                  {new Date(studentProfile.birth_date).toLocaleDateString("pt-BR")}
+                  {new Date(studentProfile.birthdate).toLocaleDateString("pt-BR")}
                 </span>
               )}
             </div>
-            {(studentProfile.goals ?? studentProfile.goal) && (
+            {studentProfile.goal && (
               <p className="text-sm mt-3 italic text-foreground/80">
-                "{(studentProfile.goals ?? studentProfile.goal) as string}"
+                "{studentProfile.goal as string}"
               </p>
             )}
           </div>
@@ -289,7 +284,7 @@ export default async function StudentDetailPage({
         initial={{
           fullName: profile.full_name ?? "",
           phone: profile.phone ?? "",
-          goal: ((studentProfile.goals ?? studentProfile.goal) as string) ?? "",
+          goal: (studentProfile.goal as string) ?? "",
           status: studentProfile.status ?? "active",
         }}
       />
