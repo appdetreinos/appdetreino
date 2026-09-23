@@ -96,9 +96,57 @@ async function awardWorkoutXp(
 }
 
 /**
- * +1 progresso nos desafios ativos em que o aluno participa.
- * Roda como o próprio aluno (RLS student_all cobre).
+ * Badges automáticas: 1/10/50 treinos + streak 7.
+ * Roda como o próprio aluno (policy student_badges_student_insert).
  */
+async function awardBadges(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sessionId: string,
+): Promise<void> {
+  const { data: sess } = await supabase
+    .from("workout_sessions")
+    .select("student_id")
+    .eq("id", sessionId)
+    .maybeSingle();
+  const studentId = (sess as { student_id?: string } | null)?.student_id;
+  if (!studentId) return;
+
+  const [{ count: doneCount }, { data: sp }, { data: owned }] = await Promise.all([
+    supabase
+      .from("workout_sessions")
+      .select("id", { count: "exact", head: true })
+      .eq("student_id", studentId)
+      .eq("status", "done"),
+    supabase
+      .from("student_profiles")
+      .select("streak_current")
+      .eq("user_id", studentId)
+      .maybeSingle(),
+    supabase.from("student_badges").select("badge_id").eq("student_id", studentId),
+  ]);
+
+  const done = doneCount ?? 0;
+  const streak = (sp as { streak_current?: number } | null)?.streak_current ?? 0;
+  const wanted: string[] = [];
+  if (done >= 1) wanted.push("primeiro-treino");
+  if (done >= 10) wanted.push("ritmo-10");
+  if (done >= 50) wanted.push("meio-centena");
+  if (streak >= 7) wanted.push("chama-acesa");
+  if (wanted.length === 0) return;
+
+  const { data: badges } = await supabase
+    .from("badges")
+    .select("id, slug")
+    .in("slug", wanted);
+  const ownedIds = new Set(((owned ?? []) as Array<{ badge_id: string }>).map((o) => o.badge_id));
+  const fresh = ((badges ?? []) as Array<{ id: string; slug: string }>).filter((b) => !ownedIds.has(b.id));
+  if (fresh.length === 0) return;
+
+  await supabase.from("student_badges").upsert(
+    fresh.map((b) => ({ student_id: studentId, badge_id: b.id })),
+    { onConflict: "student_id,badge_id" },
+  );
+}
 async function bumpChallengeProgress(
   supabase: Awaited<ReturnType<typeof createClient>>,
   sessionId: string,
@@ -269,6 +317,13 @@ export async function finishWorkoutSession(
       await bumpChallengeProgress(ctx.data.supabase, session_id);
     } catch (e) {
       safeLog.error("bumpChallengeProgress failed", e instanceof Error ? e.message : "unknown");
+    }
+
+    // Badges (best-effort)
+    try {
+      await awardBadges(ctx.data.supabase, session_id);
+    } catch (e) {
+      safeLog.error("awardBadges failed", e instanceof Error ? e.message : "unknown");
     }
 
     revalidatePath("/app/workouts");

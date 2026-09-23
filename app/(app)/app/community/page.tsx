@@ -53,13 +53,26 @@ export default async function CommunityPage() {
     comments: (p.comments ?? []).reduce((acc, x) => acc + (x.count ?? 0), 0),
   }));
 
-  // Desafios do trainer
+  // Desafios do trainer (+ nº de participantes cada)
   const { data: challenges } = await supabase
     .from("challenges")
     .select("id, title, description, ends_at, reward_xp")
     .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .order("created_at", { ascending: false })
     .limit(5);
+
+  const challengeIds = ((challenges ?? []) as Array<{ id: string }>).map((c) => c.id);
+  let partCountByChallenge = new Map<string, number>();
+  if (challengeIds.length > 0) {
+    const { data: parts } = await supabase
+      .from("challenge_participants")
+      .select("challenge_id")
+      .in("challenge_id", challengeIds);
+    partCountByChallenge = new Map<string, number>();
+    for (const p of (parts ?? []) as Array<{ challenge_id: string }>) {
+      partCountByChallenge.set(p.challenge_id, (partCountByChallenge.get(p.challenge_id) ?? 0) + 1);
+    }
+  }
 
   // Top 5 alunos por XP (best-effort)
   const { data: topStudents } = await supabase
@@ -154,15 +167,16 @@ export default async function CommunityPage() {
                 {challenges.map((c) => (
                   <li key={c.id} className="border-b border-white/5 last:border-0 pb-2 last:pb-0">
                     <div className="font-medium">{c.title}</div>
-                    {c.reward_xp ? (
-                      <div className="text-xs text-muted-foreground">
-                        +{c.reward_xp} XP · até{" "}
+                    <div className="text-xs text-muted-foreground">
+                      {partCountByChallenge.get(c.id) ?? 0} participando
+                      {c.reward_xp ? (
+                        <> · +{c.reward_xp} XP · até{" "}
                         {new Date(c.ends_at).toLocaleDateString("pt-BR", {
                           day: "2-digit",
                           month: "short",
-                        })}
-                      </div>
-                    ) : null}
+                        })}</>
+                      ) : null}
+                    </div>
                   </li>
                 ))}
               </ul>

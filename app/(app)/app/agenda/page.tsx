@@ -5,6 +5,7 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, MapPin, Video, Clock, Sparkles } from "lucide-react";
 import { Stagger, StaggerItem } from "@/components/ui/stagger";
+import { AvailabilityManager, type Slot } from "./availability-manager";
 
 const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -117,22 +118,7 @@ export default async function AgendaPage() {
                 <Calendar className="size-4" />
                 Disponibilidade
               </h2>
-              {(availability ?? []).length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Configure os dias e horários que você atende.
-                </p>
-              ) : (
-                <ul className="space-y-1.5 text-sm">
-                  {(availability ?? []).map((a) => (
-                    <li key={a.id} className="flex items-center justify-between">
-                      <span className="font-medium">{DAY_NAMES[a.weekday]}</span>
-                      <span className="text-muted-foreground font-mono text-xs">
-                        {a.start_time} → {a.end_time}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <AvailabilityManager initial={((availability ?? []) as Slot[])} />
             </Card>
 
             {/* Resumo rápido */}
