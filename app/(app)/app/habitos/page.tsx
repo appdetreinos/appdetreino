@@ -34,7 +34,7 @@ type Row = {
   id: string;
   name: string;
   icon: string | null;
-  target_value: number | null;
+  target_count: number | null;
   unit: string | null;
   student_id: string;
   student_name: string;
@@ -55,13 +55,14 @@ export default async function HabitosPage() {
 
   const today = todayBR();
 
-  // Habits do trainer + logs de hoje (JOIN).
-  // Usamos duas queries porque PostgREST não suporta LEFT JOIN com count agregado.
+  // Habits do trainer + logs de hoje.
+  // Duas queries simples (sem JOIN frágil): habits + profiles dos alunos.
   const [{ data: habits }, { data: logs }] = await Promise.all([
     supabase
       .from("habits")
-      .select("id, name, icon, target_value, unit, student_id, students:student_profiles!inner(user_id, profiles:profiles!inner(full_name))")
+      .select("id, name, icon, target_count, unit, student_id")
       .eq("trainer_id", user.id)
+      .eq("active", true)
       .order("name"),
     supabase
       .from("habit_logs")
@@ -69,20 +70,24 @@ export default async function HabitosPage() {
       .eq("logged_at", today),
   ]);
 
+  // Nomes dos alunos (lookup separado — evita join PostgREST frágil)
+  const studentIds = Array.from(new Set((habits ?? []).map((h) => h.student_id).filter(Boolean)));
+  let nameMap = new Map<string, string>();
+  if (studentIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", studentIds as string[]);
+    nameMap = new Map((profiles ?? []).map((p) => [p.id as string, (p.full_name as string) ?? "Sem nome"]));
+  }
+
   type HabitRow = {
     id: string;
     name: string;
     icon: string | null;
-    target_value: number | null;
+    target_count: number | null;
     unit: string | null;
     student_id: string;
-    students: {
-      user_id: string;
-      profiles: { full_name: string } | { full_name: string }[] | null;
-    } | {
-      user_id: string;
-      profiles: { full_name: string } | { full_name: string }[] | null;
-    }[] | null;
   };
 
   const habitsRaw = (habits ?? []) as unknown as HabitRow[];
@@ -95,11 +100,7 @@ export default async function HabitosPage() {
   // Agrupa por aluno
   const byStudent = new Map<string, { student_name: string; rows: Row[] }>();
   for (const h of habitsRaw) {
-    const sRel = Array.isArray(h.students) ? h.students[0] : h.students;
-    const pRel = sRel?.profiles
-      ? (Array.isArray(sRel.profiles) ? sRel.profiles[0] : sRel.profiles)
-      : null;
-    const sName = pRel?.full_name ?? "Sem nome";
+    const sName = nameMap.get(h.student_id) ?? "Sem nome";
     const sid = h.student_id;
 
     if (!byStudent.has(sid)) {
@@ -110,7 +111,7 @@ export default async function HabitosPage() {
       id: h.id,
       name: h.name,
       icon: h.icon,
-      target_value: h.target_value,
+      target_count: h.target_count,
       unit: h.unit,
       student_id: h.student_id,
       student_name: sName,
@@ -129,7 +130,7 @@ export default async function HabitosPage() {
             Atribua hábitos aos alunos e acompanhe o compliance semanal
           </p>
         </div>
-        <ButtonLink href="/app/habitos/novo" className="font-semibold">
+        <ButtonLink href="/app/habitos/new" className="font-semibold">
           <Plus className="size-4" />
           Novo hábito
         </ButtonLink>
@@ -140,7 +141,7 @@ export default async function HabitosPage() {
           <p className="text-sm text-muted-foreground">
             Nenhum hábito atribuído ainda.
           </p>
-          <ButtonLink href="/app/habitos/novo" className="mt-4">
+          <ButtonLink href="/app/habitos/new" className="mt-4">
             Atribuir o primeiro hábito
           </ButtonLink>
         </Card>
@@ -149,7 +150,7 @@ export default async function HabitosPage() {
           {groups.map((aluno) => {
             const totalProgress =
               aluno.rows.reduce(
-                (acc, r) => acc + progresso(r.today_count ?? 0, r.target_value ?? 1),
+                (acc, r) => acc + progresso(r.today_count ?? 0, r.target_count ?? 1),
                 0,
               ) / Math.max(aluno.rows.length, 1);
 
@@ -202,7 +203,7 @@ export default async function HabitosPage() {
 
                 <div className="space-y-3">
                   {aluno.rows.map((h) => {
-                    const pct = progresso(h.today_count ?? 0, h.target_value ?? 1);
+                    const pct = progresso(h.today_count ?? 0, h.target_count ?? 1);
                     const Icon = pickIcon(h.icon ?? h.name);
                     return (
                       <div key={h.id} className="flex items-center gap-3">
@@ -214,7 +215,7 @@ export default async function HabitosPage() {
                             <span className="font-semibold text-sm truncate">{h.name}</span>
                             <span className="text-xs text-muted-foreground shrink-0 num tabular-nums">
                               {h.today_count ?? 0}
-                              {h.unit ? ` ${h.unit}` : ""} / {h.target_value ?? 1}
+                              {h.unit ? ` ${h.unit}` : ""} / {h.target_count ?? 1}
                               {h.unit ? ` ${h.unit}` : ""}
                             </span>
                           </div>

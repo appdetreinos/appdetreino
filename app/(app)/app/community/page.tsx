@@ -57,7 +57,7 @@ export default async function CommunityPage() {
   // Top 5 alunos por XP (best-effort)
   const { data: topStudents } = await supabase
     .from("student_profiles")
-    .select("id, full_name, xp_total")
+    .select("user_id, full_name, xp_total")
     .eq("trainer_id", user.id)
     .order("xp_total", { ascending: false })
     .limit(5);
@@ -169,7 +169,7 @@ export default async function CommunityPage() {
             ) : (
               <ol className="space-y-2 text-sm">
                 {topStudents.map((s, i) => (
-                  <li key={s.id} className="flex items-center gap-2">
+                  <li key={s.user_id} className="flex items-center gap-2">
                     <span className="font-mono font-bold w-5 text-muted-foreground">
                       {i + 1}º
                     </span>

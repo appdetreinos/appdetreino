@@ -62,6 +62,9 @@ export interface TrainerProfilesRow {
   evolution_apikey_enc: Uint8Array | null;
   onboarding_step: number;
   onboarding_completed_at: ISO8601 | null;
+  actuation: string | null;
+  client_volume: string | null;
+  monthly_revenue: string | null;
   pix_key: string | null;
   pix_key_type: "cpf" | "cnpj" | "email" | "phone" | "random" | null;
   pix_beneficiary_name: string | null;
@@ -143,6 +146,35 @@ export interface WorkoutRecurrencesRow {
 }
 
 // ---------- Dietas ----------
+export interface DietTemplatesRow {
+  id: string;
+  trainer_id: string | null;
+  title: string;
+  description: string | null;
+  kcal_target: number | null;
+  p_target: number | null;
+  c_target: number | null;
+  g_target: number | null;
+  goal: string | null;
+  is_global: boolean;
+  created_at: ISO8601;
+}
+export interface DietTemplateMealsRow {
+  id: string;
+  template_id: string;
+  name: string;
+  time: TimeStr | null;
+  position: number;
+  created_at: ISO8601;
+}
+export interface DietTemplateItemsRow {
+  id: string;
+  meal_id: string;
+  food_name: string;
+  grams: number;
+  position: number;
+  created_at: ISO8601;
+}
 export interface FoodsRow {
   id: string;
   name: string;
@@ -550,6 +582,9 @@ interface PublicSchema {
     workout_sessions: TableSchema<WorkoutSessionsRow, { workout_id: string; student_id: string; date: DateStr; status?: string }>;
     workout_recurrences: TableSchema<WorkoutRecurrencesRow, { workout_id: string; student_id: string; start_date: DateStr; recurrence?: RecurrenceType }>;
     foods: TableSchema<FoodsRow, { name: string }>;
+    diet_templates: TableSchema<DietTemplatesRow, { title: string }>;
+    diet_template_meals: TableSchema<DietTemplateMealsRow, { template_id: string; name: string }>;
+    diet_template_items: TableSchema<DietTemplateItemsRow, { meal_id: string; food_name: string; grams: number }>;
     diets: TableSchema<DietsRow, { trainer_id: string; title: string; student_id?: string | null }>;
     meals: TableSchema<MealsRow, { diet_id: string; position: number; name: string; time?: TimeStr | null }>;
     meal_items: TableSchema<MealItemsRow, { meal_id: string; food_id: string; grams: number }>;

@@ -81,6 +81,37 @@ export default async function TrainerDashboard() {
       }
     } catch (e) { console.error("Error fetching revenue:", e); }
 
+    // Sessões últimos 7 dias (real — workout_sessions por alunos do trainer)
+    let sessoes7d = 0;
+    try {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const studentIds = studentsList.map((s) => s.id);
+      if (studentIds.length > 0) {
+        const { data: sessions, error: sessErr } = await supabase
+          .from("workout_sessions")
+          .select("id")
+          .in("student_id", studentIds)
+          .gte("date", sevenDaysAgo);
+        if (!sessErr && sessions) sessoes7d = sessions.length;
+      }
+    } catch (e) { console.error("Error fetching sessions:", e); }
+
+    // Aderência: % de alunos com ao menos 1 sessão nos últimos 7 dias
+    let aderencia = 0;
+    try {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const studentIds = studentsList.map((s) => s.id);
+      if (studentIds.length > 0) {
+        const { data: activeSessions } = await supabase
+          .from("workout_sessions")
+          .select("student_id")
+          .in("student_id", studentIds)
+          .gte("date", sevenDaysAgo);
+        const unique = new Set((activeSessions ?? []).map((s) => s.student_id));
+        aderencia = Math.round((unique.size / studentIds.length) * 100);
+      }
+    } catch (e) { console.error("Error fetching adherence:", e); }
+
     return (
       <div className="min-h-screen p-6 space-y-8 max-w-7xl mx-auto">
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -113,8 +144,8 @@ export default async function TrainerDashboard() {
             formatKind="currency" 
             hint="Soma de pagamentos confirmados" 
           />
-          <KpiCard icon={CalendarDays} label="Sessões (7d)" value={0} hint="Em breve" />
-          <KpiCard icon={Flame} label="Aderência" value={0} formatKind="percent" hint="Em breve" />
+          <KpiCard icon={CalendarDays} label="Sessões (7d)" value={sessoes7d} hint="Treinos registrados" />
+          <KpiCard icon={Flame} label="Aderência" value={aderencia} formatKind="percent" hint="Alunos ativos na semana" />
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">

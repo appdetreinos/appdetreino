@@ -22,13 +22,21 @@ export default async function StudentsPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // Convites do trainer (apenas os que ainda não foram aceitos)
+  // Convites pendentes (só pending aparecem aqui).
+  // Aceitos somem daqui e aparecem em "Alunos ativos" via student_profiles.
   const { data: invitesRaw } = await supabase
     .from("student_invites")
-    .select("id, code, full_name, phone, goal, status, created_at, accepted_at")
+    .select("id, code, full_name, phone, goal, status, created_at, accepted_at, accepted_by")
     .eq("trainer_id", user.id)
     .eq("status", "pending")
     .order("created_at", { ascending: false });
+
+  // Convites aceitos sem perfil criado (órfãos) — pra mostrar o ClaimStudentForm
+  const { data: acceptedOrphans } = await supabase
+    .from("student_invites")
+    .select("id, accepted_by")
+    .eq("trainer_id", user.id)
+    .eq("status", "accepted");
 
   // Alunos já vinculados
   const { data: studentsRaw, error: studentsError } = await supabase
@@ -43,6 +51,10 @@ export default async function StudentsPage() {
 
   const invites = invitesRaw ?? [];
   const students = studentsRaw ?? [];
+  const acceptedList = acceptedOrphans ?? [];
+  const acceptedIds = new Set(acceptedList.map((a) => a.accepted_by).filter(Boolean));
+  const studentIds = new Set(students.map((s) => s.user_id));
+  const hasOrphanAccepted = acceptedList.some((a) => a.accepted_by && !studentIds.has(a.accepted_by as string));
 
   // Convites "stale": pending há mais de 3 dias (aluno provavelmente
   // cadastrou com email diferente ou esqueceu). Marca visual diferente.
@@ -65,7 +77,6 @@ export default async function StudentsPage() {
               {students.length} ativo{students.length === 1 ? "" : "s"} ·{" "}
               {invites.filter((i) => i.status === "pending").length} convite
               {invites.filter((i) => i.status === "pending").length === 1 ? "" : "s"} pendente
-              {invites.filter((i) => i.status === "pending").length === 1 ? "" : "s"}
             </p>
           </div>
           <ButtonLink href="/app/students/new" className="font-semibold">
@@ -78,10 +89,9 @@ export default async function StudentsPage() {
       <main className="p-6 max-w-5xl mx-auto space-y-6">
         {/* Card "vincular manualmente" — aparece quando tem convite pending
             OU quando tem convite aceito mas o vínculo em student_profiles
-            não foi criado (caso comum: aluno aceitou por outro fluxo e o
-            signup não completou o INSERT). */}
+            não foi criado (órfão). */}
         {(invites.filter((i) => i.status === "pending").length > 0 ||
-          (invites.some((i) => i.status === "accepted") && students.length === 0)) && (
+          (hasOrphanAccepted && students.length === 0)) && (
           <ClaimStudentForm />
         )}
 
