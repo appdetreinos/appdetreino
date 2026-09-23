@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Lock, Loader2, RefreshCw } from "lucide-react";
 import { formatBRL } from "@/lib/types/billing";
 import { safeLog } from "@/lib/log/safe";
+import { csrfFetch } from "@/lib/security/client";
 
 export type PaymentMethod = "pix" | "card" | "boleto";
 
@@ -19,6 +20,26 @@ type Props = {
   planName: string;
   amountCents: number;
 };
+
+/** Erros da API traduzidos pra gente normal. */
+function friendlyApiError(code: string | undefined): string {
+  switch (code) {
+    case "mercadopago_not_configured":
+      return "Pagamentos ainda não configurados. Fala com o suporte.";
+    case "amount_mismatch":
+      return "Preço desatualizado. Recarrega a página e tenta de novo.";
+    case "csrf_invalid":
+      return "Sessão expirada. Recarrega a página e tenta de novo.";
+    case "unknown_plan":
+      return "Plano inválido. Escolhe de novo.";
+    case "mp_api_failed":
+      return "Mercado Pago fora do ar. Tenta em alguns minutos.";
+    case "unauthenticated":
+      return "Sessão expirada. Entra de novo.";
+    default:
+      return code ?? "Erro ao gerar pagamento.";
+  }
+}
 
 declare global {
   interface Window {
@@ -52,7 +73,13 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
 
   async function renderPaymentBrick() {
     setError(null);
-    
+
+    const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY || "";
+    if (!publicKey) {
+      setError("Pagamentos ainda não configurados. Fala com o suporte.");
+      return;
+    }
+
     if (!window.MercadoPago && !sdkLoaded) {
       setError("O sistema de pagamentos está carregando. Tente novamente em instantes.");
       return;
@@ -60,19 +87,10 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
 
     startTransition(async () => {
       try {
-        const getCookie = (name: string) => {
-          const value = "; " + document.cookie;
-          const parts = value.split("; " + name + "=");
-          if (parts.length === 2) return parts.pop()?.split(";").shift();
-          return null;
-        };
-        const csrfToken = getCookie("csrf");
-
-        const res = await fetch("/api/mercadopago/preference", {
+        const res = await csrfFetch("/api/mercadopago/preference", {
           method: "POST",
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
-            "x-csrf-token": csrfToken ?? "",
           },
           body: JSON.stringify({
             plan_id: planId,
@@ -83,18 +101,24 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
 
         if (!res.ok) {
           const body = await res.json().catch(() => null);
-          setError(body?.error ?? "Erro ao gerar preferência de pagamento");
+          setError(friendlyApiError((body as { error?: string } | null)?.error));
           return;
         }
 
         const data = (await res.json()) as { preference_id: string };
-        
+
         if (!window.MercadoPago) {
           setError("Erro técnico: SDK do Mercado Pago não detectado.");
           return;
         }
 
-        const mp = new window.MercadoPago(process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY || "");
+        let mp: any;
+        try {
+          mp = new window.MercadoPago(publicKey);
+        } catch {
+          setError("Chave de pagamento inválida. Fala com o suporte.");
+          return;
+        }
         const bricksBuilder = mp.bricks();
         
         await bricksBuilder.create("payment", "payment-brick", {
@@ -202,23 +226,16 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
             setError(null);
             setSubLoading(true);
             try {
-              const getCookie = (name: string) => {
-                const value = "; " + document.cookie;
-                const parts = value.split("; " + name + "=");
-                if (parts.length === 2) return parts.pop()?.split(";").shift();
-                return null;
-              };
-              const res = await fetch("/api/mercadopago/subscription", {
+              const res = await csrfFetch("/api/mercadopago/subscription", {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  "x-csrf-token": getCookie("csrf") ?? "",
                 },
                 body: JSON.stringify({ plan_id: planId }),
               });
               const data = (await res.json()) as { ok: boolean; init_point?: string; error?: string };
               if (!res.ok || !data.ok || !data.init_point) {
-                setError(data.error === "mercadopago_not_configured" ? "Pagamento indisponível no momento." : "Não deu pra criar a assinatura.");
+                setError(friendlyApiError(data.error));
               } else {
                 window.location.href = data.init_point;
               }
