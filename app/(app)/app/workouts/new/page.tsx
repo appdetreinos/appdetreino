@@ -11,7 +11,12 @@ import type {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function NewWorkoutPage() {
+export default async function NewWorkoutPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ student?: string }>;
+}) {
+  const { student: preselectedStudent } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -211,6 +216,7 @@ export default async function NewWorkoutPage() {
 
   return (
     <WorkoutForm
+      initialStudentId={preselectedStudent}
       students={(students ?? []).map((s) => ({
         id: s.user_id,
         full_name: s.full_name,

@@ -50,6 +50,7 @@ export function WorkoutForm({
   exercises,
   resolvedUrls,
   templateCatalog,
+  initialStudentId,
 }: {
   students: Student[];
   exercises: ExerciseLibraryItem[];
@@ -57,6 +58,8 @@ export function WorkoutForm({
   resolvedUrls: Record<string, string | null>;
   /** Catálogo hierárquico de templates (Tipo > Grupo > Exercícios). */
   templateCatalog: CatalogTemplate[];
+  /** Pré-seleciona o aluno (ex: ?student= ao vir do cadastro). */
+  initialStudentId?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -65,7 +68,7 @@ export function WorkoutForm({
 
   const [title, setTitle] = useState("");
   const [goal, setGoal] = useState("");
-  const [studentId, setStudentId] = useState<string>(""); // "" = template (sem aluno)
+  const [studentId, setStudentId] = useState<string>(initialStudentId ?? ""); // "" = template (sem aluno)
   const [days, setDays] = useState<number[]>([1, 3, 5]); // seg/qua/sex default
   const [exerciseRows, setExerciseRows] = useState<ExerciseDraft[]>([
     { exerciseId: "", name: "", sets: "3", reps: "10-12", load: "" },

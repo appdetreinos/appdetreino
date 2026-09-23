@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { Dumbbell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PRIMARY_MUSCLE_BG, EXERCISE_CATEGORY_BG } from "@/lib/workout";
@@ -33,7 +36,10 @@ export function ExerciseMedia({
   full = false,
   size = "md",
 }: Props) {
-  const showMedia = !!resolvedUrl;
+  // Quebra de imagem (URL morta) cai pro placeholder com iniciais —
+  // nunca thumbnail quebrada (gap reportado no picker).
+  const [broken, setBroken] = useState(false);
+  const showMedia = !!resolvedUrl && !broken;
   const isAnimation = isAnimationUrl(exercise.animation_url ?? resolvedUrl);
 
   // Fundo por categoria v2 se tiver, senão por músculo primário.
@@ -63,6 +69,7 @@ export function ExerciseMedia({
           alt={exercise.name}
           className={imgClass}
           loading="lazy"
+          onError={() => setBroken(true)}
         />
       </div>
     );
@@ -80,6 +87,7 @@ export function ExerciseMedia({
           alt={exercise.name}
           className={imgClass}
           loading="lazy"
+          onError={() => setBroken(true)}
         />
       </div>
     );

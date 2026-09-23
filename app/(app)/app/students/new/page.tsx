@@ -9,7 +9,7 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Copy, MessageCircle, Check } from "lucide-react";
+import { ArrowLeft, Loader2, Copy, MessageCircle, Check, Dumbbell } from "lucide-react";
 import { csrfFetch } from "@/lib/security/client";
 
 /**
@@ -34,9 +34,17 @@ export default function NewStudentPage() {
     const phone = String(form.get("phone") ?? "").trim() || null;
     const goal = String(form.get("goal") ?? "").trim() || null;
     const notes = String(form.get("notes") ?? "").trim() || null;
+    const amountRaw = String(form.get("monthly_amount") ?? "").replace(",", ".").trim();
+    const monthly_amount = amountRaw ? Number(amountRaw) : null;
+    const first_due_date = String(form.get("first_due_date") ?? "").trim() || null;
 
     if (!full_name) {
       setError("Nome é obrigatório.");
+      setSubmitting(false);
+      return;
+    }
+    if (monthly_amount != null && (!Number.isFinite(monthly_amount) || monthly_amount <= 0)) {
+      setError("Valor da mensalidade inválido.");
       setSubmitting(false);
       return;
     }
@@ -44,7 +52,7 @@ export default function NewStudentPage() {
     const res = await csrfFetch("/api/me/student-invites", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ full_name, phone, goal, notes }),
+      body: JSON.stringify({ full_name, phone, goal, notes, monthly_amount, first_due_date }),
     });
     const json = (await res.json().catch(() => null)) as
       | { ok: boolean; code?: string; full_name?: string; phone?: string | null; error?: string }
@@ -79,8 +87,11 @@ export default function NewStudentPage() {
     return (
       <div className="min-h-screen">
         <header className="border-b border-white/10 sticky top-0 z-30 bg-background/85 backdrop-blur-md">
-          <div className="px-6 h-16 flex items-center">
+          <div className="px-6 h-16 flex items-center justify-between">
             <h1 className="text-xl font-bold">Convite criado</h1>
+            <Link href="/app/students" className="text-foreground/70 hover:text-foreground text-sm font-semibold">
+              Fechar ✕
+            </Link>
           </div>
         </header>
         <main className="p-6 max-w-2xl mx-auto">
@@ -124,13 +135,22 @@ export default function NewStudentPage() {
                   Mandar no WhatsApp
                 </a>
               )}
-              <button
-                type="button"
-                onClick={() => setResult(null)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/10 px-4 py-3 text-sm font-semibold text-foreground/70 hover:border-primary/40 hover:text-foreground transition-colors"
-              >
-                Convidar outro
-              </button>
+              <ButtonLink href="/app/workouts/new" className="w-full font-semibold">
+                <Dumbbell className="size-4" />
+                Montar treino agora
+              </ButtonLink>
+              <div className="grid grid-cols-2 gap-3">
+                <ButtonLink href="/app/students" variant="outline">
+                  Ver alunos
+                </ButtonLink>
+                <button
+                  type="button"
+                  onClick={() => setResult(null)}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/10 px-4 py-3 text-sm font-semibold text-foreground/70 hover:border-primary/40 hover:text-foreground transition-colors"
+                >
+                  Convidar outro
+                </button>
+              </div>
             </div>
           </Card>
         </main>
@@ -188,6 +208,31 @@ export default function NewStudentPage() {
                 className="mt-1.5"
               />
             </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="monthly_amount">Mensalidade (R$)</Label>
+                <Input
+                  id="monthly_amount"
+                  name="monthly_amount"
+                  inputMode="decimal"
+                  placeholder="149,90"
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="first_due_date">1º vencimento</Label>
+                <Input
+                  id="first_due_date"
+                  name="first_due_date"
+                  type="date"
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground -mt-2">
+              Opcional: a primeira cobrança é criada sozinha quando o aluno aceitar o convite.
+            </p>
 
             <div>
               <Label htmlFor="notes">Observações (opcional)</Label>

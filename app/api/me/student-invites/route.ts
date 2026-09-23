@@ -31,6 +31,13 @@ const bodySchema = z
       .nullable()
       .optional()
       .transform((v) => (v && v.trim().length > 0 ? v.trim() : null)),
+    monthly_amount: z.number().min(1).max(100000).nullable().optional(),
+    first_due_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullable()
+      .optional()
+      .transform((v) => (v && v.trim().length > 0 ? v.trim() : null)),
   })
   .strict();
 
@@ -94,6 +101,8 @@ export async function POST(request: NextRequest) {
       email: body.data.email,
       goal: body.data.goal,
       notes: body.data.notes,
+      monthly_amount: body.data.monthly_amount ?? null,
+      first_due_date: body.data.first_due_date ?? null,
       status: "pending",
     })
     .select("code, full_name, phone, email")

@@ -145,6 +145,60 @@ export default async function StudentDetailPage({
     .map((m) => ({ id: m.id, date: m.date, urls: (m.photos_urls ?? []) as string[] }))
     .reverse();
 
+  // Checklist de cadastro (passo a passo até 100%)
+  const [{ data: acceptedInvite }, { count: paymentsCount }] = await Promise.all([
+    supabase
+      .from("student_invites")
+      .select("id")
+      .eq("accepted_by", id)
+      .eq("status", "accepted")
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("payments")
+      .select("id", { count: "exact", head: true })
+      .eq("student_id", id),
+  ]);
+
+  const onboardingSteps = [
+    {
+      label: "Convite aceito",
+      done: !!acceptedInvite,
+      href: null as string | null,
+    },
+    {
+      label: "Dados completos",
+      done: Boolean(profile.full_name && profile.phone),
+      href: null as string | null,
+    },
+    {
+      label: "Anamnese respondida",
+      done: Boolean((anamnesis as { completed_at?: string | null } | null)?.completed_at),
+      href: "/app/anamnese" as string | null,
+    },
+    {
+      label: "Treino atribuído",
+      done: (workouts ?? []).length > 0,
+      href: `/app/workouts/new?student=${id}` as string | null,
+    },
+    {
+      label: "Dieta atribuída",
+      done: (diets ?? []).length > 0,
+      href: "/app/diets/new" as string | null,
+    },
+    {
+      label: "Cobrança criada",
+      done: (paymentsCount ?? 0) > 0,
+      href: `/app/finance/new?student_id=${id}` as string | null,
+    },
+    {
+      label: "Primeira medição",
+      done: (measurementsAll ?? []).length > 0,
+      href: null as string | null,
+    },
+  ];
+  const onboardingDone = onboardingSteps.filter((s) => s.done).length;
+
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6 pb-12">
       <Card className="bg-card border-white/5 p-6 overflow-hidden relative">
@@ -195,10 +249,16 @@ export default async function StudentDetailPage({
               </p>
             )}
           </div>
-          <ButtonLink href={`/app/finance/new?student_id=${id}`} size="sm">
-            <Wallet className="size-4" />
-            Nova cobrança
-          </ButtonLink>
+          <div className="flex flex-col gap-2 shrink-0">
+            <ButtonLink href={`/app/workouts/new?student=${id}`} size="sm" variant="outline">
+              <Dumbbell className="size-4" />
+              Montar treino
+            </ButtonLink>
+            <ButtonLink href={`/app/finance/new?student_id=${id}`} size="sm">
+              <Wallet className="size-4" />
+              Nova cobrança
+            </ButtonLink>
+          </div>
         </div>
 
         <div className="relative grid grid-cols-3 gap-3 mt-5 pt-5 border-t border-white/5">
@@ -233,6 +293,43 @@ export default async function StudentDetailPage({
           status: studentProfile.status ?? "active",
         }}
       />
+
+      {onboardingDone < onboardingSteps.length && (
+        <Card className="bg-card border-primary/20 p-5 mt-4">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <h2 className="font-semibold">Cadastro do aluno</h2>
+            <Badge variant="outline" className="border-primary/30 text-primary">
+              {onboardingDone}/{onboardingSteps.length}
+            </Badge>
+          </div>
+          <div className="mt-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all"
+              style={{ width: `${Math.round((onboardingDone / onboardingSteps.length) * 100)}%` }}
+            />
+          </div>
+          <ul className="mt-3 space-y-1.5">
+            {onboardingSteps.map((s) => (
+              <li key={s.label} className="flex items-center gap-2 text-sm">
+                <span
+                  className={`grid size-5 place-items-center rounded-full text-[11px] font-bold shrink-0 ${
+                    s.done ? "bg-emerald-500/15 text-emerald-500" : "bg-white/5 text-muted-foreground"
+                  }`}
+                >
+                  {s.done ? "✓" : "·"}
+                </span>
+                {s.done || !s.href ? (
+                  <span className={s.done ? "text-foreground/85" : "text-muted-foreground"}>{s.label}</span>
+                ) : (
+                  <a href={s.href} className="text-primary hover:underline font-medium">
+                    {s.label} →
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Stagger className="space-y-6" delay={0.05}>
         {pesoSerie.length >= 2 && (

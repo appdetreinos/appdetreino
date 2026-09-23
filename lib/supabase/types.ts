@@ -575,6 +575,8 @@ export interface StudentInvitesRow {
   phone: string | null;
   goal: string | null;
   notes: string | null;
+  monthly_amount: number | null;
+  first_due_date: DateStr | null;
   status: "pending" | "accepted" | "revoked";
   accepted_by: string | null;
   accepted_at: ISO8601 | null;
