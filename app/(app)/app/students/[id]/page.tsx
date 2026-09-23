@@ -17,6 +17,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { MeasurementForm } from "./measurement-form";
+import { PhotoCompare } from "@/app/(student)/aluno/progresso/photo-compare";
 import { Sparkline } from "@/components/ui/sparkline";
 import { Stagger, StaggerItem, AnimatedNumber } from "@/components/ui/stagger";
 
@@ -61,7 +62,7 @@ export default async function StudentDetailPage({
 
   const { data: measurementsAll } = await supabase
     .from("measurements")
-    .select("id, date, weight_kg, body_fat_pct, waist_cm")
+    .select("id, date, weight_kg, body_fat_pct, waist_cm, photos_urls")
     .eq("student_id", id)
     .order("date", { ascending: false })
     .limit(30);
@@ -137,6 +138,11 @@ export default async function StudentDetailPage({
   const initials = profile.full_name?.slice(0, 2).toUpperCase() ?? "??";
   const statusLabel = studentProfile.status === "active" ? "Ativo" : studentProfile.status ?? "—";
   const xp = studentProfile.xp_total ?? 0;
+
+  const photoPoints = ((measurementsAll ?? []) as Array<{ id: string; date: string; photos_urls: string[] | null }>)
+    .filter((m) => Array.isArray(m.photos_urls) && (m.photos_urls as string[]).length > 0)
+    .map((m) => ({ id: m.id, date: m.date, urls: (m.photos_urls ?? []) as string[] }))
+    .reverse();
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6 pb-12">
@@ -258,6 +264,12 @@ export default async function StudentDetailPage({
                 <Sparkline data={pesoSerie} labels={pesoLabels} height={140} showDots showArea />
               </div>
             </Card>
+          </StaggerItem>
+        )}
+
+        {photoPoints.length > 0 && (
+          <StaggerItem>
+            <PhotoCompare points={photoPoints} />
           </StaggerItem>
         )}
 

@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
   let markedOverdue = 0;
   let sent = 0;
   let failed = 0;
+  let queuedRenewals = 0;
 
   // 1) Vencidos → overdue
   try {
@@ -45,6 +46,16 @@ export async function GET(req: NextRequest) {
     markedOverdue = data?.length ?? 0;
   } catch (e) {
     safeLog.error("[cron-reminders] overdue failed", e instanceof Error ? e.message : "unknown");
+  }
+
+  // 1.5) Lembretes de renovação: vencem em até 3 dias → fila do WhatsApp
+  // (só quando Evolution configurada; idempotente por payment_id no payload)
+  if (isEvolutionConfigured()) {
+    try {
+      queuedRenewals = await queueRenewalReminders(supabase);
+    } catch (e) {
+      safeLog.error("[cron-reminders] renewals failed", e instanceof Error ? e.message : "unknown");
+    }
   }
 
   // 2) Envio WhatsApp (só se configurado)
@@ -116,11 +127,102 @@ export async function GET(req: NextRequest) {
     resourceId: null,
     metadata: {
       marked_overdue: markedOverdue,
+      queued_renewals: queuedRenewals,
       sent,
       failed,
       evolution: isEvolutionConfigured() ? "on" : "off",
     },
   });
 
-  return NextResponse.json({ ok: true, marked_overdue: markedOverdue, sent, failed });
+  return NextResponse.json({ ok: true, marked_overdue: markedOverdue, queued_renewals: queuedRenewals, sent, failed });
+}
+
+type ServiceClient = Awaited<ReturnType<typeof createServiceClient>>;
+
+/**
+ * Pra cada cobrança pending vencendo em até 3 dias, enfileira 1
+ * lembrete no WhatsApp do trainer (com chave Pix, se cadastrada).
+ * Idempotente: pula se já existe mensagem com esse payment_id.
+ */
+async function queueRenewalReminders(supabase: ServiceClient): Promise<number> {
+  const today = todayStr();
+  const limit = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  const { data: open } = await supabase
+    .from("evolution_instances")
+    .select("trainer_id, instance_name")
+    .eq("state", "open");
+  const openByTrainer = new Map(
+    ((open ?? []) as Array<{ trainer_id: string; instance_name: string }>).map((i) => [
+      i.trainer_id,
+      i.instance_name,
+    ]),
+  );
+  if (openByTrainer.size === 0) return 0;
+
+  const { data: upcoming } = await supabase
+    .from("payments")
+    .select(
+      `id, amount, due_date, description, trainer_id, student_id,
+       student_profiles!inner(user_id, full_name, profiles:profiles!inner(phone))`,
+    )
+    .eq("status", "pending")
+    .gte("due_date", today)
+    .lte("due_date", limit)
+    .in("trainer_id", Array.from(openByTrainer.keys()))
+    .limit(100);
+
+  const { data: already } = await supabase
+    .from("evolution_messages")
+    .select("payload_jsonb")
+    .eq("status", "pending");
+  const queuedPaymentIds = new Set(
+    ((already ?? []) as Array<{ payload_jsonb: { payment_id?: string } | null }>).map(
+      (m) => m.payload_jsonb?.payment_id,
+    ).filter(Boolean),
+  );
+
+  let queued = 0;
+  for (const p of (upcoming ?? []) as Array<{
+    id: string;
+    amount: number;
+    due_date: string;
+    trainer_id: string;
+    student_profiles:
+      | { full_name: string; profiles: { phone: string | null } | { phone: string | null }[] | null }
+      | { full_name: string; profiles: { phone: string | null } | { phone: string | null }[] | null }[];
+  }>) {
+    if (queuedPaymentIds.has(p.id)) continue;
+    const sp = Array.isArray(p.student_profiles) ? p.student_profiles[0] : p.student_profiles;
+    const prof = sp?.profiles ? (Array.isArray(sp.profiles) ? sp.profiles[0] : sp.profiles) : null;
+    const digits = (prof?.phone ?? "").replace(/\D/g, "");
+    if (!digits) continue;
+
+    const { data: settings } = await supabase
+      .from("trainer_settings")
+      .select("pix_key")
+      .eq("user_id", p.trainer_id)
+      .maybeSingle();
+    const pix = (settings as { pix_key?: string } | null)?.pix_key;
+
+    const firstName = (sp?.full_name ?? "aluno").split(" ")[0];
+    const valor = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(p.amount));
+    const vence = new Date(p.due_date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+    const text =
+      `Oi, ${firstName}! 💪 Tua mensalidade de ${valor} vence ${vence}.` +
+      (pix ? ` Paga no Pix: ${pix}` : " Fala comigo pra acertar.");
+
+    const { error } = await supabase.from("evolution_messages").insert({
+      trainer_id: p.trainer_id,
+      instance_name: openByTrainer.get(p.trainer_id),
+      direction: "outbound",
+      to_phone: `55${digits}`,
+      type: "text",
+      payload_jsonb: { text, payment_id: p.id },
+      status: "pending",
+      scheduled_for: new Date().toISOString(),
+    });
+    if (!error) queued++;
+  }
+  return queued;
 }

@@ -628,13 +628,13 @@ function Step4({
       <div className="mt-6 flex flex-col items-center gap-3">
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
           <a
-            href="/register?trial=1"
+            href="/app"
             className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-white/15 bg-background/40 px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5 sm:flex-none"
           >
-            Testar grátis por 10 dias
+            Continuar no trial
           </a>
           <a
-            href="/app/checkout"
+            href="/app/settings/upgrade"
             className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 sm:flex-none"
           >
             <CreditCard className="size-4" />

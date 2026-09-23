@@ -6,6 +6,7 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { PostComposer } from "./post-composer";
 import { PushSender } from "./push-sender";
 import { ChallengeRewardButton } from "./challenge-reward-button";
+import { PostManager } from "./post-manager";
 import { Heart, MessageCircle, Plus, Trophy, Flame } from "lucide-react";
 import { Stagger, StaggerItem } from "@/components/ui/stagger";
 
@@ -144,6 +145,7 @@ export default async function CommunityPage() {
                       <Badge variant="outline" className="text-xs">
                         {p.audience}
                       </Badge>
+                      <PostManager postId={p.id} pinned={p.pinned} />
                     </div>
                   </Card>
                 </StaggerItem>
