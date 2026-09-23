@@ -25,6 +25,7 @@ export function PixCobrarButton({ paymentId, phone, studentName, valor }: Props)
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [loading, setLoading] = useState(false);
+  const [queued, setQueued] = useState(false);
 
   async function handleClick() {
     setLoading(true);
@@ -58,8 +59,43 @@ export function PixCobrarButton({ paymentId, phone, studentName, valor }: Props)
       .replaceAll("{{chave_pix}}", pixKey ?? "[cadastra tua chave Pix]")
       .replaceAll("{{beneficiario}}", beneficiario);
 
-    // Grava audit da mensagem
     const digits = phone.replace(/\D/g, "");
+
+    // WhatsApp conectado? Enfileira o envio automático (cron entrega).
+    // Senão, cai no wa.me manual de sempre.
+    try {
+      const stRes = await fetch("/api/evolution/status");
+      const stJson = (await stRes.json()) as { ok: boolean; state?: string; instance?: string };
+      if (stRes.ok && stJson.ok && stJson.state === "open" && stJson.instance && digits) {
+        const { error: qErr } = await supabase.from("evolution_messages").insert({
+          trainer_id: user.id,
+          instance_name: stJson.instance,
+          direction: "outbound",
+          to_phone: `55${digits}`,
+          type: "text",
+          payload_jsonb: { text: message, payment_id: paymentId },
+          status: "pending",
+          scheduled_for: new Date().toISOString(),
+        });
+        if (!qErr) {
+          await supabase.from("payment_messages").insert({
+            trainer_id: user.id,
+            payment_id: paymentId,
+            resolved_text: message,
+            whatsapp_to: `55${digits}`,
+            status: "pending",
+          });
+          setQueued(true);
+          setLoading(false);
+          startTransition(() => router.refresh());
+          return;
+        }
+      }
+    } catch {
+      // cai pro wa.me
+    }
+
+    // Grava audit da mensagem
     await supabase.from("payment_messages").insert({
       trainer_id: user.id,
       payment_id: paymentId,
@@ -89,10 +125,12 @@ export function PixCobrarButton({ paymentId, phone, studentName, valor }: Props)
     >
       {loading ? (
         <Loader2 className="size-3 animate-spin" />
+      ) : queued ? (
+        <Check className="size-3" />
       ) : (
         <MessageCircle className="size-3" />
       )}
-      Cobrar
+      {queued ? "Na fila" : "Cobrar"}
     </button>
   );
 }

@@ -367,6 +367,15 @@ export interface EvolutionWebhookEventsRow {
 }
 
 // ---------- Comunidade ----------
+export interface DirectMessagesRow {
+  id: string;
+  trainer_id: string;
+  student_id: string;
+  sender_id: string;
+  text: string;
+  read_at: ISO8601 | null;
+  created_at: ISO8601;
+}
 export interface CommunityPostsRow {
   id: string;
   trainer_id: string;
@@ -641,7 +650,7 @@ interface PublicSchema {
     payment_webhook_events: TableSchema<PaymentWebhookEventsRow, { gateway: string; external_payment_id: string; event_type: string; payload: Json }>;
     rate_limit_attempts: TableSchema<RateLimitAttemptsRow, { key: string; attempted_at: ISO8601 }>;
     community_posts: TableSchema<CommunityPostsRow, { trainer_id: string; author_id: string; content: string; audience?: string }>;
-    community_likes: TableSchema<CommunityLikesRow, { post_id: string; user_id: string }>;
+    direct_messages: TableSchema<DirectMessagesRow, { trainer_id: string; student_id: string; sender_id: string; text: string }>;    community_likes: TableSchema<CommunityLikesRow, { post_id: string; user_id: string }>;
     community_comments: TableSchema<CommunityCommentsRow, { post_id: string; author_id: string; content: string }>;
     badges: TableSchema<BadgesRow, { slug: string; name: string }>;
     student_badges: TableSchema<StudentBadgesRow, { student_id: string; badge_id: string }>;

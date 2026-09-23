@@ -52,6 +52,49 @@ async function getAuthContext(): Promise<
   return { ok: true, data: { user: { id: user.id }, supabase } };
 }
 
+/**
+ * +50 XP por treino concluído + streak diário.
+ * Streak: última ação ontem → +1; hoje → mantém; senão → recomeça em 1.
+ */
+async function awardWorkoutXp(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sessionId: string,
+): Promise<void> {
+  const { data: sess } = await supabase
+    .from("workout_sessions")
+    .select("student_id")
+    .eq("id", sessionId)
+    .maybeSingle();
+  const studentId = (sess as { student_id?: string } | null)?.student_id;
+  if (!studentId) return;
+
+  const { data: sp } = await supabase
+    .from("student_profiles")
+    .select("xp_total, streak_current, streak_last_action_at")
+    .eq("user_id", studentId)
+    .maybeSingle();
+  if (!sp) return;
+  const row = sp as { xp_total: number | null; streak_current: number | null; streak_last_action_at: string | null };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const last = (row.streak_last_action_at ?? "").slice(0, 10);
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  let streak = 1;
+  if (last === today) streak = row.streak_current ?? 1;
+  else if (last === yesterday) streak = (row.streak_current ?? 0) + 1;
+
+  const bonus = Math.min((streak - 1) * 5, 50); // sequência paga até +50
+  await supabase
+    .from("student_profiles")
+    .update({
+      xp_total: (row.xp_total ?? 0) + 50 + bonus,
+      streak_current: streak,
+      streak_last_action_at: new Date().toISOString(),
+    })
+    .eq("user_id", studentId);
+}
+
 /* =========================================================================
    startWorkoutSession
    ========================================================================= */
@@ -174,7 +217,15 @@ export async function finishWorkoutSession(
       return fail("finish_failed");
     }
 
+    // Gamificação: +50 XP + streak (best-effort, nunca falha o finish)
+    try {
+      await awardWorkoutXp(ctx.data.supabase, session_id);
+    } catch (e) {
+      safeLog.error("awardWorkoutXp failed", e instanceof Error ? e.message : "unknown");
+    }
+
     revalidatePath("/app/workouts");
+    revalidatePath("/aluno");
     return { ok: true, data: true };
   } catch (err) {
     unstable_rethrow(err);

@@ -70,6 +70,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 
+  // Limite do plano: sem vaga, sem convite
+  const { getStudentLimitState } = await import("@/lib/billing/limits");
+  const limitState = await getStudentLimitState(auth.user.id);
+  if (limitState.reached) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: `Limite do plano ${limitState.planTier} atingido (${limitState.used}/${limitState.limit}). Faz upgrade pra convidar mais.`,
+        code: "plan_limit_reached",
+      },
+      { status: 403 },
+    );
+  }
+
   // Cria o convite (trigger gera code automaticamente)
   const { data, error: insertError } = await auth.supabase
     .from("student_invites")

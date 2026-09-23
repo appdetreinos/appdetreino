@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { TrialBanner } from "./_components/trial-banner";
+import { TrialGate } from "./_components/trial-gate";
 import { OnboardingWizard } from "./_components/onboarding-wizard";
 import { createClient } from "@/lib/supabase/server";
 import { getTrainerTrialState } from "@/lib/billing/trial";
@@ -39,6 +40,7 @@ export default async function TrainerLayout({
 
   let daysLeft = 0;
   let showOnboarding = false;
+  let trialLocked = false;
   try {
     const [trial, trainer] = await Promise.all([
       getTrainerTrialState(user.id),
@@ -49,6 +51,8 @@ export default async function TrainerLayout({
         .maybeSingle(),
     ]);
     daysLeft = trial.daysLeft;
+    // Sem linha de trainer (conta em criação) não trava — o wizard resolve
+    trialLocked = trial.locked && trainer.data != null;
     showOnboarding =
       (trainer.data as { onboarding_completed_at?: string | null } | null)
         ?.onboarding_completed_at == null;
@@ -61,6 +65,7 @@ export default async function TrainerLayout({
       <AppSidebar role="trainer" />
       <SidebarInset className="bg-background">
         {daysLeft > 0 && <TrialBanner daysLeft={daysLeft} />}
+        <TrialGate locked={trialLocked} />
         {showOnboarding && <OnboardingWizard />}
         {children}
       </SidebarInset>

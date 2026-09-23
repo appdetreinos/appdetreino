@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { DeleteInviteButton } from "./delete-invite-button";
 import { ClaimStudentForm } from "./claim-student-form";
+import { getStudentLimitState } from "@/lib/billing/limits";
 
 /**
  * Lista de alunos do trainer.
@@ -60,6 +61,13 @@ export default async function StudentsPage() {
   const studentIds = new Set(students.map((s) => s.user_id));
   const hasOrphanAccepted = acceptedList.some((a) => a.accepted_by && !studentIds.has(a.accepted_by as string));
 
+  let limitState = null;
+  try {
+    limitState = await getStudentLimitState(user.id);
+  } catch {
+    // banner de limite é opcional — nunca quebra a lista
+  }
+
   // Convites "stale": pending há mais de 3 dias (aluno provavelmente
   // cadastrou com email diferente ou esqueceu). Marca visual diferente.
   const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
@@ -96,6 +104,21 @@ export default async function StudentsPage() {
       </header>
 
       <main className="p-6 max-w-5xl mx-auto space-y-6">
+        {limitState?.reached && (
+          <Card className="bg-primary/10 border-primary/30 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="font-bold">Limite do plano atingido</div>
+                <div className="text-sm text-foreground/70">
+                  {limitState.used}/{limitState.limit} alunos ativos no plano {limitState.planTier}. Faz upgrade pra continuar crescendo.
+                </div>
+              </div>
+              <ButtonLink href="/app/settings/upgrade" className="shrink-0 font-semibold">
+                Ver planos
+              </ButtonLink>
+            </div>
+          </Card>
+        )}
         {/* Card "vincular manualmente" — aparece quando tem convite pending
             OU quando tem convite aceito mas o vínculo em student_profiles
             não foi criado (órfão). */}

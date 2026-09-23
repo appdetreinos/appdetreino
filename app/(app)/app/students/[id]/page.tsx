@@ -365,10 +365,10 @@ export default async function StudentDetailPage({
               <div>
                 <h2 className="font-semibold">Conversa</h2>
                 <p className="text-xs text-muted-foreground">
-                  Mande mensagem direta pelo painel de mensagens.
+                  Feedback direto 1:1 com o aluno, dentro do app.
                 </p>
               </div>
-              <ButtonLink href={`/app/community?student=${id}`} size="sm" variant="outline">
+              <ButtonLink href={`/app/students/${id}/mensagens`} size="sm">
                 <MessageSquare className="size-4" />
                 Abrir conversa
               </ButtonLink>

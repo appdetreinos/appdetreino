@@ -34,6 +34,24 @@ export async function POST(request: NextRequest) {
   const body = await parseJsonBody(request, bodySchema);
   if (!body.ok) return body.response;
 
+  // Limite do plano vale pra importação em massa também
+  const { getStudentLimitState } = await import("@/lib/billing/limits");
+  const limitState = await getStudentLimitState(auth.user.id);
+  if (limitState.limit != null) {
+    const room = Math.max(0, limitState.limit - limitState.used);
+    if (room <= 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Limite do plano atingido (${limitState.used}/${limitState.limit}). Faz upgrade pra importar mais.`,
+          code: "plan_limit_reached",
+        },
+        { status: 403 },
+      );
+    }
+    body.data.rows = body.data.rows.slice(0, room);
+  }
+
   const admin = createSbClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

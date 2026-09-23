@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { MessageSquare, Phone } from "lucide-react";
 import { sanitizePhone } from "@/lib/security/sanitize";
 import { Stagger, StaggerItem } from "@/components/ui/stagger";
+import { DirectThread } from "@/components/direct-thread";
 
 export default async function MensagensPage() {
   const supabase = await createClient();
@@ -86,6 +87,19 @@ export default async function MensagensPage() {
           ) : null}
         </p>
       </header>
+
+      {studentProfile?.trainer_id && (
+        <section>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            Conversa com {trainerProfile?.full_name?.split(" ")[0] ?? "personal"}
+          </h2>
+          <DirectThread
+            trainerId={studentProfile.trainer_id}
+            studentId={user.id}
+            emptyHint="Manda a primeira mensagem pro teu personal."
+          />
+        </section>
+      )}
 
       {((recados ?? []).length > 0) && (
         <Card className="bg-card border-white/5 p-5">
