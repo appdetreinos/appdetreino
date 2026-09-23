@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
 import { PixSettingsForm } from "./pix-settings-form";
 import { ProfileForm } from "./profile-form";
+import { CancelSubscriptionButton } from "./cancel-subscription-button";
 import { LgpdActions } from "./lgpd-actions";
 import Link from "next/link";
 import { PLANS } from "@/lib/types/billing";
@@ -33,6 +34,17 @@ export default async function SettingsPage() {
     .maybeSingle();
 
   const currentPlan = PLANS.find((p) => p.id === trainer?.plan_tier) ?? PLANS[0];
+
+  // Assinatura recorrente ativa? (renovação automática no cartão)
+  const { data: activeSub } = await supabase
+    .from("payment_links")
+    .select("id")
+    .eq("trainer_id", user.id)
+    .like("description", "Plano %assinatura%")
+    .not("paid_at", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   // Status do trial: pending, active, expired, none
   const trialEnd = trainer?.trial_ends_at ? new Date(trainer.trial_ends_at) : null;
@@ -98,6 +110,11 @@ export default async function SettingsPage() {
                   ? `Você tem até ${trialEnd?.toLocaleDateString("pt-BR")} pra explorar tudo. Sem cartão, sem cobrança.`
                   : `${currentPlan.studentLimit ? `${currentPlan.studentLimit} alunos ativos` : "Alunos ilimitados"}`}
               </div>
+              {activeSub && !isInTrial && (
+                <div className="mt-2">
+                  <CancelSubscriptionButton />
+                </div>
+              )}
             </div>
             <Link
               href="/app/settings/upgrade"

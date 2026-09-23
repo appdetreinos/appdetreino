@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { PostComposer } from "./post-composer";
+import { PostComments } from "./post-comments";
 import { PushSender } from "./push-sender";
 import { ChallengeRewardButton } from "./challenge-reward-button";
 import { PostManager } from "./post-manager";
@@ -23,12 +24,19 @@ export default async function CommunityPage() {
     .select(
       `id, content, audience, pinned, created_at,
        likes:community_likes(count),
-       comments:community_comments(count)`,
+       comments:community_comments(id, content, created_at, author:author_id(full_name))`,
     )
     .in("trainer_id", await getTrainerScopeIds(supabase, user.id))
     .order("pinned", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(30);
+
+  type RawComment = {
+    id: string;
+    content: string;
+    created_at: string;
+    author: { full_name: string } | { full_name: string }[] | null;
+  };
 
   type Post = {
     id: string;
@@ -37,7 +45,7 @@ export default async function CommunityPage() {
     pinned: boolean;
     created_at: string;
     likes: { count: number }[] | null;
-    comments: { count: number }[] | null;
+    comments: RawComment[] | null;
   };
 
   // Push configurado?
@@ -52,7 +60,15 @@ export default async function CommunityPage() {
     pinned: p.pinned,
     createdAt: p.created_at,
     likes: (p.likes ?? []).reduce((acc, x) => acc + (x.count ?? 0), 0),
-    comments: (p.comments ?? []).reduce((acc, x) => acc + (x.count ?? 0), 0),
+    thread: (p.comments ?? []).map((c) => {
+      const a = Array.isArray(c.author) ? c.author[0] : c.author;
+      return {
+        id: c.id,
+        content: c.content,
+        created_at: c.created_at,
+        authorName: a?.full_name ?? "Aluno",
+      };
+    }),
   }));
 
   // Desafios do trainer (+ nº de participantes cada)
@@ -125,14 +141,11 @@ export default async function CommunityPage() {
                       </div>
                     )}
                     <p className="text-sm whitespace-pre-line">{p.content}</p>
-                    <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-4 text-xs text-muted-foreground">
+                    <PostComments postId={p.id} initial={p.thread} />
+                    <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-4 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1 hover:text-primary transition-colors cursor-default">
                         <Heart className="size-3.5" />
                         {p.likes}
-                      </span>
-                      <span className="flex items-center gap-1 hover:text-primary transition-colors cursor-default">
-                        <MessageCircle className="size-3.5" />
-                        {p.comments}
                       </span>
                       <span className="ml-auto">
                         {new Date(p.createdAt).toLocaleDateString("pt-BR", {

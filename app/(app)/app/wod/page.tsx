@@ -60,7 +60,20 @@ export default async function WODPage() {
 
   // Pega o WOD de hoje (se houver) + participantes
   const today = (todayWods ?? [])[0];
-  let participants: Array<{
+
+  // Headcount dos arquivados
+  const pastIds = ((pastWods ?? []) as Array<{ id: string }>).map((w) => w.id);
+  let pastCount = new Map<string, number>();
+  if (pastIds.length > 0) {
+    const { data: pastParts } = await supabase
+      .from("wod_participants")
+      .select("wod_id")
+      .in("wod_id", pastIds);
+    pastCount = new Map<string, number>();
+    for (const p of (pastParts ?? []) as Array<{ wod_id: string }>) {
+      pastCount.set(p.wod_id, (pastCount.get(p.wod_id) ?? 0) + 1);
+    }
+  }  let participants: Array<{
     student_id: string;
     result_time_seconds: number | null;
     result_rounds: number | null;
@@ -288,6 +301,9 @@ export default async function WODPage() {
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="font-bold">{h.title}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {pastCount.get(h.id) ?? 0} participaram
+                  </div>
                 </div>
                 <Badge variant="outline" className="border-white/10">
                   <Repeat className="size-3 mr-1" />
