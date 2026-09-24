@@ -465,7 +465,7 @@ export default async function UpgradePage() {
                     variant={p.highlight ? "default" : "outline"}
                     className="mt-6 font-bold"
                   >
-                    {p.cta}
+                    Fazer upgrade
                   </ButtonLink>
                 )}
               </Card>
