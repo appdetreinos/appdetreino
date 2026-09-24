@@ -68,11 +68,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: "mercadopago_not_configured" }, { status: 503 });
     }
     const paymentApi = new Payment(client);
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
     const created = (await paymentApi.create({
       body: {
         transaction_amount: expected_cents / 100,
         payment_method_id: "pix",
         description: `Viva FIT — Plano ${plan.name}`,
+        date_of_expiration: expiresAt,
         payer: {
           email: user.email,
           ...(first ? { first_name: first, last_name: rest.join(" ") || first } : {}),
