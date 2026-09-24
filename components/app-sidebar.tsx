@@ -78,7 +78,7 @@ export function AppSidebar({ role }: Props) {
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-white/5">
-        <Link href="/" className="px-3 py-2 inline-flex items-center gap-2">
+        <Link href="/app" className="px-3 py-2 inline-flex items-center gap-2">
           <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground font-extrabold text-sm">
             pf
           </span>

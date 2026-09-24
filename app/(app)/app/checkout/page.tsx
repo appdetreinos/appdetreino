@@ -19,7 +19,7 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
     <div className="min-h-screen flex flex-col">
       <header className="border-b border-white/5">
         <div className="mx-auto max-w-3xl px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="font-extrabold">
+          <Link href="/app" className="font-extrabold">
             Viva <span className="text-primary">Fit</span>
           </Link>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">

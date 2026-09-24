@@ -6,16 +6,15 @@ import {
   LayoutDashboard,
   Users,
   Dumbbell,
-  Salad,
   Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MoreTrainerTab } from "./more-trainer-tab";
 
 const ITEMS = [
   { href: "/app", label: "Início", icon: LayoutDashboard, exact: true },
   { href: "/app/students", label: "Alunos", icon: Users, exact: false },
   { href: "/app/workouts", label: "Treinos", icon: Dumbbell, exact: false },
-  { href: "/app/diets", label: "Dietas", icon: Salad, exact: false },
   { href: "/app/finance", label: "Caixa", icon: Wallet, exact: false },
 ];
 
@@ -47,6 +46,9 @@ export function TrainerBottomNav() {
             </li>
           );
         })}
+        <li>
+          <MoreTrainerTab />
+        </li>
       </ul>
     </nav>
   );

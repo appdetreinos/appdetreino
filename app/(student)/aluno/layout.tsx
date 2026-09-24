@@ -16,7 +16,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         {/* Sidebar mobile-first (bottom tab no celular) */}
         <aside className="hidden md:block fixed inset-y-0 left-0 w-64 border-r border-white/5 bg-card/40">
           <div className="px-5 py-5 border-b border-white/5">
-            <Link href="/" className="font-extrabold">
+            <Link href="/aluno" className="font-extrabold">
               Viva <span className="text-primary">Fit</span>
             </Link>
           </div>
