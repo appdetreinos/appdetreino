@@ -125,6 +125,18 @@ export async function POST(request: NextRequest) {
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const idempotencyKey = `${user.id}-${plan.id}-${currentYYYYMM()}${isTest ? "-test" : ""}`;
 
+  // URL pública real (a env pode estar desatualizada; host do request manda)
+  let notifyBase = siteUrl;
+  try {
+    const { headers } = await import("next/headers");
+    const h = await headers();
+    const host = h.get("x-forwarded-host") ?? h.get("host");
+    const proto = h.get("x-forwarded-proto") ?? "https";
+    if (host && !host.includes("localhost")) notifyBase = `${proto}://${host}`;
+  } catch {
+    // mantém siteUrl
+  }
+
   // Nome do pagador (Pix do MP pode travar sem identificação mínima)
   const { data: payerProfile } = await supabase
     .from("profiles")
@@ -160,13 +172,13 @@ export async function POST(request: NextRequest) {
             : {}),
         },
         back_urls: {
-          success: `${siteUrl}/app/settings?upgrade=success`,
-          failure: `${siteUrl}/app/checkout?plan=${plan.id}`,
-          pending: `${siteUrl}/app/settings?upgrade=pending`,
+          success: `${notifyBase}/app/settings?upgrade=success`,
+          failure: `${notifyBase}/app/checkout?plan=${plan.id}`,
+          pending: `${notifyBase}/app/settings?upgrade=pending`,
         },
         auto_return: "approved",
         external_reference: `${user.id}:${plan.id}:${currentYYYYMM()}`,
-        notification_url: `${siteUrl}/api/mercadopago/webhook`,
+        notification_url: `${notifyBase}/api/mercadopago/webhook`,
         // Se o trainer escolheu um método específico, esconde os outros.
         // Sem isso, o Checkout Pro mostra TODOS os meios configurados na conta MP.
         payment_methods: parsed.data.payment_method
@@ -209,8 +221,11 @@ export async function POST(request: NextRequest) {
       safeLog.error("[mp-preference] verify threw", e instanceof Error ? e.message : "unknown");
     }
 
-    // Audit + idempotência. errors únicos treinam a tabela. Ignora dup.
-    const { error: linkErr } = await supabase.from("payment_links").insert({
+    // Audit + idempotência. Service role pra não depender de RLS
+    // (sem INSERT o destravamento nunca casa). Ignora dup.
+    const { createServiceClient } = await import("@/lib/supabase/server");
+    const admin = await createServiceClient();
+    const { error: linkErr } = await admin.from("payment_links").insert({
       trainer_id: user.id,
       description: isTest ? `Plano ${plan.name} (TESTE)` : `Plano ${plan.name}`,
       amount_cents: expected_cents,

@@ -50,6 +50,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "mercadopago_not_configured" }, { status: 503 });
   }
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  let notifyBase = siteUrl;
+  try {
+    const { headers } = await import("next/headers");
+    const h = await headers();
+    const host = h.get("x-forwarded-host") ?? h.get("host");
+    const proto = h.get("x-forwarded-proto") ?? "https";
+    if (host && !host.includes("localhost")) notifyBase = `${proto}://${host}`;
+  } catch { /* mantém siteUrl */ }
 
   try {
     const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
@@ -76,7 +84,7 @@ export async function POST(request: NextRequest) {
         },
         auto_return: "approved",
         external_reference: `market:${auth.user.id}:${body.data.kind}:${body.data.template_id}`,
-        notification_url: `${siteUrl}/api/mercadopago/webhook`,
+        notification_url: `${notifyBase}/api/mercadopago/webhook`,
       }),
     });
     if (!mpRes.ok) {

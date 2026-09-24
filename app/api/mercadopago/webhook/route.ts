@@ -171,9 +171,12 @@ export async function POST(request: NextRequest) {
   }
 
   // 5.2) DESTRAVAR O TRAINER: tier vem da external_reference (`uid:plan:mes`);
-  // cai pro legado via descrição. TESTE também destrava (pagamento real).
-  if (payment && "trainer_id" in payment && payment.trainer_id) {
-    const planToken = (refPlan ?? desc).toUpperCase();
+  // cai pro legado via descrição. Funciona mesmo sem linha em payment_links
+  // (ex: linha não gravada) — basta conhecer o dono e o plano.
+  const unlockUserId =
+    refUserId ?? (payment && "trainer_id" in payment ? (payment.trainer_id as string | null) : null);
+  if (unlockUserId) {
+    const planToken = ((refPlan ?? desc) || "").toUpperCase();
     const tier = planToken.includes("TOP") ? "top" : planToken.includes("PRO") ? "pro" : "start";
     await supabase
       .from("trainer_profiles")
@@ -181,7 +184,7 @@ export async function POST(request: NextRequest) {
         plan_tier: tier,
         trial_ends_at: null
       })
-      .eq("user_id", payment.trainer_id);
+      .eq("user_id", unlockUserId);
   }
 
   // 6) Audit
