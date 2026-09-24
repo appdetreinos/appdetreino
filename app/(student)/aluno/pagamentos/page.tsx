@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { PixKeyCard } from "./pix-key-card";
+import { ChargeQr } from "./charge-qr";
 import { CreditCard, Check, Clock, AlertCircle } from "lucide-react";
 
 const STATUS_MAP = {
@@ -120,37 +121,47 @@ export default async function PagamentosAlunoPage() {
               const statusInfo = STATUS_MAP[p.status] ?? STATUS_MAP.pending;
               const Icon = statusInfo.icon;
               return (
-                <Card key={p.id} className="bg-card border-white/5 p-4 flex items-center gap-3">
-                  <Icon className={`size-5 ${statusInfo.color} shrink-0`} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">
-                        {new Intl.NumberFormat("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        }).format(Number(p.amount))}
-                      </span>
-                      <Badge variant={statusInfo.variant} className="text-xs">
-                        {statusInfo.label}
-                      </Badge>
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {p.description && `${p.description} · `}
-                      Vencimento{" "}
-                      {new Date(p.due_date).toLocaleDateString("pt-BR", {
-                        day: "2-digit",
-                        month: "short",
-                      })}
-                      {p.paid_at && (
-                        <> · Pago em{" "}
-                          {new Date(p.paid_at).toLocaleDateString("pt-BR", {
-                            day: "2-digit",
-                            month: "short",
-                          })}
-                        </>
-                      )}
+                <Card key={p.id} className="bg-card border-white/5 p-4">
+                  <div className="flex items-center gap-3">
+                    <Icon className={`size-5 ${statusInfo.color} shrink-0`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">
+                          {new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          }).format(Number(p.amount))}
+                        </span>
+                        <Badge variant={statusInfo.variant} className="text-xs">
+                          {statusInfo.label}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {p.description && `${p.description} · `}
+                        Vencimento{" "}
+                        {new Date(p.due_date).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "short",
+                        })}
+                        {p.paid_at && (
+                          <> · Pago em{" "}
+                            {new Date(p.paid_at).toLocaleDateString("pt-BR", {
+                              day: "2-digit",
+                              month: "short",
+                            })}
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  {(p.status === "pending" || p.status === "overdue") && pixKey && (
+                    <ChargeQr
+                      paymentId={p.id}
+                      amount={Number(p.amount)}
+                      pixKey={pixKey}
+                      beneficiary={beneficiary}
+                    />
+                  )}
                 </Card>
               );
             })}
