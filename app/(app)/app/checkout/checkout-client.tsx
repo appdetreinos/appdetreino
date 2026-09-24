@@ -44,21 +44,12 @@ declare global {
   }
 }
 
-export type PaymentMethod = "pix" | "card" | "boleto";
-
-const METHODS: Array<{ id: PaymentMethod; label: string }> = [
-  { id: "pix", label: "Pix" },
-  { id: "card", label: "Cartão" },
-  { id: "boleto", label: "Boleto" },
-];
-
 /**
  * Bricks embutido (inicialização mínima válida: amount + preferenceId).
  * O próprio Brick mostra as abas Pix / Cartão / Boleto.
  */
 export function CheckoutClient({ planId, planName, amountCents, testMode }: Props) {
   const [phase, setPhase] = useState<"loading" | "brick" | "fallback" | "error">("loading");
-  const [method, setMethod] = useState<PaymentMethod>("pix");
   const [error, setError] = useState<string | null>(null);
   const [brickDetail, setBrickDetail] = useState<string | null>(null);
   const [credHint, setCredHint] = useState<string | null>(null);
@@ -87,7 +78,7 @@ export function CheckoutClient({ planId, planName, amountCents, testMode }: Prop
         const res = await csrfFetch("/api/mercadopago/preference", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ plan_id: planId, amount_cents: amountCents, payment_method: method, test: testMode === true }),
+          body: JSON.stringify({ plan_id: planId, amount_cents: amountCents, test: testMode === true }),
         });
         const data = (await res.json().catch(() => null)) as {
           ok: boolean;
@@ -170,33 +161,13 @@ export function CheckoutClient({ planId, planName, amountCents, testMode }: Prop
     return () => {
       cancelled = true;
     };
-  }, [planId, amountCents, method]);
+  }, [planId, amountCents]);
 
   return (
     <div className="mt-6">
-      <div role="radiogroup" aria-label="Forma de pagamento" className="grid grid-cols-1 min-[400px]:grid-cols-3 gap-2">
-        {METHODS.map((m) => {
-          const active = m.id === method;
-          return (
-            <button
-              key={m.id}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              onClick={() => setMethod(m.id)}
-              className={
-                "rounded-lg border px-3 py-3 text-sm font-semibold text-center transition-colors " +
-                (active
-                  ? "border-primary bg-primary/15 text-primary ring-1 ring-primary/30"
-                  : "border-white/10 bg-background/40 text-foreground/85 hover:border-white/20 hover:bg-background/60")
-              }
-            >
-              {m.label}
-            </button>
-          );
-        })}
-      </div>
-
+      <p className="text-xs text-muted-foreground text-center">
+        Pix, cartão ou boleto — escolhe dentro do pagamento abaixo.
+      </p>
       {phase === "loading" && (
         <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />
@@ -226,7 +197,7 @@ export function CheckoutClient({ planId, planName, amountCents, testMode }: Prop
             </p>
           )}
           <Button size="lg" className="mt-4 w-full font-bold" onClick={() => (window.location.href = initPoint)}>
-            Pagar {formatBRL(amountCents / 100)} via {METHODS.find((m) => m.id === method)?.label}
+            Pagar {formatBRL(amountCents / 100)} no Mercado Pago
           </Button>
         </div>
       )}
