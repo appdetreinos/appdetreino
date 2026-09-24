@@ -69,7 +69,11 @@ export function PwaBanner({ gifUrl }: { gifUrl?: string }) {
   const [tab, setTab] = useState<"auto" | "ios">("auto");
 
   useEffect(() => {
-    if (!mayShow()) return;
+    // Modo teste: ?pwa=1 sempre mostra (pra validar o popup)
+    const force =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("pwa") === "1";
+    if (!force && !mayShow()) return;
     setTab(isIOS() ? "ios" : "auto");
     const t = setTimeout(() => {
       setVisible(true);
