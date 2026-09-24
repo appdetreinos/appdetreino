@@ -252,7 +252,7 @@ export default async function StudentHome() {
           <p className="mt-1 text-muted-foreground">
             {bestStreak > 0
               ? `${bestStreak} ${bestStreak === 1 ? "dia seguido" : "dias seguidos"} de hábito. Mantém o ritmo.`
-              : "Bora evoluir hoje?"}
+              : "O que vamos evoluir hoje?"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -383,7 +383,7 @@ export default async function StudentHome() {
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold">WOD de hoje: {(wodHoje as { title: string }).title}</div>
                     <div className="text-sm text-muted-foreground truncate">
-                      {(wodHoje as { description?: string | null }).description ?? "Bora suar junto"}
+                      {(wodHoje as { description?: string | null }).description ?? "Treino do dia em grupo"}
                     </div>
                   </div>
                   <ArrowRight className="size-4 text-muted-foreground" />

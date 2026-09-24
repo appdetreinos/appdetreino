@@ -92,7 +92,7 @@ export default async function InvitePage({ params }: PageProps) {
           <div className="grid size-14 place-items-center rounded-full bg-primary/10 text-primary mx-auto">
             <UserPlus className="size-7" />
           </div>
-          <h1 className="mt-4 text-2xl font-bold">Bora treinar com {trainerName}?</h1>
+          <h1 className="mt-4 text-2xl font-bold">Treinar com {trainerName}?</h1>
           <p className="mt-2 text-foreground/65 text-sm">
             <strong className="text-foreground">{invite.full_name}</strong>, seu personal te convidou para entrar no painel de treinos.
           </p>

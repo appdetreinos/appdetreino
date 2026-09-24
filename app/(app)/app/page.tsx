@@ -248,9 +248,14 @@ export default async function TrainerDashboard() {
           <div className="space-y-6">
             {unreadChats.length > 0 && (
               <Card className="p-6 bg-primary/5 border-primary/20">
-                <h2 className="text-lg font-bold mb-1 flex items-center gap-2">
-                  <MessageCircle className="size-5 text-primary" /> Conversas
-                </h2>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-lg font-bold mb-1 flex items-center gap-2">
+                    <MessageCircle className="size-5 text-primary" /> Conversas
+                  </h2>
+                  <Link href="/app/mensagens" className="text-xs font-semibold text-primary hover:underline">
+                    Ver todas
+                  </Link>
+                </div>
                 <p className="text-xs text-muted-foreground mb-3">
                   Mensagens novas pra responder
                 </p>
