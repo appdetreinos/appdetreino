@@ -134,7 +134,7 @@ export default async function DietaPage() {
                             </span>
                           </div>
                           {subs.length > 0 && (
-                            <div className="mt-1 text-xs text-muted-foreground">
+                            <div className="mt-1 text-xs text-muted-foreground break-words">
                               Troca: {subs.map((s) => `${s.food_name} ${s.grams}g`).join(" · ")}
                             </div>
                           )}

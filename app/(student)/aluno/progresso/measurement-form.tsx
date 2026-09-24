@@ -120,7 +120,7 @@ export function MeasurementForm() {
       {error && <p className="text-sm text-destructive mb-3">{error}</p>}
 
       <form onSubmit={onSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <Field id="weight_kg" label="Peso (kg)" step="0.1" min={0} max={500} />
           <Field id="body_fat_pct" label="Gordura (%)" step="0.1" min={0} max={100} />
           <Field id="chest_cm" label="Peito (cm)" step="0.1" min={0} max={300} />
@@ -170,7 +170,7 @@ function Field({
       <Label htmlFor={id} className="text-xs">
         {label}
       </Label>
-      <Input id={id} name={id} type="number" {...props} />
+      <Input id={id} name={id} type="number" inputMode="decimal" {...props} />
     </div>
   );
 }

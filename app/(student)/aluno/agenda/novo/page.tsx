@@ -276,7 +276,7 @@ export default function NovoAgendamentoAlunoPage() {
               Sem horários livres nesse dia. Tenta outra data.
             </Card>
           ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {slots.map((s) => {
                 const active = pickedSlot?.start === s.start;
                 const label = new Date(s.start).toLocaleTimeString("pt-BR", {
@@ -288,7 +288,7 @@ export default function NovoAgendamentoAlunoPage() {
                     key={s.start}
                     type="button"
                     onClick={() => setPickedSlot(s)}
-                    className={`rounded-md border px-3 py-2 text-sm font-mono font-semibold transition-colors ${
+                    className={`rounded-md border px-3 py-3 min-h-[48px] text-sm font-mono font-semibold transition-colors ${
                       active
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-white/10 bg-card hover:border-white/30"
@@ -320,7 +320,7 @@ export default function NovoAgendamentoAlunoPage() {
         </section>
       )}
 
-      <div className="flex justify-end gap-2 pt-2">
+      <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2">
         <ButtonLink href="/aluno/agenda" variant="outline">
           Cancelar
         </ButtonLink>
@@ -328,7 +328,7 @@ export default function NovoAgendamentoAlunoPage() {
           type="button"
           onClick={handleSubmit}
           disabled={!pickedSlot || submitting || pending}
-          className="font-semibold"
+          className="font-semibold min-h-[48px]"
         >
           {submitting || pending ? (
             <>

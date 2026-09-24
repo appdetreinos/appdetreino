@@ -49,12 +49,13 @@ export function MarketingHeader() {
         <div className="flex items-center gap-2">
           <Link
             href="/entrar"
-            className="inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold text-foreground/85 transition-colors hover:bg-white/5 hover:text-foreground"
+            className="hidden sm:inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold text-foreground/85 transition-colors hover:bg-white/5 hover:text-foreground"
           >
             Entrar
           </Link>
-          <ButtonLink href="/register" size="sm" className="font-semibold">
-            Testar 3 dias grátis
+          <ButtonLink href="/register" size="sm" className="font-semibold whitespace-nowrap">
+            <span className="sm:hidden">Testar grátis</span>
+            <span className="hidden sm:inline">Testar 3 dias grátis</span>
           </ButtonLink>
         </div>
       </div>

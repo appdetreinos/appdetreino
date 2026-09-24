@@ -229,12 +229,12 @@ export function AnamnesisWizard({ template, existingAnswers }: Props) {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={back} disabled={step === 0 || pending}>
+      <div className="sticky bottom-0 -mx-1 bg-background/95 backdrop-blur-md border-t border-white/5 px-1 pt-3 pb-1 flex items-center justify-between gap-2">
+        <Button variant="ghost" onClick={back} disabled={step === 0 || pending} className="min-h-[48px]">
           <ArrowLeft className="size-4" />
           Voltar
         </Button>
-        <Button onClick={next} disabled={pending}>
+        <Button onClick={next} disabled={pending} className="min-h-[48px] flex-1 sm:flex-none">
           {pending
             ? "Salvando..."
             : step < totalSteps - 1

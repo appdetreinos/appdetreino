@@ -580,7 +580,7 @@ function SetLine({
             value={reps}
             onChange={(e) => setReps(e.target.value)}
             placeholder="reps"
-            className="w-14 rounded-md border border-white/10 bg-background px-2 py-1 text-sm"
+            className="w-14 min-h-[44px] rounded-md border border-white/10 bg-background px-2 py-1 text-sm"
           />
           <input
             type="number"
@@ -589,7 +589,7 @@ function SetLine({
             value={load}
             onChange={(e) => setLoad(e.target.value)}
             placeholder="kg"
-            className="w-16 rounded-md border border-white/10 bg-background px-2 py-1 text-sm"
+            className="w-16 min-h-[44px] rounded-md border border-white/10 bg-background px-2 py-1 text-sm"
           />
           <SmallNumberSelector
             value={rpe}
@@ -717,7 +717,7 @@ function NewSetForm({
         value={reps}
         onChange={(e) => setReps(e.target.value)}
         placeholder="reps"
-        className="w-14 rounded-md border border-white/10 bg-background px-2 py-1 text-sm"
+        className="w-14 min-h-[44px] rounded-md border border-white/10 bg-background px-2 py-1 text-sm"
       />
       <input
         type="number"
@@ -726,7 +726,7 @@ function NewSetForm({
         value={load}
         onChange={(e) => setLoad(e.target.value)}
         placeholder="kg"
-        className="w-16 rounded-md border border-white/10 bg-background px-2 py-1 text-sm"
+        className="w-16 min-h-[44px] rounded-md border border-white/10 bg-background px-2 py-1 text-sm"
       />
       <SmallNumberSelector value={rpe} onChange={setRpe} max={10} label="RPE" />
       <SmallNumberSelector
@@ -797,7 +797,7 @@ function SmallNumberSelector({
       {open && (
         <div
           role="listbox"
-          className="absolute z-30 mt-1 left-0 grid grid-cols-6 gap-1 rounded-lg border border-white/10 bg-card p-2 shadow-xl"
+          className="absolute z-30 mt-1 right-0 max-w-[calc(100vw-2rem)] grid grid-cols-6 gap-1 rounded-lg border border-white/10 bg-card p-2 shadow-xl overflow-x-auto"
         >
           <button
             type="button"
@@ -868,7 +868,7 @@ function FinishDialog({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-card p-5 shadow-2xl">
+      <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-white/10 bg-card p-5 shadow-2xl">
         <h3 className="text-lg font-bold">Finalizar treino</h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Você registrou {sessionCount} séries nesse treino.

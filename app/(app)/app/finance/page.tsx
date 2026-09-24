@@ -168,20 +168,21 @@ export default async function FinancePage() {
                 : "Tudo em dia"}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <ButtonLink href="/app/settings" variant="ghost" size="sm" className="text-foreground/70">
+          <div className="flex items-center gap-2 shrink-0">
+            <ButtonLink href="/app/settings" variant="ghost" size="sm" className="text-foreground/70 px-2">
               <Settings className="size-4" />
-              <span className="hidden sm:inline">Chave Pix</span>
+              <span className="hidden lg:inline">Chave Pix</span>
             </ButtonLink>
             <ButtonLink href="/app/finance/new" size="sm" className="font-semibold">
               <Plus className="size-4" />
-              <span className="hidden sm:inline">Nova cobrança</span>
+              <span className="hidden min-[400px]:inline">Nova cobrança</span>
+              <span className="min-[400px]:hidden">Nova</span>
             </ButtonLink>
           </div>
         </div>
       </header>
 
-      <Stagger className="p-6 max-w-5xl mx-auto space-y-6" delay={0.05}>
+      <Stagger className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6" delay={0.05}>
         {/* Banner se não configurou Pix ainda */}
         {!temPix && (
           <StaggerItem>
@@ -304,14 +305,14 @@ export default async function FinancePage() {
                   return (
                     <div
                       key={p.id}
-                      className="flex items-center gap-4 py-3.5 first:pt-0 last:pb-0"
+                      className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3.5 first:pt-0 last:pb-0"
                     >
-                      <Avatar className="size-10 border border-white/10">
+                      <Avatar className="size-10 border border-white/10 shrink-0">
                         <AvatarFallback className="bg-primary/15 text-primary font-bold">
                           {p.letra}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-[140px] basis-40">
                         <div className="font-semibold truncate">{p.aluno}</div>
                         <div className="text-sm text-foreground/65 truncate">
                           {p.status === "paid" && p.pagoEm
@@ -319,22 +320,26 @@ export default async function FinancePage() {
                             : `Vence em ${p.vencimento}`}
                         </div>
                       </div>
-                      <span className="num font-bold text-base shrink-0">
+                      <span className="num font-bold text-base shrink-0 ml-auto">
                         {formatBRL(p.valor)}
                       </span>
                       <Badge className={s.cls}>
                         <s.icon className="size-3 mr-1" />
                         {s.label}
                       </Badge>
-                      {podeCobrar && p.telefone && (
-                        <PixCobrarButton
-                          paymentId={p.id}
-                          phone={p.telefone}
-                          studentName={p.aluno}
-                          valor={p.valor}
-                        />
+                      {podeCobrar && (
+                        <span className="flex items-center gap-2 w-full sm:w-auto">
+                          {p.telefone && (
+                            <PixCobrarButton
+                              paymentId={p.id}
+                              phone={p.telefone}
+                              studentName={p.aluno}
+                              valor={p.valor}
+                            />
+                          )}
+                          <MarkPaidButton paymentId={p.id} />
+                        </span>
                       )}
-                      {podeCobrar && <MarkPaidButton paymentId={p.id} />}
                     </div>
                   );
                 })}

@@ -77,6 +77,7 @@ export function HabitCounter({
           onClick={() => delta(-1)}
           disabled={pending || current <= 0}
           aria-label="Diminuir"
+          className="min-h-[44px] min-w-[44px]"
         >
           <Minus className="size-4" />
         </Button>
@@ -85,6 +86,7 @@ export function HabitCounter({
           onClick={() => delta(1)}
           disabled={pending}
           aria-label="Aumentar"
+          className="min-h-[44px] min-w-[44px]"
         >
           <Plus className="size-4" />
         </Button>

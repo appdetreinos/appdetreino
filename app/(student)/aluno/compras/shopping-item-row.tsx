@@ -43,7 +43,7 @@ export function ShoppingItemRow({ item }: { item: Item }) {
         checked={checked}
         onChange={toggle}
         disabled={pending}
-        className="size-4 accent-primary shrink-0"
+        className="size-6 accent-primary shrink-0"
       />
       <span
         className={`flex-1 text-sm ${checked ? "line-through text-muted-foreground" : ""}`}

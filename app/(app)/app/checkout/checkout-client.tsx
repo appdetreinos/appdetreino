@@ -174,7 +174,7 @@ export function CheckoutClient({ planId, planName, amountCents, testMode }: Prop
 
   return (
     <div className="mt-6">
-      <div role="radiogroup" aria-label="Forma de pagamento" className="grid grid-cols-3 gap-2">
+      <div role="radiogroup" aria-label="Forma de pagamento" className="grid grid-cols-1 min-[400px]:grid-cols-3 gap-2">
         {METHODS.map((m) => {
           const active = m.id === method;
           return (

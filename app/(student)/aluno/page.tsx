@@ -476,42 +476,7 @@ export default async function StudentHome() {
         </StaggerItem>
       </Stagger>
 
-      {/* Bottom nav */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-white/5 bg-background/90 backdrop-blur-md">
-        <ul className="mx-auto max-w-3xl grid grid-cols-5">
-          <NavItem label="Início" icon={Dumbbell} href="/aluno" active />
-          <NavItem label="Treinos" icon={PlayCircle} href="/aluno/treinos" />
-          <NavItem label="Dieta" icon={Salad} href="/aluno/dieta" />
-          <NavItem label="WOD" icon={Trophy} href="/aluno/wod" />
-          <NavItem label="Mais" icon={MessagesSquare} href="/aluno/mensagens" />
-        </ul>
-      </nav>
+      {/* Bottom nav do layout — removida a duplicada daqui */}
     </main>
-  );
-}
-
-function NavItem({
-  label,
-  icon: Icon,
-  href,
-  active,
-}: {
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  href: string;
-  active?: boolean;
-}) {
-  return (
-    <li>
-      <Link
-        href={href}
-        className={`flex flex-col items-center gap-1 py-3 text-xs transition-colors ${
-          active ? "text-primary" : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        <Icon className="size-5" />
-        <span className={active ? "font-bold" : "font-medium"}>{label}</span>
-      </Link>
-    </li>
   );
 }

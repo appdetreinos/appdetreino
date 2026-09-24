@@ -40,7 +40,7 @@ export function PhotoCompare({ points }: { points: PhotoPoint[] }) {
       <h2 className="text-lg font-bold mb-1">Antes / depois</h2>
       <p className="text-xs text-muted-foreground mb-4">Escolhe duas datas pra comparar as fotos.</p>
 
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <label className="text-xs space-y-1">
           <span className="font-semibold text-muted-foreground uppercase tracking-wider">Antes</span>
           <select

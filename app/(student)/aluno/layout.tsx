@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MoreTab } from "./more-tab";
 import {
   Home,
   Salad,
@@ -30,13 +31,14 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         </aside>
 
         {/* Tab bar mobile (fixed bottom) */}
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t border-white/5 bg-background/95 backdrop-blur-md">
-          <div className="grid grid-cols-5">
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t border-white/5 bg-background/95 backdrop-blur-md" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+          <div className="grid grid-cols-6">
             <NavItemMobile href="/aluno" icon={Home} label="Hoje" />
             <NavItemMobile href="/aluno/dieta" icon={Salad} label="Dieta" />
-            <NavItemMobile href="/aluno/progresso" icon={TrendingUp} label="Progresso" />
+            <NavItemMobile href="/aluno/progresso" icon={TrendingUp} label="Evolução" />
             <NavItemMobile href="/aluno/comunidade" icon={Trophy} label="Turma" />
             <NavItemMobile href="/aluno/pagamentos" icon={Wallet} label="Pagar" />
+            <MoreTab />
           </div>
         </nav>
 

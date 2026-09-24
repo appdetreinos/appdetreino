@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import Link from "next/link";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { TrialBanner } from "./_components/trial-banner";
 import { TrialGate } from "./_components/trial-gate";
+import { TrainerBottomNav } from "./_components/trainer-bottom-nav";
 import { OnboardingWizard } from "./_components/onboarding-wizard";
 import { createClient } from "@/lib/supabase/server";
 import { getTrainerTrialState } from "@/lib/billing/trial";
@@ -64,10 +66,18 @@ export default async function TrainerLayout({
     <SidebarProvider>
       <AppSidebar role="trainer" />
       <SidebarInset className="bg-background">
+        {/* Barra mobile: abre o menu lateral */}
+        <header className="md:hidden sticky top-0 z-30 flex items-center gap-2 border-b border-white/5 bg-background/90 backdrop-blur-md px-3 h-14">
+          <SidebarTrigger aria-label="Abrir menu" />
+          <Link href="/app" className="font-extrabold">
+            Viva <span className="text-primary">Fit</span>
+          </Link>
+        </header>
         {daysLeft > 0 && <TrialBanner daysLeft={daysLeft} />}
         <TrialGate locked={trialLocked} />
         {showOnboarding && <OnboardingWizard />}
-        {children}
+        <div className="pb-20 md:pb-0">{children}</div>
+        <TrainerBottomNav />
       </SidebarInset>
     </SidebarProvider>
   );

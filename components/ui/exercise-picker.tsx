@@ -311,7 +311,7 @@ function AddButton({
 }) {
   if (isSelected) {
     return (
-      <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 text-[11px] font-semibold text-emerald-500">
+      <span className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 text-[11px] font-semibold text-emerald-500">
         <Check className="size-3" aria-hidden="true" />
         Adicionado
       </span>
@@ -321,7 +321,7 @@ function AddButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3 text-[11px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-primary px-3 text-[11px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
     >
       <Plus className="size-3" aria-hidden="true" />
       Adicionar

@@ -106,7 +106,7 @@ export default function TeamPage() {
           <p className="text-xs text-muted-foreground mb-4">
             Estagiário, sócio ou assistente com conta de profissional enxerga e opera teus alunos, treinos e finanças.
           </p>
-          <form onSubmit={add} className="flex gap-2">
+          <form onSubmit={add} className="flex flex-col sm:flex-row gap-2">
             <div className="flex-1">
               <Label htmlFor="tm-email" className="sr-only">E-mail</Label>
               <Input

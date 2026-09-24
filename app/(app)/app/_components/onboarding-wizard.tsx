@@ -198,7 +198,7 @@ export function OnboardingWizard() {
 
       {/* Modal */}
       <div
-        className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-card p-6 shadow-2xl sm:p-8 animate-fade-in-up"
+        className="relative w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-white/10 bg-card p-6 shadow-2xl sm:p-8 animate-fade-in-up"
       >
         {/* Header: barra de progresso + step counter + X */}
         <div className="flex items-center gap-2">

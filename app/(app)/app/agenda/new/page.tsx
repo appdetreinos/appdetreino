@@ -130,7 +130,7 @@ export default function NewAppointmentPage() {
               <Input id="title" name="title" required placeholder="Ex: Avaliação inicial" className="mt-1.5" />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="starts_at">Início</Label>
                 <Input id="starts_at" name="starts_at" type="datetime-local" required className="mt-1.5" />
@@ -141,7 +141,7 @@ export default function NewAppointmentPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="appointment_type_id">Tipo (opcional)</Label>
                 <select

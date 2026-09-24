@@ -193,7 +193,7 @@ export default async function WODPage() {
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-3 divide-x divide-white/5 border-t border-white/5">
+          <div className="grid gap-6 sm:gap-0 sm:grid-cols-3 sm:divide-x sm:divide-white/5 border-t border-white/5">
             <div className="p-5">
               <div className="text-xs uppercase tracking-wider text-muted-foreground">Top 1</div>
               <div className="mt-1 flex items-center gap-2">

@@ -175,7 +175,8 @@ export default async function SessionDetailPage({ params }: PageProps) {
           groupedList.map((g) => (
             <Card key={g.name} className="bg-card/80 border-white/10 p-5">
               <h3 className="mb-3 font-semibold">{g.name}</h3>
-              <table className="w-full text-sm">
+              <div className="-mx-1 overflow-x-auto px-1">
+              <table className="w-full min-w-[420px] text-sm">
                 <thead>
                   <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
                     <th className="text-left font-medium py-1">#</th>
@@ -205,6 +206,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
                   ))}
                 </tbody>
               </table>
+              </div>
               {g.sets.some((s) => s.notes) && (
                 <ul className="mt-3 space-y-1 text-[11px] text-muted-foreground">
                   {g.sets

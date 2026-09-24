@@ -101,7 +101,7 @@ export default async function ProgressoPage() {
 
         {/* Mini-cards: % gordura, cintura, peito */}
         <StaggerItem>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Mini
               label="% gordura"
               atual={gordura.length ? gordura[gordura.length - 1] : null}

@@ -203,7 +203,7 @@ export default async function HabitosAlunoPage() {
                             {DAY_LABELS[dow]}
                           </span>
                           <div
-                            className={`size-7 rounded-md border-2 transition-all ${
+                            className={`size-10 rounded-md border-2 transition-all ${
                               done
                                 ? "bg-primary border-primary"
                                 : isToday

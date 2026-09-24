@@ -82,28 +82,29 @@ export default async function StudentsPage() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-white/10 sticky top-0 z-30 bg-background/85 backdrop-blur-md">
-        <div className="px-6 h-16 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">Alunos</h1>
+        <div className="px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold truncate">Alunos</h1>
             <p className="text-xs text-foreground/65">
               {students.length} ativo{students.length === 1 ? "" : "s"} ·{" "}
               {invites.filter((i) => i.status === "pending").length} convite
               {invites.filter((i) => i.status === "pending").length === 1 ? "" : "s"} pendente
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <ButtonLink href="/app/students/import" variant="outline" size="sm">
-              <span className="hidden sm:inline">Importar</span>
+              Importar
             </ButtonLink>
-            <ButtonLink href="/app/students/new" className="font-semibold">
+            <ButtonLink href="/app/students/new" size="sm" className="font-semibold">
               <Plus className="size-4" />
-              <span className="hidden sm:inline">Novo aluno</span>
+              <span className="hidden min-[400px]:inline">Novo aluno</span>
+              <span className="min-[400px]:hidden">Novo</span>
             </ButtonLink>
           </div>
         </div>
       </header>
 
-      <main className="p-6 max-w-5xl mx-auto space-y-6">
+      <main className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
         {limitState?.reached && (
           <Card className="bg-primary/10 border-primary/30 p-5">
             <div className="flex items-center justify-between gap-3">

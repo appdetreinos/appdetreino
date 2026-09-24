@@ -108,7 +108,7 @@ export function AvailabilityManager({ initial }: { initial: Slot[] }) {
       )}
 
       <form onSubmit={add} className="mt-3 pt-3 border-t border-white/5 space-y-2">
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
           <div>
             <Label className="text-[11px]">Dia</Label>
             <select
