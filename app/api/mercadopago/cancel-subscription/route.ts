@@ -35,23 +35,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "no_active_subscription" }, { status: 404 });
   }
 
-  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
-  if (!accessToken) {
-    return NextResponse.json({ ok: false, error: "mercadopago_not_configured" }, { status: 503 });
-  }
-
   try {
-    const mpRes = await fetch(`https://api.mercadopago.com/preapproval/${row.external_id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ status: "cancelled" }),
-    });
-    if (!mpRes.ok && mpRes.status !== 404) {
-      safeLog.error("[mp-cancel] mp api failed", { status: mpRes.status });
-      return NextResponse.json({ ok: false, error: "mp_api_failed" }, { status: 502 });
+    const { mpClient } = await import("@/lib/mercadopago/client");
+    const { PreApproval } = await import("mercadopago");
+    const client = mpClient();
+    if (!client) {
+      return NextResponse.json({ ok: false, error: "mercadopago_not_configured" }, { status: 503 });
+    }
+    const preapproval = new PreApproval(client);
+    try {
+      await preapproval.update({ id: row.external_id as string, body: { status: "cancelled" } });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      if (!/404/.test(msg)) {
+        safeLog.error("[mp-cancel] mp api failed", msg);
+        return NextResponse.json({ ok: false, error: "mp_api_failed" }, { status: 502 });
+      }
     }
     return NextResponse.json({ ok: true });
   } catch (e) {

@@ -1,43 +1,14 @@
-/**
- * Wrapper mínimo do Mercado Pago Bricks (server-side helpers).
- *
- * Por enquanto só expõe:
- *  - configuração de credenciais (lidas de env vars)
- *  - verificação de assinatura de webhook
- *  - tipos de payload do webhook IPN/Bricks
- *
- * O checkout hospedado e o disparo de link de pagamento vão entrar
- * na próxima fase — por ora o webhook só atualiza `payments.status`.
- */
+import { MercadoPagoConfig } from "mercadopago";
+import { safeLog } from "@/lib/log/safe";
 
-export interface MPWebhookPayload {
-  type?: string;
-  action?: string;
-  data?: { id?: string | number };
-  api_version?: string;
-  user_id?: string | number;
-  live_mode?: boolean;
-}
-
-export function getMPAccessToken(): string | undefined {
-  return process.env.MERCADOPAGO_ACCESS_TOKEN;
-}
-
-export function getMPPublicKey(): string | undefined {
-  return process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY;
-}
-
-/**
- * Validação simples do webhook do Mercado Pago.
- * A doc oficial pede HMAC-SHA256 do `x-signature` + `x-request-id` + `data.id`.
- * Pra MVP a gente checa se existe access token configurado — quando o usuário
- * plugar credenciais reais, ativamos a validação completa.
- */
-export function isMPWebhookAuthorized(headers: Headers): boolean {
-  const token = getMPAccessToken();
-  if (!token) return true; // modo dev — sem credenciais, deixa passar
-  const signature = headers.get("x-signature");
-  const requestId = headers.get("x-request-id");
-  // Em prod, compute HMAC e compare. Aqui basta garantir que algo veio.
-  return Boolean(signature && requestId);
+/** Client oficial do MP (boa prática do checklist de qualidade). */
+export function mpClient(): MercadoPagoConfig | null {
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  if (!accessToken) return null;
+  try {
+    return new MercadoPagoConfig({ accessToken, options: { timeout: 15000 } });
+  } catch (e) {
+    safeLog.error("[mp] config failed", e instanceof Error ? e.message : "unknown");
+    return null;
+  }
 }

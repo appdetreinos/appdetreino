@@ -35,20 +35,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "unknown_plan" }, { status: 400 });
   }
 
-  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
-  if (!accessToken) {
-    return NextResponse.json({ ok: false, error: "mercadopago_not_configured" }, { status: 503 });
-  }
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   try {
-    const mpRes = await fetch("https://api.mercadopago.com/preapproval", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
+    const { mpClient } = await import("@/lib/mercadopago/client");
+    const { PreApproval } = await import("mercadopago");
+    const client = mpClient();
+    if (!client) {
+      return NextResponse.json({ ok: false, error: "mercadopago_not_configured" }, { status: 503 });
+    }
+    const preapproval = new PreApproval(client);
+    const created = await preapproval.create({
+      body: {
         reason: `Viva FIT — Plano ${plan.name} (mensal)`,
         auto_recurring: {
           frequency: 1,
@@ -59,16 +57,12 @@ export async function POST(request: NextRequest) {
         payer_email: user.email,
         back_url: `${siteUrl}/app/settings?upgrade=success`,
         external_reference: `${user.id}:${plan.id}:subscription`,
-      }),
+      },
     });
 
-    if (!mpRes.ok) {
-      safeLog.error("[mp-subscription] mp api failed", { status: mpRes.status });
-      return NextResponse.json({ ok: false, error: "mp_api_failed" }, { status: 502 });
-    }
-
-    const mpData = (await mpRes.json()) as { id?: string; init_point?: string };
-    if (!mpData.init_point) {
+    const initPoint = created.init_point;
+    const preId = created.id;
+    if (!initPoint) {
       return NextResponse.json({ ok: false, error: "no_init_point" }, { status: 502 });
     }
 
@@ -76,12 +70,12 @@ export async function POST(request: NextRequest) {
       trainer_id: user.id,
       description: `Plano ${plan.name} (assinatura)`,
       amount_cents: formatCents(plan.priceMonthly),
-      external_id: mpData.id ?? `sub-${Date.now()}`,
-      url: mpData.init_point,
+      external_id: preId != null ? String(preId) : `sub-${Date.now()}`,
+      url: initPoint,
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     });
 
-    return NextResponse.json({ ok: true, init_point: mpData.init_point });
+    return NextResponse.json({ ok: true, init_point: initPoint });
   } catch (e) {
     safeLog.error("[mp-subscription] unhandled", e instanceof Error ? e.message : "unknown");
     return NextResponse.json({ ok: false, error: "internal_error" }, { status: 500 });

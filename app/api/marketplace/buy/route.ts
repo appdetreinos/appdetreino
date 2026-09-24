@@ -45,10 +45,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "Anúncio indisponível." }, { status: 404 });
   }
 
-  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
-  if (!accessToken) {
-    return NextResponse.json({ ok: false, error: "mercadopago_not_configured" }, { status: 503 });
-  }
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   let notifyBase = siteUrl;
   try {
@@ -60,17 +56,20 @@ export async function POST(request: NextRequest) {
   } catch { /* mantém siteUrl */ }
 
   try {
-    const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-        "X-Idempotency-Key": `market-${auth.user.id}-${body.data.kind}-${body.data.template_id}`,
-      },
-      body: JSON.stringify({
+    const { mpClient } = await import("@/lib/mercadopago/client");
+    const { Preference } = await import("mercadopago");
+    const client = mpClient();
+    if (!client) {
+      return NextResponse.json({ ok: false, error: "mercadopago_not_configured" }, { status: 503 });
+    }
+    const preference = new Preference(client);
+    const created = await preference.create({
+      body: {
         items: [
           {
+            id: `market-${body.data.kind}-${body.data.template_id}`,
             title: `Planilha: ${t.title}`,
+            description: `Compra de planilha "${t.title}" na vitrine Viva FIT`,
             quantity: 1,
             unit_price: t.price_cents / 100,
             currency_id: "BRL",
@@ -85,14 +84,12 @@ export async function POST(request: NextRequest) {
         auto_return: "approved",
         external_reference: `market:${auth.user.id}:${body.data.kind}:${body.data.template_id}`,
         notification_url: `${notifyBase}/api/mercadopago/webhook`,
-      }),
+      },
+      requestOptions: {
+        idempotencyKey: `market-${auth.user.id}-${body.data.kind}-${body.data.template_id}`,
+      },
     });
-    if (!mpRes.ok) {
-      safeLog.error("[marketplace] mp failed", { status: mpRes.status });
-      return NextResponse.json({ ok: false, error: "mp_api_failed" }, { status: 502 });
-    }
-    const mpData = (await mpRes.json()) as { id: string; init_point?: string };
-    if (!mpData.init_point) {
+    if (!created.init_point) {
       return NextResponse.json({ ok: false, error: "no_init_point" }, { status: 502 });
     }
 
@@ -100,12 +97,12 @@ export async function POST(request: NextRequest) {
       trainer_id: auth.user.id,
       description: `Marketplace ${body.data.kind}:${body.data.template_id}`,
       amount_cents: t.price_cents,
-      external_id: mpData.id,
-      url: mpData.init_point,
+      external_id: created.id != null ? String(created.id) : null,
+      url: created.init_point,
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     });
 
-    return NextResponse.json({ ok: true, init_point: mpData.init_point });
+    return NextResponse.json({ ok: true, init_point: created.init_point });
   } catch (e) {
     safeLog.error("[marketplace] unhandled", e instanceof Error ? e.message : "unknown");
     return NextResponse.json({ ok: false, error: "internal_error" }, { status: 500 });

@@ -47,6 +47,8 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        {/* SDK MercadoPago.JS V2 global (checklist qualidade MP) */}
+        <script src="https://sdk.mercadopago.com/js/v2" async />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {children}

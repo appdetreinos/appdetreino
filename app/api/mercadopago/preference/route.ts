@@ -149,17 +149,23 @@ export async function POST(request: NextRequest) {
   const [payerFirst, ...payerRest] = payerName.split(/\s+/).filter(Boolean);
 
   try {
-    const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-        "X-Idempotency-Key": idempotencyKey,
-      },
-      body: JSON.stringify({
+    const { mpClient } = await import("@/lib/mercadopago/client");
+    const { Preference } = await import("mercadopago");
+    const client = mpClient();
+    if (!client) {
+      return NextResponse.json(
+        { ok: false, error: "mercadopago_not_configured" },
+        { status: 503 },
+      );
+    }
+    const preference = new Preference(client);
+    const created = await preference.create({
+      body: {
         items: [
           {
+            id: `plano-${plan.id}`,
             title: isTest ? `Viva FIT — Plano ${plan.name} (TESTE)` : `Viva FIT — Plano ${plan.name}`,
+            description: `Assinatura mensal do plano ${plan.name} no Viva FIT APP`,
             quantity: 1,
             unit_price: expected_cents / 100,
             currency_id: "BRL",
@@ -184,19 +190,12 @@ export async function POST(request: NextRequest) {
         payment_methods: parsed.data.payment_method
           ? { excluded_payment_types: excludedPaymentTypes(parsed.data.payment_method) }
           : undefined,
-      }),
+      },
+      requestOptions: { idempotencyKey },
     });
 
-    if (!mpRes.ok) {
-      const errBody = await mpRes.text();
-      safeLog.error("[mp-preference] mp api failed", { status: mpRes.status, body: errBody });
-      return NextResponse.json(
-        { ok: false, error: "mp_api_failed" },
-        { status: 502 },
-      );
-    }
+    const mpData = { id: created.id, init_point: created.init_point };
 
-    const mpData = (await mpRes.json()) as { id: string; init_point?: string };
     const initPoint = mpData.init_point;
 
     if (!initPoint) {
@@ -206,19 +205,14 @@ export async function POST(request: NextRequest) {
     // Valida a preferência (credencial teste vs produção, app sem Bricks, etc).
     // Se a GET falhar, o Brick também falharia — avisa já com motivo claro.
     try {
-      const verifyRes = await fetch(`https://api.mercadopago.com/checkout/preferences/${mpData.id}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!verifyRes.ok) {
-        const vBody = await verifyRes.text();
-        safeLog.error("[mp-preference] verify failed", { status: verifyRes.status, body: vBody });
-        return NextResponse.json(
-          { ok: false, error: "preference_invalid", detail: `verify_${verifyRes.status}` },
-          { status: 502 },
-        );
-      }
+      const verify = await preference.get({ preferenceId: String(mpData.id) });
+      if (!verify?.id) throw new Error("verify_empty");
     } catch (e) {
-      safeLog.error("[mp-preference] verify threw", e instanceof Error ? e.message : "unknown");
+      safeLog.error("[mp-preference] verify failed", e instanceof Error ? e.message : "unknown");
+      return NextResponse.json(
+        { ok: false, error: "preference_invalid", detail: "verify_failed" },
+        { status: 502 },
+      );
     }
 
     // Audit + idempotência. Service role pra não depender de RLS

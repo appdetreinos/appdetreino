@@ -82,27 +82,24 @@ export async function POST(request: NextRequest) {
   let refMarket: string | null = null;
   if (accessToken) {
     try {
-      const payRes = await fetch(`https://api.mercadopago.com/v1/payments/${externalId}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (payRes.ok) {
-        const payData = (await payRes.json()) as {
-          status?: string;
-          external_reference?: string;
-        };
-        if (payData.status !== "approved") {
-          safeLog.info("[mp-webhook] payment not approved yet", { externalId, status: payData.status });
-          return NextResponse.json({ ok: true, pending: true });
-        }
-        const ref = String(payData.external_reference ?? "");
-        if (ref.startsWith("market:")) {
-          refMarket = ref;
-        } else {
-          const [uid, pid] = ref.split(":");
-          if (uid && pid) {
-            refUserId = uid;
-            refPlan = pid;
-          }
+      const { mpClient } = await import("@/lib/mercadopago/client");
+      const { Payment } = await import("mercadopago");
+      const client = mpClient();
+      if (!client) throw new Error("mp_not_configured");
+      const paymentApi = new Payment(client);
+      const payData = await paymentApi.get({ id: externalId });
+      if (payData.status !== "approved") {
+        safeLog.info("[mp-webhook] payment not approved yet", { externalId, status: payData.status });
+        return NextResponse.json({ ok: true, pending: true });
+      }
+      const ref = String((payData as { external_reference?: string }).external_reference ?? "");
+      if (ref.startsWith("market:")) {
+        refMarket = ref;
+      } else {
+        const [uid, pid] = ref.split(":");
+        if (uid && pid) {
+          refUserId = uid;
+          refPlan = pid;
         }
       }
     } catch (e) {
@@ -317,17 +314,15 @@ export async function GET() {
  * confere status e destrava o trainer (plano + trial off).
  */
 async function handleSubscriptionAuthorized(supabase: ServiceClient, preapprovalId: string) {
-  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
-  if (!accessToken) return;
   try {
-    const res = await fetch(`https://api.mercadopago.com/preapproval/${preapprovalId}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!res.ok) return;
-    const data = (await res.json()) as {
+    const { mpClient } = await import("@/lib/mercadopago/client");
+    const { PreApproval } = await import("mercadopago");
+    const client = mpClient();
+    if (!client) return;
+    const preapproval = new PreApproval(client);
+    const data = (await preapproval.get({ id: preapprovalId })) as {
       status?: string;
       external_reference?: string;
-      auto_recurring?: { transaction_amount?: number };
     };
     if (data.status !== "authorized") return;
     const [userId, planId] = String(data.external_reference ?? "").split(":");
