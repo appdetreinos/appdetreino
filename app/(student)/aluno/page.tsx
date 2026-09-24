@@ -25,6 +25,7 @@ import { ProgressRing } from "@/components/ui/progress-ring";
 import { Stagger, StaggerItem, AnimatedNumber } from "@/components/ui/stagger";
 import { createClient } from "@/lib/supabase/server";
 import { PushOptIn } from "./push-opt-in";
+import { PwaBanner } from "@/components/pwa-install";
 import { isToday } from "@/lib/utils/date";
 import { calcHabitStreak } from "@/lib/utils/streak";
 
@@ -267,6 +268,9 @@ export default async function StudentHome() {
       </header>
 
       <Stagger className="px-5 md:px-8 mt-6 max-w-3xl mx-auto" delay={0.05}>
+        <StaggerItem>
+          <PwaBanner />
+        </StaggerItem>
         {/* Push opt-in */}
         {vapidKey && (
           <StaggerItem>

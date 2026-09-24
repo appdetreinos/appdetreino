@@ -4,6 +4,7 @@ import { LogoutButton } from "@/components/logout-button";
 import { PixSettingsForm } from "./pix-settings-form";
 import { ProfileForm } from "./profile-form";
 import { LgpdActions } from "./lgpd-actions";
+import { PwaInstallButton } from "@/components/pwa-install";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -64,7 +65,12 @@ export default async function SettingsPage() {
         <Card className="bg-card/80 border-white/10 p-6">
           <h2 className="text-lg font-bold">Conta</h2>
           <p className="mt-1 text-sm text-foreground/65">{user.email}</p>
-          <LogoutButton />
+          <div className="mt-3">
+            <PwaInstallButton />
+          </div>
+          <div className="mt-3">
+            <LogoutButton />
+          </div>
         </Card>
 
         {/* LGPD */}

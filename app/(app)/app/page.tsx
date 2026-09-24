@@ -20,6 +20,7 @@ import { getTrainerScopeIds } from "@/lib/supabase/scope";
 import { LogoutButton } from "@/components/logout-button";
 import { KpiCard } from "./_components/kpi-card";
 import { DashboardEntrance } from "./dashboard-entrance";
+import { PwaBanner } from "@/components/pwa-install";
 import { OnboardingChecklist, type ChecklistState } from "./_components/onboarding-checklist";
 
 export const dynamic = "force-dynamic";
@@ -197,6 +198,8 @@ export default async function TrainerDashboard() {
         </header>
 
         {checklist && <OnboardingChecklist initial={checklist} />}
+
+        <PwaBanner />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard 

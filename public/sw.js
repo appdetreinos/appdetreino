@@ -1,4 +1,4 @@
-/* Service worker — push notifications do Viva FIT APP. */
+/* Service worker — push + PWA do Viva FIT APP. */
 self.addEventListener("push", (event) => {
   let data = { title: "Viva FIT APP", body: "Você tem novidade no app.", url: "/aluno" };
   try {
@@ -9,12 +9,16 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: "/logo.svg",
-      badge: "/logo.svg",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
       data: { url: data.url },
     }),
   );
 });
+
+// Listener fetch (pass-through) — exigido pra instalabilidade do PWA.
+// Sem respondWith: o browser segue o fluxo normal de rede.
+self.addEventListener("fetch", () => {});
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
