@@ -215,7 +215,7 @@ function RoleCard({
     >
       {highlighted && (
         <div
-          className="pointer-events-none absolute -top-24 -right-24 size-48 rounded-full bg-primary/20 blur-3xl"
+          className="pointer-events-none absolute -top-24 -right-24 size-48 rounded-full border border-white/5 bg-white/[0.02]"
           aria-hidden="true"
         />
       )}

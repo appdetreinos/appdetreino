@@ -143,7 +143,7 @@ function EmptyFocus() {
       <div className="grid size-14 place-items-center rounded-full bg-primary/10 text-primary">
         <UserPlus className="size-7" />
       </div>
-      <h3 className="mt-4 font-bold text-base">Adiciona teu primeiro aluno aqui 👇</h3>
+      <h3 className="mt-4 font-bold text-base">Adiciona teu primeiro aluno aqui</h3>
       <p className="mt-1.5 text-sm text-foreground/65 max-w-md">
         Cria um aluno, manda o link de convite no WhatsApp e ele entra no painel sozinho.
       </p>

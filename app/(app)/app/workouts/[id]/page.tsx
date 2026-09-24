@@ -169,12 +169,8 @@ export default async function WorkoutDetailPage({
 
         <Stagger className="space-y-6" delay={0.05}>
           <StaggerItem>
-            <Card className="bg-card border-white/5 p-5 relative overflow-hidden">
-              <div
-                className="absolute inset-x-0 top-0 h-20 bg-gradient-to-br from-primary/30 via-primary/10 to-transparent pointer-events-none"
-                aria-hidden
-              />
-              <div className="relative">
+            <Card className="bg-card border-white/5 p-5">
+              <div>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="font-bold text-xl">{workout.title}</h2>

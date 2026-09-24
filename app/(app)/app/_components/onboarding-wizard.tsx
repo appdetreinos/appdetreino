@@ -12,6 +12,10 @@ import {
   ChevronLeft,
   X,
   Check,
+  Dumbbell,
+  Salad,
+  Zap,
+  Target,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { PLANS } from "@/lib/types/billing";
@@ -410,11 +414,11 @@ function Step1({
   value: Actuation | null;
   onChange: (v: Actuation) => void;
 }) {
-  const opcoes: { value: Actuation; label: string; emoji: string }[] = [
-    { value: "personal", label: "Personal Trainer", emoji: "💪" },
-    { value: "nutri", label: "Nutricionista", emoji: "🥗" },
-    { value: "ambos", label: "Personal e Nutricionista", emoji: "⚡" },
-    { value: "coach", label: "Fitness Coach", emoji: "🎯" },
+  const opcoes: { value: Actuation; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { value: "personal", label: "Personal Trainer", icon: Dumbbell },
+    { value: "nutri", label: "Nutricionista", icon: Salad },
+    { value: "ambos", label: "Personal e Nutricionista", icon: Zap },
+    { value: "coach", label: "Fitness Coach", icon: Target },
   ];
   return (
     <StepShell>
@@ -431,7 +435,7 @@ function Step1({
             onClick={() => onChange(o.value)}
           >
             <span className="inline-flex items-center gap-2.5">
-              <span aria-hidden>{o.emoji}</span>
+              <o.icon className="size-4 text-primary" aria-hidden />
               {o.label}
             </span>
           </OptionCard>

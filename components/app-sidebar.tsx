@@ -20,6 +20,7 @@ import {
   Briefcase,
   Store,
   CreditCard,
+  Inbox,
 } from "lucide-react";
 import {
   Sidebar,
@@ -44,22 +45,48 @@ interface MenuItem {
   badge?: string;
 }
 
-const trainerMenu: MenuItem[] = [
-  { title: "Visão geral", url: "/app", icon: LayoutDashboard },
-  { title: "Agenda", url: "/app/agenda", icon: Calendar },
-  { title: "Alunos", url: "/app/students", icon: Users },
-  { title: "Treinos", url: "/app/workouts", icon: Dumbbell },
-  { title: "Histórico", url: "/app/workouts/historico", icon: History },
-  { title: "Dietas", url: "/app/diets", icon: Salad },
-  { title: "WOD", url: "/app/wod", icon: Flame },
-  { title: "Hábitos", url: "/app/habitos", icon: CheckSquare },
-  { title: "Avaliações", url: "/app/evaluations", icon: ClipboardList },
-  { title: "Anamnese", url: "/app/anamnese", icon: FileText },
-  { title: "Financeiro", url: "/app/finance", icon: Wallet },
-  { title: "WhatsApp", url: "/app/whatsapp", icon: MessageCircle, badge: "novo" },
-  { title: "Comunidade", url: "/app/community", icon: Trophy },
-  { title: "Equipe", url: "/app/equipe", icon: Briefcase, badge: "top" },
-  { title: "Vitrine", url: "/app/marketplace", icon: Store },
+const trainerGroups: Array<{ label: string; items: MenuItem[] }> = [
+  {
+    label: "Principal",
+    items: [
+      { title: "Visão geral", url: "/app", icon: LayoutDashboard },
+      { title: "Alunos", url: "/app/students", icon: Users },
+    ],
+  },
+  {
+    label: "Treino e dieta",
+    items: [
+      { title: "Treinos", url: "/app/workouts", icon: Dumbbell },
+      { title: "Histórico", url: "/app/workouts/historico", icon: History },
+      { title: "Dietas", url: "/app/diets", icon: Salad },
+      { title: "WOD", url: "/app/wod", icon: Flame },
+      { title: "Hábitos", url: "/app/habitos", icon: CheckSquare },
+    ],
+  },
+  {
+    label: "Gestão",
+    items: [
+      { title: "Agenda", url: "/app/agenda", icon: Calendar },
+      { title: "Avaliações", url: "/app/evaluations", icon: ClipboardList },
+      { title: "Anamnese", url: "/app/anamnese", icon: FileText },
+      { title: "Financeiro", url: "/app/finance", icon: Wallet },
+    ],
+  },
+  {
+    label: "Engajamento",
+    items: [
+      { title: "WhatsApp", url: "/app/whatsapp", icon: MessageCircle, badge: "novo" },
+      { title: "Comunidade", url: "/app/community", icon: Trophy },
+      { title: "Mensagens", url: "/app/mensagens", icon: Inbox },
+    ],
+  },
+  {
+    label: "Sistema",
+    items: [
+      { title: "Equipe", url: "/app/equipe", icon: Briefcase, badge: "top" },
+      { title: "Vitrine", url: "/app/marketplace", icon: Store },
+    ],
+  },
 ];
 
 const adminMenu: MenuItem[] = [
@@ -73,7 +100,62 @@ interface Props {
 
 export function AppSidebar({ role }: Props) {
   const pathname = usePathname();
-  const items = role === "trainer" ? trainerMenu : adminMenu;
+
+  const renderItems = (items: MenuItem[]) => (
+    <SidebarMenu>
+      {items.map((item) => {
+        const isActive = pathname === item.url || pathname.startsWith(item.url + "/");
+        return (
+          <SidebarMenuItem key={item.url}>
+            <SidebarMenuButton
+              render={<Link href={item.url} />}
+              isActive={isActive}
+            >
+              <item.icon className="size-4" />
+              <span>{item.title}</span>
+              {item.badge && (
+                <Badge className="ml-auto bg-primary/20 text-primary border-primary/30 text-[10px]">
+                  {item.badge}
+                </Badge>
+              )}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        );
+      })}
+    </SidebarMenu>
+  );
+
+  if (role === "admin") {
+    return (
+      <Sidebar>
+        <SidebarHeader className="border-b border-white/5">
+          <Link href="/app" className="px-3 py-2 inline-flex items-center gap-2">
+            <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground font-extrabold text-sm">
+              pf
+            </span>
+            <span className="font-extrabold">
+              Viva <span className="text-primary">Fit</span>
+            </span>
+          </Link>
+        </SidebarHeader>
+
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Viva FIT APP</SidebarGroupLabel>
+            <SidebarGroupContent>{renderItems(adminMenu)}</SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+
+        <SidebarFooter className="border-t border-white/5">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <LogoutButton />
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+    );
+  }
 
   return (
     <Sidebar>
@@ -89,32 +171,12 @@ export function AppSidebar({ role }: Props) {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>{role === "trainer" ? "Consultoria" : "Viva FIT APP"}</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => {
-                const isActive = pathname === item.url || pathname.startsWith(item.url + "/");
-                return (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton
-                      render={<Link href={item.url} />}
-                      isActive={isActive}
-                    >
-                      <item.icon className="size-4" />
-                      <span>{item.title}</span>
-                      {item.badge && (
-                        <Badge className="ml-auto bg-primary/20 text-primary border-primary/30 text-[10px]">
-                          {item.badge}
-                        </Badge>
-                      )}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {trainerGroups.map((g) => (
+          <SidebarGroup key={g.label}>
+            <SidebarGroupLabel>{g.label}</SidebarGroupLabel>
+            <SidebarGroupContent>{renderItems(g.items)}</SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-white/5">

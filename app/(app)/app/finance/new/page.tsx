@@ -10,10 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Loader2, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { PixCobrarButton } from "../pix-cobrar-button";
+import { MarkPaidButton } from "../mark-paid-button";
 
 interface Student {
   id: string;
   full_name: string;
+  phone: string | null;
 }
 
 export default function NewChargePage() {
@@ -24,6 +27,12 @@ export default function NewChargePage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [success, setSuccess] = useState(false);
+  const [created, setCreated] = useState<{
+    id: string;
+    phone: string | null;
+    name: string;
+    amount: number;
+  } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -40,12 +49,16 @@ export default function NewChargePage() {
       const scopeIds = ((scopeData as string[] | null) ?? [user.id]) as string[];
       const { data } = await supabase
         .from("student_profiles")
-        .select("user_id, full_name")
+        .select("user_id, full_name, phone")
         .in("trainer_id", scopeIds)
         .eq("status", "active")
         .order("full_name");
       setStudents(
-        (data ?? []).map((s) => ({ id: s.user_id, full_name: s.full_name ?? "Aluno" })),
+        (data ?? []).map((s) => ({
+          id: s.user_id as string,
+          full_name: (s.full_name ?? "Aluno") as string,
+          phone: (s.phone ?? null) as string | null,
+        })),
       );
       setLoadingStudents(false);
     })();
@@ -78,7 +91,7 @@ export default function NewChargePage() {
       return;
     }
 
-    const { error: insErr } = await supabase.from("payments").insert({
+    const { data: inserted, error: insErr } = await supabase.from("payments").insert({
       trainer_id: user.id,
       student_id: studentId,
       amount,
@@ -87,14 +100,21 @@ export default function NewChargePage() {
       description,
       gateway: "pix_direto",
       billing_type: "PIX",
-    });
+    }).select("id").single();
 
-    if (insErr) {
-      setError(insErr.message);
+    if (insErr || !inserted) {
+      setError(insErr?.message ?? "Não deu pra criar.");
       setSubmitting(false);
       return;
     }
 
+    const picked = students.find((s) => s.id === studentId);
+    setCreated({
+      id: (inserted as { id: string }).id,
+      phone: picked?.phone ?? null,
+      name: picked?.full_name ?? "Aluno",
+      amount,
+    });
     setSuccess(true);
     setSubmitting(false);
     startTransition(() => router.refresh());
@@ -115,14 +135,26 @@ export default function NewChargePage() {
             </div>
             <h2 className="mt-4 text-xl font-bold">Pronto!</h2>
             <p className="mt-2 text-sm text-foreground/65">
-              A cobrança foi criada. Vai em <strong className="text-foreground">Financeiro</strong>{" "}
-              e clica em "Cobrar" pra disparar a mensagem no WhatsApp.
+              Cobrança criada. Resolve tudo aqui mesmo:
             </p>
+            {created && (
+              <div className="mt-4 flex items-center justify-center gap-2">
+                {created.phone && (
+                  <PixCobrarButton
+                    paymentId={created.id}
+                    phone={created.phone}
+                    studentName={created.name}
+                    valor={created.amount}
+                  />
+                )}
+                <MarkPaidButton paymentId={created.id} />
+              </div>
+            )}
             <div className="mt-6 flex flex-col gap-2">
-              <ButtonLink href="/app/finance" className="font-semibold">
+              <ButtonLink href="/app/finance" variant="outline">
                 Ir pro Financeiro
               </ButtonLink>
-              <ButtonLink href="/app/finance/new" variant="outline">
+              <ButtonLink href="/app/finance/new" variant="ghost">
                 Criar outra
               </ButtonLink>
             </div>

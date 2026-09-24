@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Loader2, QrCode, LogOut } from "lucide-react";
+import { Loader2, QrCode, LogOut, CheckCircle2 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/client";
 
 /**
@@ -80,7 +80,9 @@ export function WhatsappConnector({
       <div className="grid place-items-center rounded-2xl border-2 border-dashed border-white/10 bg-background/40 p-8">
         {connected ? (
           <div className="text-center">
-            <div className="text-4xl">✅</div>
+            <div className="grid size-14 mx-auto place-items-center rounded-full bg-emerald-500/15 text-emerald-500">
+              <CheckCircle2 className="size-7" />
+            </div>
             <p className="mt-2 text-sm font-semibold text-emerald-500">Chip conectado</p>
             <p className="text-xs text-muted-foreground">Cobranças e recados saem no automático.</p>
           </div>

@@ -155,7 +155,7 @@ function PhoneMockup({ variant }: { variant: string }) {
       {/* Glow atrás */}
       <div
         aria-hidden
-        className="absolute inset-0 -m-8 rounded-[2.5rem] blur-3xl opacity-50"
+        className="absolute inset-0 -m-8 rounded-[2.5rem] blur-3xl opacity-15"
         style={{
           background:
             "radial-gradient(circle, rgba(255,107,53,0.35), transparent 70%)",

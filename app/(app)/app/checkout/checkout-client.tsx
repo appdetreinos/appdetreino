@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, RefreshCw, Copy, Check, QrCode } from "lucide-react";
+import { Loader2, RefreshCw, Copy, Check, QrCode, CheckCircle2 } from "lucide-react";
 import { formatBRL } from "@/lib/types/billing";
 import { safeLog } from "@/lib/log/safe";
 import { csrfFetch } from "@/lib/security/client";
@@ -282,7 +282,9 @@ function PixPay({
   if (phase === "paid") {
     return (
       <div className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-8 text-center">
-        <div className="text-4xl">✅</div>
+        <div className="grid size-14 mx-auto place-items-center rounded-full bg-emerald-500/15 text-emerald-500">
+          <CheckCircle2 className="size-7" />
+        </div>
         <p className="mt-2 font-bold text-emerald-500">Pagamento confirmado!</p>
         <p className="text-xs text-muted-foreground mt-1">Levando você de volta…</p>
       </div>

@@ -265,7 +265,7 @@ function EmptyStudents() {
       <div className="grid size-14 place-items-center rounded-full bg-primary/10 text-primary mx-auto">
         <UserPlus className="size-7" />
       </div>
-      <h2 className="mt-4 text-xl font-bold">Adiciona teu primeiro aluno aqui 👇</h2>
+      <h2 className="mt-4 text-xl font-bold">Adiciona teu primeiro aluno aqui</h2>
       <p className="mt-2 text-sm text-foreground/65 max-w-md mx-auto">
         Cria um aluno, manda o link de convite no WhatsApp e ele entra no painel sozinho.
       </p>

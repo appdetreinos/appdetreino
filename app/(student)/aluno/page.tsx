@@ -251,7 +251,7 @@ export default async function StudentHome() {
           </h1>
           <p className="mt-1 text-muted-foreground">
             {bestStreak > 0
-              ? `🔥 ${bestStreak} ${bestStreak === 1 ? "dia" : "dias"} seguidos de hábito — bora manter!`
+              ? `${bestStreak} ${bestStreak === 1 ? "dia seguido" : "dias seguidos"} de hábito. Mantém o ritmo.`
               : "Bora evoluir hoje?"}
           </p>
         </div>
@@ -284,7 +284,7 @@ export default async function StudentHome() {
           <div className="grid sm:grid-cols-[1fr_auto] gap-3">
             <Card className="overflow-hidden border-white/5 bg-card p-0">
               <div
-                className="relative h-40 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-background"
+                className="relative h-40 w-full border-b border-white/5 bg-primary/10"
                 aria-hidden
               >
                 <div className="absolute inset-0 flex items-end p-5">

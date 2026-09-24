@@ -116,8 +116,8 @@ export function Features() {
             transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             className="mt-3 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.05]"
           >
-            Tudo o que o seu aluno precisa,{" "}
-            <span className="text-primary">num único app</span>.
+            O dia do aluno, resolvido{" "}
+            <span className="text-primary">numa tela só</span>.
           </motion.h2>
           <motion.p
             initial={{ opacity: 0 }}

@@ -167,7 +167,7 @@ function TrainerConsole() {
   return (
     <div className="relative mx-auto max-w-md">
       <div
-        className="absolute inset-0 -m-8 rounded-3xl opacity-60 blur-3xl"
+        className="absolute inset-0 -m-8 rounded-3xl opacity-20 blur-3xl"
         style={{ background: "radial-gradient(circle, rgba(255,107,53,0.35), transparent 70%)" }}
         aria-hidden="true"
       />

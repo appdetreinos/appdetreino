@@ -203,12 +203,8 @@ export default async function StudentDetailPage({
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6 pb-12">
-      <Card className="bg-card border-white/5 p-6 overflow-hidden relative">
-        <div
-          className="absolute inset-x-0 top-0 h-24 bg-gradient-to-br from-primary/30 via-primary/10 to-transparent pointer-events-none"
-          aria-hidden
-        />
-        <div className="relative flex items-start gap-4">
+      <Card className="bg-card border-white/5 p-6">
+        <div className="flex items-start gap-4">
           <div className="size-16 rounded-full bg-primary/15 text-primary grid place-items-center text-xl font-bold shrink-0 border-2 border-primary/30">
             {initials}
           </div>

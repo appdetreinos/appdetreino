@@ -69,7 +69,7 @@ export function WorkoutExecutionPreview({
   return (
     <Card className="bg-card border-white/10 overflow-hidden">
       {/* Header */}
-      <div className="border-b border-white/5 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-4">
+      <div className="border-b border-white/5 bg-background/40 p-4">
         <div className="flex items-center gap-2">
           <ListChecks className="size-5 text-primary" />
           <h2 className="font-bold">Sequência do treino</h2>

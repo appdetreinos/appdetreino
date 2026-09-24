@@ -185,7 +185,7 @@ export default async function TrainerDashboard() {
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">
-              Olá, <span className="text-primary">{firstName}</span>! 👋
+              Olá, <span className="text-primary">{firstName}</span>
             </h1>
             <p className="text-muted-foreground">Seu painel de gestão de alunos.</p>
           </div>

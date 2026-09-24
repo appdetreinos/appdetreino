@@ -3,7 +3,14 @@
 import { useState, useTransition } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, Sparkles } from "lucide-react";
+import { Minus, Plus, Check, Dumbbell, Droplets, Moon, Footprints, Salad } from "lucide-react";
+
+const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  droplets: Droplets,
+  moon: Moon,
+  footprints: Footprints,
+  salad: Salad,
+};
 import { safeLog } from "@/lib/log/safe";
 
 type HabitCounterProps = {
@@ -53,14 +60,19 @@ export function HabitCounter({
   return (
     <Card className={`bg-card p-4 ${done ? "border-emerald-500/40" : "border-white/5"}`}>
       <div className="flex items-center gap-3 mb-3">
-        <div className="text-2xl">{icon ?? "✨"}</div>
+        <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+          {(() => {
+            const Ico = (icon && ICONS[icon.toLowerCase()]) || Dumbbell;
+            return <Ico className="size-4" />;
+          })()}
+        </div>
         <div className="flex-1 min-w-0">
           <div className="font-semibold truncate">{name}</div>
           <div className="text-xs text-muted-foreground">
             {current.toFixed(unit === "h" || unit === "L" ? 2 : 0)} / {target} {unit}
           </div>
         </div>
-        {done && <Sparkles className="size-5 text-emerald-500" />}
+        {done && <Check className="size-5 text-emerald-500" />}
       </div>
 
       <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-3">

@@ -9,7 +9,7 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Copy, MessageCircle, Check, Dumbbell } from "lucide-react";
+import { ArrowLeft, Loader2, Copy, MessageCircle, Check, Dumbbell, Salad, Wallet, CheckSquare } from "lucide-react";
 import { csrfFetch } from "@/lib/security/client";
 
 /**
@@ -139,6 +139,20 @@ export default function NewStudentPage() {
                 <Dumbbell className="size-4" />
                 Montar treino agora
               </ButtonLink>
+              <div className="grid grid-cols-3 gap-2">
+                <ButtonLink href="/app/diets/new" variant="outline" size="sm">
+                  <Salad className="size-4" />
+                  Dieta
+                </ButtonLink>
+                <ButtonLink href="/app/finance/new" variant="outline" size="sm">
+                  <Wallet className="size-4" />
+                  Cobrança
+                </ButtonLink>
+                <ButtonLink href="/app/habitos/new" variant="outline" size="sm">
+                  <CheckSquare className="size-4" />
+                  Hábito
+                </ButtonLink>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <ButtonLink href="/app/students" variant="outline">
                   Ver alunos
