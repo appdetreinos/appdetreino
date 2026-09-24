@@ -57,11 +57,12 @@ function snooze() {
 }
 
 /**
- * Banner de instalação do PWA — aparece de vez em quando, nunca
- * toda hora: some por 7 dias ao dispensar, no máximo 5 exibições.
- * No iOS (sem prompt nativo) mostra o passo a passo manual.
+ * Popup de instalação do PWA (bottom-sheet) — aparece de vez em quando,
+ * nunca toda hora: some por 7 dias ao dispensar, no máximo 5 exibições.
+ * No iOS (sem prompt nativo) mostra o passo a passo manual, com GIF
+ * tutorial opcional (prop `gifUrl`).
  */
-export function PwaBanner() {
+export function PwaBanner({ gifUrl }: { gifUrl?: string }) {
   const [visible, setVisible] = useState(false);
   const [deferred, setDeferred] = useState<BIPEvent | null>(null);
   const [ios] = useState(isIOS);
@@ -103,19 +104,50 @@ export function PwaBanner() {
   }
 
   return (
-    <Card className="bg-card/95 border-primary/20 p-4 flex items-center gap-3">
-      <div className="grid size-10 place-items-center rounded-xl bg-primary/15 text-primary shrink-0">
-        <Download className="size-5" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-bold text-sm">Instala o Viva FIT</div>
-        <div className="text-xs text-muted-foreground">
-          {ios || !deferred
-            ? "Acesso direto na tela inicial, sem baixar nada."
-            : "Um toque e vira app de verdade."}
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Instalar aplicativo"
+      className="fixed inset-0 z-50 flex items-end justify-center p-4"
+    >
+      <button
+        type="button"
+        aria-label="Dispensar"
+        onClick={dismiss}
+        className="absolute inset-0 bg-black/60 animate-fade-in"
+      />
+      <Card className="relative w-full max-w-sm bg-card border-primary/20 p-5 animate-fade-in-up">
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label="Fechar"
+          className="absolute top-3 right-3 grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-white/5 hover:text-foreground"
+        >
+          <X className="size-4" />
+        </button>
+        <div className="flex items-center gap-3">
+          <div className="grid size-11 place-items-center rounded-xl bg-primary/15 text-primary shrink-0">
+            <Download className="size-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="font-bold">Instala o Viva FIT</div>
+            <div className="text-xs text-muted-foreground">
+              {ios || !deferred
+                ? "Acesso direto na tela inicial, sem baixar nada."
+                : "Um toque e vira app de verdade."}
+            </div>
+          </div>
         </div>
-        {(ios || !deferred) && (
-          <div className="mt-1.5 text-xs text-muted-foreground flex items-start gap-1.5">
+        {gifUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={gifUrl}
+            alt="Como instalar o aplicativo"
+            loading="lazy"
+            className="mt-3 w-full rounded-xl border border-white/10"
+          />
+        ) : (
+          <div className="mt-3 rounded-xl border border-dashed border-white/10 p-3 text-xs text-muted-foreground flex items-start gap-1.5">
             <Share className="size-3.5 mt-0.5 shrink-0" />
             <span>
               {ios
@@ -124,21 +156,22 @@ export function PwaBanner() {
             </span>
           </div>
         )}
-      </div>
-      {!ios && deferred && (
-        <Button size="sm" onClick={install} className="font-semibold shrink-0">
-          Instalar
-        </Button>
-      )}
-      <button
-        type="button"
-        onClick={dismiss}
-        aria-label="Dispensar"
-        className="text-muted-foreground hover:text-foreground shrink-0 p-1"
-      >
-        <X className="size-4" />
-      </button>
-    </Card>
+        <div className="mt-4 flex gap-2">
+          {!ios && deferred ? (
+            <Button onClick={install} className="flex-1 font-bold min-h-[48px]">
+              Instalar agora
+            </Button>
+          ) : (
+            <Button onClick={dismiss} className="flex-1 font-bold min-h-[48px]">
+              Entendi
+            </Button>
+          )}
+          <Button variant="ghost" onClick={dismiss} className="shrink-0">
+            Depois
+          </Button>
+        </div>
+      </Card>
+    </div>
   );
 }
 
