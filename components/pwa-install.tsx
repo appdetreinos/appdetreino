@@ -66,9 +66,11 @@ export function PwaBanner({ gifUrl }: { gifUrl?: string }) {
   const [visible, setVisible] = useState(false);
   const [deferred, setDeferred] = useState<BIPEvent | null>(null);
   const [ios] = useState(isIOS);
+  const [tab, setTab] = useState<"auto" | "ios">("auto");
 
   useEffect(() => {
     if (!mayShow()) return;
+    setTab(isIOS() ? "ios" : "auto");
     const t = setTimeout(() => {
       setVisible(true);
       markShown();
@@ -132,44 +134,92 @@ export function PwaBanner({ gifUrl }: { gifUrl?: string }) {
           <div className="min-w-0">
             <div className="font-bold">Instala o Viva FIT</div>
             <div className="text-xs text-muted-foreground">
-              {ios || !deferred
-                ? "Acesso direto na tela inicial, sem baixar nada."
-                : "Um toque e vira app de verdade."}
+              Acesso direto na tela inicial, sem baixar nada.
             </div>
           </div>
         </div>
-        {gifUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={gifUrl}
-            alt="Como instalar o aplicativo"
-            loading="lazy"
-            className="mt-3 w-full rounded-xl border border-white/10"
-          />
+
+        {/* Android/PC (automático) x iPhone (manual) */}
+        <div className="mt-3 grid grid-cols-2 gap-1 rounded-full border border-white/10 bg-background/40 p-1 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => setTab("auto")}
+            aria-pressed={tab === "auto"}
+            className={`rounded-full px-3 py-2 transition-colors ${
+              tab === "auto" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+            }`}
+          >
+            Android / PC
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("ios")}
+            aria-pressed={tab === "ios"}
+            className={`rounded-full px-3 py-2 transition-colors ${
+              tab === "ios" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+            }`}
+          >
+            iPhone
+          </button>
+        </div>
+
+        {tab === "auto" ? (
+          <div className="mt-3">
+            <p className="text-xs text-muted-foreground">
+              Um toque e vira app de verdade, com ícone na tela inicial.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <Button onClick={install} disabled={!deferred} className="flex-1 font-bold min-h-[48px]">
+                Instalar agora
+              </Button>
+              <Button variant="ghost" onClick={dismiss} className="shrink-0">
+                Depois
+              </Button>
+            </div>
+            {!deferred && (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                O botão libera sozinho aqui no Chrome/Edge. No menu do navegador (⋮)
+                também tem “Instalar app”.
+              </p>
+            )}
+          </div>
+        ) : gifUrl ? (
+          <div className="mt-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={gifUrl}
+              alt="Como instalar no iPhone"
+              loading="lazy"
+              className="w-full rounded-xl border border-white/10"
+            />
+            <div className="mt-3 flex gap-2">
+              <Button onClick={dismiss} className="flex-1 font-bold min-h-[48px]">
+                Entendi
+              </Button>
+              <Button variant="ghost" onClick={dismiss} className="shrink-0">
+                Depois
+              </Button>
+            </div>
+          </div>
         ) : (
-          <div className="mt-3 rounded-xl border border-dashed border-white/10 p-3 text-xs text-muted-foreground flex items-start gap-1.5">
-            <Share className="size-3.5 mt-0.5 shrink-0" />
-            <span>
-              {ios
-                ? "Toca em Compartilhar e depois em “Adicionar à Tela de Início”."
-                : "No menu do navegador (⋮), toca em “Instalar app”."}
-            </span>
+          <div className="mt-3">
+            <div className="rounded-xl border border-dashed border-white/10 p-3 text-xs text-muted-foreground flex items-start gap-1.5">
+              <Share className="size-3.5 mt-0.5 shrink-0" />
+              <span>
+                No Safari, toca em <strong>Compartilhar</strong> e depois em
+                “<strong>Adicionar à Tela de Início</strong>”.
+              </span>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <Button onClick={dismiss} className="flex-1 font-bold min-h-[48px]">
+                Entendi
+              </Button>
+              <Button variant="ghost" onClick={dismiss} className="shrink-0">
+                Depois
+              </Button>
+            </div>
           </div>
         )}
-        <div className="mt-4 flex gap-2">
-          {!ios && deferred ? (
-            <Button onClick={install} className="flex-1 font-bold min-h-[48px]">
-              Instalar agora
-            </Button>
-          ) : (
-            <Button onClick={dismiss} className="flex-1 font-bold min-h-[48px]">
-              Entendi
-            </Button>
-          )}
-          <Button variant="ghost" onClick={dismiss} className="shrink-0">
-            Depois
-          </Button>
-        </div>
       </Card>
     </div>
   );

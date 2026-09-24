@@ -49,7 +49,7 @@ export function MarketingHeader() {
         <div className="flex items-center gap-2">
           <Link
             href="/entrar"
-            className="hidden sm:inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold text-foreground/85 transition-colors hover:bg-white/5 hover:text-foreground"
+            className="inline-flex items-center rounded-md px-2 sm:px-3 py-2 text-sm font-semibold text-foreground/85 transition-colors hover:bg-white/5 hover:text-foreground whitespace-nowrap"
           >
             Entrar
           </Link>
