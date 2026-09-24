@@ -14,6 +14,7 @@ import {
   Check,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { PLANS } from "@/lib/types/billing";
 import { cn } from "@/lib/utils";
 
 /**
@@ -102,26 +103,37 @@ export function OnboardingWizard() {
         return;
       }
 
-      const patch: Record<string, unknown> = { onboarding_step: step + 1 };
-      if (step === 1 && actuation) patch.actuation = actuation;
-      if (step === 2 && clientVolume) patch.client_volume = clientVolume;
-      if (step === 3 && revenue) patch.monthly_revenue = revenue;
+      // Upsert em 2 tempos: primeiro o mínimo garantido (a linha pode
+      // nem existir — UPDATE puro afetaria 0 linhas e o wizard reabriria),
+      // depois os campos de perfil (best-effort, nunca travam).
+      const base: Record<string, unknown> = { user_id: user.id, onboarding_step: step + 1 };
       if (step === 4) {
-        patch.onboarding_completed_at = new Date().toISOString();
+        base.onboarding_completed_at = new Date().toISOString();
       }
-
-      const { error } = await supabase
+      const { error: baseError } = await supabase
         .from("trainer_profiles")
-        .update(patch)
-        .eq("user_id", user.id);
+        .upsert(base, { onConflict: "user_id" });
 
-      if (error) {
-        console.error("[onboarding] save error", error);
+      if (baseError) {
+        console.error("[onboarding] save error", baseError);
         setErrorMsg(
           "Não consegui salvar teu progresso. Verifica tua conexão e tenta de novo. " +
             "Se persistir, dá um F5 que a gente segue.",
         );
-        // Continua mesmo assim — UX não trava
+      } else if (step <= 3) {
+        const patch: Record<string, unknown> = {};
+        if (step === 1 && actuation) patch.actuation = actuation;
+        if (step === 2 && clientVolume) patch.client_volume = clientVolume;
+        if (step === 3 && revenue) patch.monthly_revenue = revenue;
+        if (Object.keys(patch).length > 0) {
+          await supabase
+            .from("trainer_profiles")
+            .update(patch)
+            .eq("user_id", user.id)
+            .then(({ error }) => {
+              if (error) console.warn("[onboarding] profile save warn", error.message);
+            });
+        }
       }
 
       if (step === 4) {
@@ -146,12 +158,13 @@ export function OnboardingWizard() {
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
-        // Tenta persistir, mas mesmo se falhar, fecha o modal
-        // e grava cookie pra não voltar. (Defesa em profundidade.)
+        // Upsert (não update): conta nova pode não ter linha ainda.
         await supabase
           .from("trainer_profiles")
-          .update({ onboarding_completed_at: new Date().toISOString() })
-          .eq("user_id", user.id)
+          .upsert(
+            { user_id: user.id, onboarding_completed_at: new Date().toISOString() },
+            { onConflict: "user_id" },
+          )
           .then(({ error }) => {
             if (error) console.warn("[onboarding] skip save warn", error.message);
           });
@@ -245,6 +258,8 @@ export function OnboardingWizard() {
               suggested={suggestedPlan}
               volume={clientVolume}
               revenue={revenue}
+              saving={saving}
+              onFinishTrial={saveAndAdvance}
             />
           )}
         </div>
@@ -272,20 +287,24 @@ export function OnboardingWizard() {
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={saveAndAdvance}
-            disabled={
-              saving ||
-              (step === 1 && !actuation) ||
-              (step === 2 && !clientVolume) ||
-              (step === 3 && !revenue)
-            }
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {step === 4 ? "Começar agora" : "Continuar"}
-            <ChevronRight className="size-4" />
-          </button>
+          {step < 4 ? (
+            <button
+              type="button"
+              onClick={saveAndAdvance}
+              disabled={
+                saving ||
+                (step === 1 && !actuation) ||
+                (step === 2 && !clientVolume) ||
+                (step === 3 && !revenue)
+              }
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Continuar
+              <ChevronRight className="size-4" />
+            </button>
+          ) : (
+            <span className="text-xs text-muted-foreground">Trial de 3 dias · sem cartão</span>
+          )}
         </div>
 
         {errorMsg && (
@@ -501,39 +520,30 @@ function Step4({
   suggested,
   volume,
   revenue,
+  saving,
+  onFinishTrial,
 }: {
   annual: boolean;
   onAnnualChange: (v: boolean) => void;
   suggested: "start" | "pro" | "top";
   volume: ClientVolume | null;
   revenue: Revenue | null;
+  saving: boolean;
+  onFinishTrial: () => void;
 }) {
-  const plans = [
-    {
-      id: "start" as const,
-      label: "Standard",
-      capacidade: "Até 25 alunos",
-      precoMes: 59.9,
-      precoAno: 718.8, // 59.9 * 12
-      itens: ["Gestão completa de alunos", "Treinos e dietas", "Cobrança recorrente"],
-    },
-    {
-      id: "pro" as const,
-      label: "Premium",
-      capacidade: "Até 50 alunos",
-      precoMes: 99.9,
-      precoAno: 1198.8,
-      itens: ["Tudo do Standard", "IA gerando treinos", "Comunidade e ranking"],
-    },
-    {
-      id: "top" as const,
-      label: "Pro",
-      capacidade: "Alunos ilimitados",
-      precoMes: 189.9,
-      precoAno: 2278.8,
-      itens: ["Tudo do Premium", "WhatsApp integrado", "Marca personalizada"],
-    },
-  ];
+  // Preços vivos de PLANS (única fonte de verdade) com rótulos da Prime.
+  const plans = PLANS.map((p) => ({
+    id: p.id,
+    label: p.id === "start" ? "Standard" : p.id === "pro" ? "Premium" : "Pro",
+    capacidade:
+      p.studentLimit != null ? `Até ${p.studentLimit} alunos` : "Alunos ilimitados",
+    precoMes: p.priceMonthly,
+    precoAnoTotal: p.priceAnnual,
+    itens: p.features.slice(0, 3),
+  }));
+
+  const [selected, setSelected] = useState<"start" | "pro" | "top">(suggested);
+  const chosen = plans.find((p) => p.id === selected) ?? plans[0];
 
   return (
     <StepShell>
@@ -577,19 +587,24 @@ function Step4({
         </button>
       </div>
 
-      {/* Planos */}
+      {/* Planos (clicáveis — escolhe o teu) */}
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         {plans.map((p) => {
           const isSuggested = p.id === suggested;
-          const preco = annual ? (p.precoAno / 12).toFixed(2).replace(".", ",") : p.precoMes.toFixed(2).replace(".", ",");
+          const isSelected = p.id === selected;
+          const monthly = annual ? p.precoAnoTotal / 12 : p.precoMes;
+          const preco = monthly.toFixed(2).replace(".", ",");
           return (
-            <div
+            <button
               key={p.id}
+              type="button"
+              onClick={() => setSelected(p.id)}
+              aria-pressed={isSelected}
               className={cn(
-                "relative rounded-xl border p-3.5",
-                isSuggested
-                  ? "border-primary bg-primary/[0.04]"
-                  : "border-white/10 bg-background/40"
+                "relative rounded-xl border p-3.5 text-left transition-all active:scale-[0.98]",
+                isSelected
+                  ? "border-primary bg-primary/[0.06] shadow-[0_0_0_1px_rgba(255,107,53,0.4)]"
+                  : "border-white/10 bg-background/40 hover:border-white/25"
               )}
             >
               {isSuggested && (
@@ -608,6 +623,11 @@ function Step4({
                 </span>
                 <span className="text-[11px] text-muted-foreground">/mês</span>
               </div>
+              {annual && (
+                <div className="text-[10px] text-muted-foreground">
+                  {p.precoAnoTotal.toFixed(2).replace(".", ",")} no ano
+                </div>
+              )}
               <ul className="mt-2.5 space-y-1">
                 {p.itens.slice(0, 2).map((it) => (
                   <li
@@ -619,30 +639,32 @@ function Step4({
                   </li>
                 ))}
               </ul>
-            </div>
+            </button>
           );
         })}
       </div>
 
-      {/* CTAs */}
+      {/* CTAs: um caminho grátis, um pago */}
       <div className="mt-6 flex flex-col items-center gap-3">
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
-          <a
-            href="/app"
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-white/15 bg-background/40 px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5 sm:flex-none"
+          <button
+            type="button"
+            onClick={onFinishTrial}
+            disabled={saving}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50 sm:flex-none"
           >
             Continuar no trial
-          </a>
+          </button>
           <a
-            href="/app/settings/upgrade"
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 sm:flex-none"
+            href={`/app/checkout?plan=${chosen.id}`}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-white/15 bg-background/40 px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5 sm:flex-none"
           >
             <CreditCard className="size-4" />
-            Assinar agora
+            Assinar {chosen.label}
           </a>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Sem cartão agora · cancela quando quiser
+          Trial de 3 dias · sem cartão · cancela quando quiser
         </p>
       </div>
 
