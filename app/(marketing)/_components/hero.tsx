@@ -27,9 +27,9 @@ import { ArrowRight, Activity, DollarSign, Users, CheckCircle2, Check } from "lu
 export function Hero() {
   return (
     <section className="relative overflow-hidden">
-      {/* Glow + textura sutil */}
+      {/* Glow sutil */}
       <div
-        className="absolute inset-0 -z-10 opacity-50 pointer-events-none"
+        className="absolute inset-0 -z-10 opacity-25 pointer-events-none"
         aria-hidden="true"
         style={{
           backgroundImage:

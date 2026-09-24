@@ -66,7 +66,7 @@ export default async function BoasVindasPage({
           </span>
 
           <h1 className="mt-5 font-extrabold leading-[1.05] tracking-tight text-3xl sm:text-4xl">
-            Conta criada{firstName ? `, ${firstName}` : ""}! 🎉
+            Conta criada{firstName ? `, ${firstName}` : ""}!
           </h1>
 
           <p className="mt-3 text-base text-muted-foreground">
