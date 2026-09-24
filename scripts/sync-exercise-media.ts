@@ -32,6 +32,7 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
 });
 
 const RETRY_FAILED = process.argv.includes("--retry-failed");
+const FORCE_WGER = process.argv.includes("--force-wger");
 
 interface State {
   done: Record<string, string>; // exerciseId -> our URL
@@ -170,6 +171,7 @@ const EN_TERMS: Record<string, string[]> = {
 interface WgerBase {
   id: number;
   names: string[];
+  image: string | null;
 }
 
 async function wgerGet(path: string): Promise<unknown> {
@@ -182,12 +184,22 @@ async function wgerGet(path: string): Promise<unknown> {
 
 async function loadWgerBases(): Promise<WgerBase[]> {
   const bases: WgerBase[] = [];
-  let url: string | null = "/exercisebaseinfo/?language=2&limit=100";
+  let url: string | null = "/exerciseinfo/?language=2&limit=100";
   while (url) {
-    const d = (await wgerGet(url)) as { results: Array<{ id: number; exercises: Array<{ name: string; language: number }> }>; next: string | null };
+    const d = (await wgerGet(url)) as {
+      results: Array<{
+        id: number;
+        translations: Array<{ name: string }>;
+        images: Array<{ image: string; is_main: boolean }>;
+      }>;
+      next: string | null;
+    };
     for (const b of d.results) {
-      const names = b.exercises.filter((e) => e.language === 2).map((e) => e.name.toLowerCase());
-      if (names.length > 0) bases.push({ id: b.id, names });
+      const names = (b.translations ?? []).map((t) => t.name.toLowerCase());
+      if (names.length === 0) continue;
+      const imgs = b.images ?? [];
+      const mainImg = imgs.find((i) => i.is_main) ?? imgs[0];
+      bases.push({ id: b.id, names, image: mainImg?.image ?? null });
     }
     url = d.next ? d.next.replace("https://wger.de/api/v2", "") : null;
     await sleep(300);
@@ -195,34 +207,47 @@ async function loadWgerBases(): Promise<WgerBase[]> {
   return bases;
 }
 
-function matchBase(terms: string[], bases: WgerBase[]): WgerBase | null {
+function matchBases(terms: string[], bases: WgerBase[]): WgerBase[] {
+  const out: WgerBase[] = [];
+  const seen = new Set<number>();
+  const push = (b: WgerBase | undefined) => {
+    if (b && !seen.has(b.id)) {
+      seen.add(b.id);
+      out.push(b);
+    }
+  };
   for (const term of terms) {
     const t = term.toLowerCase();
-    // 1) nome exato
-    let hit = bases.find((b) => b.names.includes(t));
-    if (hit) return hit;
+    // 1) nome exato (todas as variantes exatas)
+    for (const b of bases) if (b.names.includes(t)) push(b);
     // 2) contém o termo inteiro
-    hit = bases.find((b) => b.names.some((n) => n.includes(t)));
-    if (hit) return hit;
+    for (const b of bases) if (b.names.some((n) => n.includes(t))) push(b);
   }
   // 3) palavra relevante (4+ letras)
   for (const term of terms) {
     const words = term.toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 4);
     for (const w of words) {
-      const hit = bases.find((b) => b.names.some((n) => n.split(/[^a-z]+/).includes(w)));
-      if (hit) return hit;
+      for (const b of bases) {
+        if (b.names.some((n) => n.split(/[^a-z]+/).includes(w))) push(b);
+      }
     }
   }
-  return null;
+  return out;
 }
 
-async function wgerMainImage(baseId: number): Promise<string | null> {
+function matchBase(terms: string[], bases: WgerBase[]): WgerBase | null {
+  return matchBases(terms, bases)[0] ?? null;
+}
+
+async function wgerMainImage(exerciseId: number): Promise<string | null> {
+  // /exerciseimage filtra por EXERCISE id (não base) — verificado na API.
+  // Prefere thumbnail medium (400px, ~50KB, padrão visual único).
   try {
-    const d = (await wgerGet(`/exerciseimage/?exercise_base=${baseId}&limit=20`)) as {
-      results: Array<{ image: string; is_main: boolean }>;
+    const d = (await wgerGet(`/exerciseimage/?exercise=${exerciseId}&limit=20`)) as {
+      results: Array<{ image: string; is_main: boolean; thumbnails?: { medium?: string } }>;
     };
     const main = d.results.find((r) => r.is_main) ?? d.results[0];
-    return main?.image ?? null;
+    return main?.thumbnails?.medium ?? main?.image ?? null;
   } catch {
     return null;
   }
@@ -251,6 +276,34 @@ async function main() {
   let stillMissing: string[] = [];
 
   for (const ex of exercises as Array<{ id: string; name: string; animation_url: string | null; image_url: string | null }>) {
+    // --force-wger: refaz jpgs do nosso bucket em thumbnail medium (gigantes)
+    const isOurJpg = (ex.image_url?.includes("/exercise-media/") ?? false) && !ex.animation_url?.includes("/exercise-media/");
+    if (FORCE_WGER && isOurJpg) {
+      console.log(`\n— ${ex.name} (refresh thumbnail)`);
+      const terms = EN_TERMS[ex.name] ?? [ex.name];
+      const base = matchBase(terms, bases);
+      if (base) {
+        const img = await wgerMainImage(base.id);
+        await sleep(400);
+        if (img) {
+          const buf = await download(img);
+          if (buf) {
+            const url = await uploadToBucket(`exercises/${slug(ex.name)}.jpg`, buf, "image/jpeg");
+            if (url) {
+              await supabase.from("exercises").update({ image_url: url }).eq("id", ex.id);
+              console.log(`  ✓ thumbnail (${(buf.length / 1024).toFixed(0)}KB)`);
+              wgerFilled++;
+              delete state.failed[ex.id];
+              saveState(state);
+              await sleep(800);
+              continue;
+            }
+          }
+        }
+      }
+      console.log("  ✗ refresh falhou");
+      continue;
+    }
     // Já está no nosso bucket? pula (a menos que --retry-failed e falhou antes)
     if (ex.animation_url?.includes("/exercise-media/") || ex.image_url?.includes("/exercise-media/")) {
       if (!RETRY_FAILED || !state.failed[ex.id]) continue;
@@ -287,19 +340,27 @@ async function main() {
       await sleep(800);
     }
 
-    // 2) wger: imagem padronizada
+    // 2) wger: imagem padronizada (tenta candidatas em ordem até achar)
     const terms = EN_TERMS[ex.name] ?? [ex.name];
-    const base = matchBase(terms, bases);
-    if (!base) {
+    const candidates = matchBases(terms, bases);
+    if (candidates.length === 0) {
       console.log("  ✗ sem base wger");
       state.failed[ex.id] = "no wger base";
       stillMissing.push(ex.name);
       continue;
     }
-    const img = await wgerMainImage(base.id);
-    await sleep(400);
+    let img: string | null = null;
+    let usedBase = 0;
+    for (const cand of candidates.slice(0, 6)) {
+      img = await wgerMainImage(cand.id);
+      await sleep(250);
+      if (img) {
+        usedBase = cand.id;
+        break;
+      }
+    }
     if (!img) {
-      console.log("  ✗ base sem imagem");
+      console.log(`  ✗ ${candidates.length} bases sem imagem`);
       state.failed[ex.id] = "no wger image";
       stillMissing.push(ex.name);
       continue;
@@ -325,7 +386,7 @@ async function main() {
     await supabase.from("exercises").update(patch).eq("id", ex.id);
     state.done[ex.id] = url;
     saveState(state);
-    console.log(`  ✓ wger (${(buf.length / 1024).toFixed(0)}KB) ← base #${base.id}`);
+    console.log(`  ✓ wger (${(buf.length / 1024).toFixed(0)}KB) ← base #${usedBase}`);
     wgerFilled++;
     await sleep(800);
   }
