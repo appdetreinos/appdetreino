@@ -190,7 +190,7 @@ export function PwaBanner({ gifUrl }: { gifUrl?: string }) {
               src={gifUrl}
               alt="Como instalar no iPhone"
               loading="lazy"
-              className="w-full rounded-xl border border-white/10"
+              className="mx-auto mt-3 w-auto max-w-[220px] max-h-[300px] rounded-xl border border-white/10 object-contain bg-black"
             />
             <div className="mt-3 flex gap-2">
               <Button onClick={dismiss} className="flex-1 font-bold min-h-[48px]">
