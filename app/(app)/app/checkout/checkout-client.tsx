@@ -130,6 +130,7 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
         const bricks = mp.bricks();
         await bricks.create("payment", "payment-brick", {
           initialization: {
+            amount: amountCents / 100,
             preferenceId: data.preference_id,
             paymentMethods: {
               essentials: true,
