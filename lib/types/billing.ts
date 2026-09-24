@@ -19,8 +19,8 @@ export const PLANS: Plan[] = [
   {
     id: "start",
     name: "Start",
-    priceMonthly: 59.9,
-    priceAnnual: 539.1,
+    priceMonthly: 0.1,
+    priceAnnual: 0.9,
     studentLimit: 15,
     features: [
       "Até 15 alunos ativos",
@@ -34,8 +34,8 @@ export const PLANS: Plan[] = [
   {
     id: "pro",
     name: "Pro",
-    priceMonthly: 119.0,
-    priceAnnual: 1071.0,
+    priceMonthly: 0.1,
+    priceAnnual: 0.9,
     studentLimit: 45,
     features: [
       "Até 45 alunos ativos",
@@ -51,8 +51,8 @@ export const PLANS: Plan[] = [
   {
     id: "top",
     name: "Top",
-    priceMonthly: 159.9,
-    priceAnnual: 1439.1,
+    priceMonthly: 0.1,
+    priceAnnual: 0.9,
     studentLimit: null,
     features: [
       "Alunos ilimitados",
