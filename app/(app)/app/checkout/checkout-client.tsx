@@ -158,8 +158,19 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
         </div>
       )}
 
-      {/* Container do Brick (sempre montado; visível quando pronto) */}
-      <div id="payment-brick" className={phase === "brick" ? "mt-2" : "hidden"} />
+      {/* Container do Brick: SEMPRE visível (escondido quebra a montagem).
+          O loader sai quando onReady dispara. */}
+      {(phase === "loading" || phase === "brick") && (
+        <div className="mt-2">
+          {phase === "loading" && (
+            <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Carregando pagamento seguro…
+            </div>
+          )}
+          <div id="payment-brick" />
+        </div>
+      )}
 
       {phase === "fallback" && initPoint && (
         <div className="rounded-lg border border-white/10 bg-background/40 p-5 text-center">
