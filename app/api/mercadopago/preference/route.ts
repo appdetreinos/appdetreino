@@ -171,6 +171,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: "no_init_point" }, { status: 502 });
     }
 
+    // Valida a preferência (credencial teste vs produção, app sem Bricks, etc).
+    // Se a GET falhar, o Brick também falharia — avisa já com motivo claro.
+    try {
+      const verifyRes = await fetch(`https://api.mercadopago.com/checkout/preferences/${mpData.id}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!verifyRes.ok) {
+        const vBody = await verifyRes.text();
+        safeLog.error("[mp-preference] verify failed", { status: verifyRes.status, body: vBody });
+        return NextResponse.json(
+          { ok: false, error: "preference_invalid", detail: `verify_${verifyRes.status}` },
+          { status: 502 },
+        );
+      }
+    } catch (e) {
+      safeLog.error("[mp-preference] verify threw", e instanceof Error ? e.message : "unknown");
+    }
+
     // Audit + idempotência. errors únicos treinam a tabela. Ignora dup.
     const { error: linkErr } = await supabase.from("payment_links").insert({
       trainer_id: user.id,

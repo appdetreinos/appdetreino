@@ -26,6 +26,10 @@ function friendlyApiError(code: string | undefined): string {
       return "Plano inválido. Escolhe de novo.";
     case "mp_api_failed":
       return "Mercado Pago fora do ar. Tenta em alguns minutos.";
+    case "preference_invalid":
+      return "Preferência recusada pelo MP (chave teste x produção?). Confere as credenciais.";
+    case "no_init_point":
+      return "MP não devolveu o checkout. Tenta de novo.";
     case "unauthenticated":
       return "Sessão expirada. Entra de novo.";
     default:
@@ -60,6 +64,10 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
       setError("Pagamentos ainda não configurados. Fala com o suporte.");
       setPhase("error");
       return;
+    }
+    // Chave de TESTE não monta Brick em produção — avisa na hora
+    if (/^TEST-/i.test(publicKey)) {
+      setBrickDetail("Public Key de TESTE detectada: publique a chave de produção (APP_USR-...) na Vercel e faça redeploy.");
     }
 
     (async () => {
