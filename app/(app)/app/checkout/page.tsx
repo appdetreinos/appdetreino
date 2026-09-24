@@ -6,13 +6,14 @@ import { PLANS, formatBRL } from "@/lib/types/billing";
 import { CheckoutClient } from "./checkout-client";
 
 interface PageProps {
-  searchParams: Promise<{ plan?: string }>;
+  searchParams: Promise<{ plan?: string; test?: string }>;
 }
 
 export default async function CheckoutPage({ searchParams }: PageProps) {
-  const { plan: planId } = await searchParams;
+  const { plan: planId, test: testParam } = await searchParams;
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[1];
-  const amountCents = Math.round(plan.priceMonthly * 100);
+  const testMode = testParam === "1" && process.env.ALLOW_TEST_CHECKOUT === "1";
+  const amountCents = testMode ? 10 : Math.round(plan.priceMonthly * 100);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -33,6 +34,11 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
           <Badge className="bg-primary/15 text-primary border-primary/30">
             {plan.name}
           </Badge>
+          {testMode && (
+            <Badge className="ml-2 bg-yellow-500/15 text-yellow-500 border-yellow-500/30">
+              MODO TESTE · R$ 0,10
+            </Badge>
+          )}
           <h1 className="mt-3 text-3xl md:text-4xl font-extrabold tracking-tight">
             Bora começar.
           </h1>
@@ -103,6 +109,7 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
                 planId={plan.id}
                 planName={plan.name}
                 amountCents={amountCents}
+                testMode={testMode}
               />
             </Card>
           </div>

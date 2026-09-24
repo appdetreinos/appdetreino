@@ -103,13 +103,16 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 5.1) DESTRAVAR O TRAINER: Marca como pago no perfil para remover lockout do trial
+  // 5.1) DESTRAVAR O TRAINER: tier derivado da descrição ("Plano Pro" -> pro).
+  // TESTE também destrava: é pagamento real aprovado e conta pra medição do MP.
   if (payment && "trainer_id" in payment && payment.trainer_id) {
+    const descUpper = String(desc).toUpperCase();
+    const tier = descUpper.includes("TOP") ? "top" : descUpper.includes("PRO") ? "pro" : "start";
     await supabase
       .from("trainer_profiles")
-      .update({ 
-        plan_tier: "start", 
-        trial_ends_at: null 
+      .update({
+        plan_tier: tier,
+        trial_ends_at: null
       })
       .eq("user_id", payment.trainer_id);
   }

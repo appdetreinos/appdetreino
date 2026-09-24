@@ -8,8 +8,9 @@ import { ensureCsrf } from "@/lib/security/csrf-helpers";
 const bodySchema = z
   .object({
     plan_id: z.string().min(1).max(50),
-    amount_cents: z.number().int().min(100).max(1_000_000_00),
+    amount_cents: z.number().int().min(1).max(1_000_000_00),
     payment_method: z.enum(["pix", "card", "boleto"]).optional(),
+    test: z.boolean().optional(),
   })
   .strict();
 
@@ -92,7 +93,10 @@ export async function POST(request: NextRequest) {
 
   // Reaproveita valor server-side. Frontend pode ter um PLANS desatualizado.
   // Impede trainer pagar "0,01" enviando amount_cents manipulado.
-  const expected_cents = formatCents(plan.priceMonthly);
+  // Exceção: modo teste (ALLOW_TEST_CHECKOUT=1) trava em R$0,10 fixos.
+  const isTest =
+    parsed.data.test === true && process.env.ALLOW_TEST_CHECKOUT === "1";
+  const expected_cents = isTest ? 10 : formatCents(plan.priceMonthly);
   if (parsed.data.amount_cents !== expected_cents) {
     safeLog.warn("[mp-preference] amount mismatch", {
       planId: plan.id,
@@ -119,7 +123,7 @@ export async function POST(request: NextRequest) {
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const idempotencyKey = `${user.id}-${plan.id}-${currentYYYYMM()}`;
+  const idempotencyKey = `${user.id}-${plan.id}-${currentYYYYMM()}${isTest ? "-test" : ""}`;
 
   try {
     const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
@@ -132,9 +136,9 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         items: [
           {
-            title: `Viva FIT — Plano ${plan.name}`,
+            title: isTest ? `Viva FIT — Plano ${plan.name} (TESTE)` : `Viva FIT — Plano ${plan.name}`,
             quantity: 1,
-            unit_price: plan.priceMonthly,
+            unit_price: expected_cents / 100,
             currency_id: "BRL",
           },
         ],
@@ -192,7 +196,7 @@ export async function POST(request: NextRequest) {
     // Audit + idempotência. errors únicos treinam a tabela. Ignora dup.
     const { error: linkErr } = await supabase.from("payment_links").insert({
       trainer_id: user.id,
-      description: `Plano ${plan.name}`,
+      description: isTest ? `Plano ${plan.name} (TESTE)` : `Plano ${plan.name}`,
       amount_cents: expected_cents,
       external_id: mpData.id,
       url: initPoint,

@@ -11,6 +11,7 @@ type Props = {
   planId: string;
   planName: string;
   amountCents: number;
+  testMode?: boolean;
 };
 
 /** Erros da API traduzidos pra gente normal. */
@@ -47,7 +48,7 @@ declare global {
  * Bricks embutido (inicialização mínima válida: amount + preferenceId).
  * O próprio Brick mostra as abas Pix / Cartão / Boleto.
  */
-export function CheckoutClient({ planId, planName, amountCents }: Props) {
+export function CheckoutClient({ planId, planName, amountCents, testMode }: Props) {
   const [phase, setPhase] = useState<"loading" | "brick" | "fallback" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
   const [brickDetail, setBrickDetail] = useState<string | null>(null);
@@ -75,7 +76,7 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
         const res = await csrfFetch("/api/mercadopago/preference", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ plan_id: planId, amount_cents: amountCents }),
+          body: JSON.stringify({ plan_id: planId, amount_cents: amountCents, test: testMode === true }),
         });
         const data = (await res.json().catch(() => null)) as {
           ok: boolean;
