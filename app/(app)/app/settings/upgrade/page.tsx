@@ -31,17 +31,35 @@ export default async function UpgradePage() {
     // sem travar a página
   }
 
-  const { data: activeSub } = user
-    ? await supabase
-        .from("payment_links")
-        .select("id")
-        .eq("trainer_id", user.id)
-        .like("description", "Plano %assinatura%")
-        .not("paid_at", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-    : { data: null };
+  const trialEnd = trainer?.trial_ends_at ? new Date(trainer.trial_ends_at) : null;
+  const inTrial = trialEnd ? trialEnd > new Date() : false;
+
+  // Último pagamento de plano (pra mostrar "ativo desde") + assinatura no cartão
+  const [{ data: activeSub }, { data: lastPlanPay }] = user
+    ? await Promise.all([
+        supabase
+          .from("payment_links")
+          .select("id, paid_at")
+          .eq("trainer_id", user.id)
+          .like("description", "Plano %assinatura%")
+          .not("paid_at", "is", null)
+          .order("paid_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("payment_links")
+          .select("paid_at, description")
+          .eq("trainer_id", user.id)
+          .like("description", "Plano %")
+          .not("paid_at", "is", null)
+          .order("paid_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ])
+    : [{ data: null }, { data: null }];
+
+  const planName = PLANS.find((p) => p.id === currentTier)?.name ?? currentTier;
+  const since = (lastPlanPay as { paid_at?: string } | null)?.paid_at;
 
   return (
     <div className="min-h-screen">
@@ -59,6 +77,53 @@ export default async function UpgradePage() {
       </header>
 
       <main className="p-6 max-w-5xl mx-auto">
+        {/* Status da assinatura */}
+        <Card
+          className={`max-w-2xl mx-auto mb-8 p-5 flex flex-col sm:flex-row sm:items-center gap-3 ${
+            hasPaid
+              ? "bg-emerald-500/10 border-emerald-500/30"
+              : inTrial
+                ? "bg-primary/10 border-primary/30"
+                : "bg-card/80 border-white/10"
+          }`}
+        >
+          <div className="flex-1">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+              Sua assinatura
+            </div>
+            <div className="mt-1 text-xl font-extrabold">
+              {hasPaid ? (
+                <>Plano {planName} · ativo ✅</>
+              ) : inTrial ? (
+                <>Trial grátis · {planName}</>
+              ) : (
+                <>Plano {planName}</>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {hasPaid && since
+                ? `Ativo desde ${new Date(since).toLocaleDateString("pt-BR")} · ${
+                    activeSub ? "renova sozinho todo mês no cartão" : "renovação manual a cada ciclo"
+                  }`
+                : inTrial
+                  ? "Explore tudo. Sem cartão, sem cobrança."
+                  : "Escolhe um plano abaixo pra ativar."}
+            </div>
+          </div>
+          {activeSub ? (
+            <div className="shrink-0 flex flex-col items-stretch gap-2">
+              <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 justify-center">
+                Renovação automática
+              </Badge>
+              <CancelSubscriptionButton />
+            </div>
+          ) : hasPaid ? (
+            <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 shrink-0">
+              Pagamento confirmado
+            </Badge>
+          ) : null}
+        </Card>
+
         <div className="text-center max-w-2xl mx-auto mb-8">
           <Badge className="bg-primary/15 text-primary border-primary/30">
             🔥 3 dias grátis pra testar
@@ -145,17 +210,6 @@ export default async function UpgradePage() {
           Pagamento processado pelo Mercado Pago. Pix, cartão ou boleto — você
           escolhe na hora.
         </p>
-
-        {activeSub && (
-          <div className="mt-4 text-center">
-            <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 mb-2">
-              Assinatura ativa no cartão
-            </Badge>
-            <div>
-              <CancelSubscriptionButton />
-            </div>
-          </div>
-        )}
       </main>
     </div>
   );

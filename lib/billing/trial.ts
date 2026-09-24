@@ -40,8 +40,11 @@ export async function getTrainerTrialState(
     .like("description", "Plano %")
     .not("paid_at", "is", null);
 
-  const hasPaid = (paidCount ?? 0) > 0;
+  const hasPaidLinks = (paidCount ?? 0) > 0;
   const trialEndsAt = trainer?.trial_ends_at ?? null;
+  // Sem trial_ends_at = webhook já destravou (só ele zera o campo).
+  // Cobre casos onde payment_links não gravou a linha.
+  const hasPaid = hasPaidLinks || (trainer != null && trialEndsAt == null);
   const inTrial = trialEndsAt ? new Date(trialEndsAt).getTime() > Date.now() : false;
 
   // daysLeft: ceil((trialEndsAt - now) / 1 dia). Se trial expirado, 0.
