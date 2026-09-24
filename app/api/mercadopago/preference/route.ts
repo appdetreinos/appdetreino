@@ -125,6 +125,17 @@ export async function POST(request: NextRequest) {
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const idempotencyKey = `${user.id}-${plan.id}-${currentYYYYMM()}${isTest ? "-test" : ""}`;
 
+  // Nome do pagador (Pix do MP pode travar sem identificação mínima)
+  const { data: payerProfile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+  const payerName = String(
+    (payerProfile as { full_name?: string } | null)?.full_name ?? "",
+  ).trim();
+  const [payerFirst, ...payerRest] = payerName.split(/\s+/).filter(Boolean);
+
   try {
     const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
       method: "POST",
@@ -142,7 +153,12 @@ export async function POST(request: NextRequest) {
             currency_id: "BRL",
           },
         ],
-        payer: { email: user.email },
+        payer: {
+          email: user.email,
+          ...(payerFirst
+            ? { first_name: payerFirst, last_name: payerRest.join(" ") || payerFirst }
+            : {}),
+        },
         back_urls: {
           success: `${siteUrl}/app/settings?upgrade=success`,
           failure: `${siteUrl}/app/checkout?plan=${plan.id}`,
