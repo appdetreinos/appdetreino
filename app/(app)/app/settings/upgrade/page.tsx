@@ -88,8 +88,7 @@ export default async function UpgradePage() {
       ])
     : [{ data: null }, { data: null }];
 
-  const planName = PLANS.find((p) => p.id === currentTier)?.name ?? currentTier;
-  const since = (lastPlanPay as { paid_at?: string } | null)?.paid_at;
+  const planName = PLANS.find((p) => p.id === currentTier)?.name ?? currentTier;  const since = (lastPlanPay as { paid_at?: string } | null)?.paid_at;
 
   // Ciclo de 30 dias a partir do último pagamento
   const CYCLE_DAYS = 30;
@@ -385,6 +384,25 @@ export default async function UpgradePage() {
             </div>
 
             <h2 className="mt-10 mb-4 text-lg font-bold">Trocar de plano</h2>
+            {currentTier === "top" ? (
+              <Card className="bg-card/80 border-white/10 p-6 text-center">
+                <div className="text-3xl">🏆</div>
+                <p className="mt-2 font-bold">Você está no plano máximo</p>
+                <p className="text-sm text-muted-foreground">Alunos ilimitados, tudo liberado.</p>
+              </Card>
+            ) : (
+              <Card className="bg-card/80 border-white/10 p-6 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex-1">
+                  <p className="font-bold">Precisa de mais espaço?</p>
+                  <p className="text-sm text-muted-foreground">
+                    Sobe de plano e o novo limite vale na hora.
+                  </p>
+                </div>
+                <ButtonLink href="/app/upgrade" className="font-bold shrink-0 justify-center">
+                  Fazer upgrade
+                </ButtonLink>
+              </Card>
+            )}
           </>
         ) : (
         <div className="text-center max-w-2xl mx-auto mb-8">
@@ -401,6 +419,7 @@ export default async function UpgradePage() {
         </div>
         )}
 
+        {!hasPaid && (
         <div className="grid md:grid-cols-3 gap-4">
           {PLANS.map((p) => {
             const isCurrent = p.id === currentTier;
@@ -472,6 +491,7 @@ export default async function UpgradePage() {
             );
           })}
         </div>
+        )}
 
         <p className="mt-8 text-center text-xs text-muted-foreground">
           Pagamento processado pelo Mercado Pago. Pix, cartão ou boleto — você

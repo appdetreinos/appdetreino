@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
  * Server calcula `locked`; client redireciona, exceto em
  * checkout/upgrade (senão prende o pagamento em loop).
  */
-const ALLOWLIST = ["/app/checkout", "/app/settings/upgrade"];
+const ALLOWLIST = ["/app/checkout", "/app/settings/upgrade", "/app/upgrade"];
 
 export function TrialGate({ locked }: { locked: boolean }) {
   const pathname = usePathname();
