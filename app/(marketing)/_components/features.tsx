@@ -76,19 +76,26 @@ export function Features() {
   });
   const tituloY = useTransform(scrollYProgress, [0, 1], [30, -30]);
 
-  function scroll(direcao: "esq" | "dir") {
+  function scrollToIndex(i: number) {
     const el = scrollerRef.current;
     if (!el) return;
-    const card = el.querySelector("[data-card]") as HTMLElement | null;
-    const step = card ? card.offsetWidth + 16 : 320;
-    el.scrollBy({ left: direcao === "dir" ? step : -step, behavior: "smooth" });
+    const cards = el.querySelectorAll("[data-card]");
+    const card = cards[Math.max(0, Math.min(i, cards.length - 1))] as HTMLElement | null;
+    if (!card) return;
+    const pad = parseFloat(getComputedStyle(el).paddingLeft) || 0;
+    el.scrollTo({ left: card.offsetLeft - pad, behavior: "smooth" });
+  }
+
+  function scroll(direcao: "esq" | "dir") {
+    scrollToIndex(posicao + (direcao === "dir" ? 1 : -1));
   }
 
   function onScroll() {
     const el = scrollerRef.current;
     if (!el) return;
-    const idx = Math.round(el.scrollLeft / (el.scrollWidth / features.length));
-    setPosicao(Math.min(idx, features.length - 1));
+    const max = el.scrollWidth - el.clientWidth;
+    const idx = max > 0 ? Math.round((el.scrollLeft / max) * (features.length - 1)) : 0;
+    setPosicao(Math.max(0, Math.min(idx, features.length - 1)));
   }
 
   return (
@@ -160,21 +167,13 @@ export function Features() {
         <div
           ref={scrollerRef}
           onScroll={onScroll}
-          className="flex overflow-x-auto gap-4 px-5 sm:px-6 md:px-16 lg:px-20 snap-x snap-mandatory scroll-smooth pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex overflow-x-auto gap-4 px-5 sm:px-6 md:px-16 lg:px-20 snap-x snap-proximity scroll-smooth pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {features.map((f, i) => (
-            <motion.div
+          {features.map((f) => (
+            <div
               key={f.title}
               data-card
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{
-                duration: 0.5,
-                delay: i * 0.06,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-              className="snap-center shrink-0 w-[280px] sm:w-[340px] rounded-2xl border border-white/5 bg-background/60 p-6 hover:border-primary/40 transition-colors"
+              className="snap-start shrink-0 w-[280px] sm:w-[340px] rounded-2xl border border-white/5 bg-background/60 p-6 hover:border-primary/40 transition-colors"
             >
               {/* Ícone grande */}
               <div className="grid size-12 place-items-center rounded-xl bg-primary text-primary-foreground">
@@ -190,7 +189,7 @@ export function Features() {
               <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
                 {f.description}
               </p>
-            </motion.div>
+            </div>
           ))}
         </div>
 
@@ -199,13 +198,7 @@ export function Features() {
           {features.map((_, i) => (
             <button
               key={i}
-              onClick={() => {
-                const el = scrollerRef.current;
-                if (!el) return;
-                const card = el.querySelector("[data-card]") as HTMLElement | null;
-                const step = card ? card.offsetWidth + 16 : 320;
-                el.scrollTo({ left: i * step, behavior: "smooth" });
-              }}
+              onClick={() => scrollToIndex(i)}
               className={`h-1.5 rounded-full transition-all ${
                 posicao === i ? "w-8 bg-primary" : "w-1.5 bg-white/15 hover:bg-white/30"
               }`}
