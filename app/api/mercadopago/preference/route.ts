@@ -204,9 +204,16 @@ export async function POST(request: NextRequest) {
 
     // Valida a preferência (credencial teste vs produção, app sem Bricks, etc).
     // Se a GET falhar, o Brick também falharia — avisa já com motivo claro.
+    let collectorHint: string | null = null;
     try {
-      const verify = await preference.get({ preferenceId: String(mpData.id) });
+      const verify = (await preference.get({ preferenceId: String(mpData.id) })) as {
+        id?: unknown;
+        collector_id?: unknown;
+      };
       if (!verify?.id) throw new Error("verify_empty");
+      if (verify.collector_id != null) {
+        collectorHint = `conta ${String(verify.collector_id).slice(0, 4)}…`;
+      }
     } catch (e) {
       safeLog.error("[mp-preference] verify failed", e instanceof Error ? e.message : "unknown");
       return NextResponse.json(
@@ -241,6 +248,7 @@ export async function POST(request: NextRequest) {
       init_point: initPoint,
       preference_id: mpData.id,
       key_hint: keyHint,
+      collector_hint: collectorHint,
     });
   } catch (e) {
     safeLog.error("[mp-preference] unhandled", e instanceof Error ? e.message : "unknown");

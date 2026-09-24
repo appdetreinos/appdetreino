@@ -94,6 +94,7 @@ export function CheckoutClient({ planId, planName, amountCents, testMode }: Prop
           init_point?: string;
           preference_id?: string;
           key_hint?: string;
+          collector_hint?: string;
           error?: string;
         } | null;
         if (cancelled) return;
@@ -103,7 +104,11 @@ export function CheckoutClient({ planId, planName, amountCents, testMode }: Prop
           return;
         }
         setInitPoint(data.init_point ?? null);
-        if (data.key_hint) setCredHint(`Chave pública termina em ${data.key_hint} · Pref ${data.preference_id.slice(0, 8)}…`);
+        if (data.key_hint || data.collector_hint) {
+          setCredHint(
+            `Chave …${data.key_hint ?? "?"} · Pref ${data.preference_id.slice(0, 8)}…${data.collector_hint ? ` · ${data.collector_hint}` : ""}`,
+          );
+        }
 
         const render = async () => {
           try {
