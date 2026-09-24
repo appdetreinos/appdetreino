@@ -2,18 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Lock, Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { formatBRL } from "@/lib/types/billing";
 import { safeLog } from "@/lib/log/safe";
 import { csrfFetch } from "@/lib/security/client";
-
-export type PaymentMethod = "pix" | "card" | "boleto";
-
-const METHODS: Array<{ id: PaymentMethod; label: string }> = [
-  { id: "pix", label: "Pix" },
-  { id: "card", label: "Cartão" },
-  { id: "boleto", label: "Boleto" },
-];
 
 type Props = {
   planId: string;
@@ -48,38 +40,20 @@ declare global {
 }
 
 /**
- * Bricks embutido: Pix / Cartão / Boleto sem sair da página.
- * A preferência filtra o método; o Brick renderiza só ele.
+ * Bricks embutido (inicialização mínima válida: amount + preferenceId).
+ * O próprio Brick mostra as abas Pix / Cartão / Boleto.
  */
 export function CheckoutClient({ planId, planName, amountCents }: Props) {
-  const [method, setMethod] = useState<PaymentMethod>("card");
-  const [phase, setPhase] = useState<"idle" | "loading" | "brick" | "fallback" | "error">("idle");
+  const [phase, setPhase] = useState<"loading" | "brick" | "fallback" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
   const [brickDetail, setBrickDetail] = useState<string | null>(null);
   const [initPoint, setInitPoint] = useState<string | null>(null);
   const [subLoading, setSubLoading] = useState(false);
-  const brickKey = useRef(0);
+  const started = useRef(false);
 
-  // SDK uma vez
-  const [sdkReady, setSdkReady] = useState(false);
-  const [sdkFailed, setSdkFailed] = useState(false);
   useEffect(() => {
-    if (window.MercadoPago) {
-      setSdkReady(true);
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "https://sdk.mercadopago.com/js/v2";
-    script.async = true;
-    script.onload = () => setSdkReady(true);
-    script.onerror = () => setSdkFailed(true);
-    document.head.appendChild(script);
-  }, []);
-
-  async function start() {
-    setError(null);
-    setBrickDetail(null);
-    setInitPoint(null);
+    if (started.current) return;
+    started.current = true;
 
     const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY || "";
     if (!publicKey) {
@@ -87,146 +61,101 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
       setPhase("error");
       return;
     }
-    if (!window.MercadoPago) {
-      setError(
-        sdkFailed
-          ? "SDK bloqueado (adblock/offline). Desativa e recarrega."
-          : "Carregando sistema de pagamento… tenta de novo em instantes.",
-      );
-      setPhase("error");
-      return;
-    }
 
-    setPhase("loading");
-    try {
-      const res = await csrfFetch("/api/mercadopago/preference", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan_id: planId, amount_cents: amountCents, payment_method: method }),
-      });
-      const data = (await res.json().catch(() => null)) as {
-        ok: boolean;
-        init_point?: string;
-        preference_id?: string;
-        error?: string;
-      } | null;
-      if (!res.ok || !data?.ok || !data.preference_id) {
-        setError(friendlyApiError(data?.error));
-        setPhase("error");
-        return;
-      }
-      setInitPoint(data.init_point ?? null);
-
-      const myKey = ++brickKey.current;
-      let mp: any;
+    (async () => {
       try {
-        mp = new window.MercadoPago(publicKey);
-      } catch {
-        setError("Chave de pagamento inválida. Fala com o suporte.");
-        setPhase("error");
-        return;
-      }
-      try {
-        const bricks = mp.bricks();
-        await bricks.create("payment", "payment-brick", {
-          initialization: {
-            amount: amountCents / 100,
-            preferenceId: data.preference_id,
-            paymentMethods: {
-              essentials: true,
-              paymentMethods: [
-                method === "pix" ? "pix" : method === "boleto" ? "ticket" : "credit_card",
-              ],
-            },
-          },
-          customization: { visual: { style: { theme: "default" } } },
-          callbacks: {
-            onReady: () => {
-              if (brickKey.current === myKey) setPhase("brick");
-            },
-            onError: (err: unknown) => {
-              const msg =
-                err instanceof Error ? err.message : JSON.stringify(err)?.slice(0, 200) ?? "unknown";
-              safeLog.error("[checkout] brick error", msg);
-              if (brickKey.current !== myKey) return;
-              setBrickDetail(msg);
-              setPhase(data.init_point ? "fallback" : "error");
-              if (!data.init_point) setError("Não deu pra carregar o pagamento embutido.");
-            },
-            onSubmit: () => {
-              window.location.href = "/app/settings?upgrade=pending";
-            },
-          },
+        const res = await csrfFetch("/api/mercadopago/preference", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan_id: planId, amount_cents: amountCents }),
         });
+        const data = (await res.json().catch(() => null)) as {
+          ok: boolean;
+          init_point?: string;
+          preference_id?: string;
+          error?: string;
+        } | null;
+        if (!res.ok || !data?.ok || !data.preference_id) {
+          setError(friendlyApiError(data?.error));
+          setPhase("error");
+          return;
+        }
+        setInitPoint(data.init_point ?? null);
+
+        const render = async () => {
+          try {
+            if (!window.MercadoPago) throw new Error("sdk_missing");
+            const mp = new window.MercadoPago(publicKey);
+            const bricks = mp.bricks();
+            await bricks.create("payment", "payment-brick", {
+              initialization: {
+                amount: amountCents / 100,
+                preferenceId: data.preference_id,
+              },
+              customization: { visual: { style: { theme: "default" } } },
+              callbacks: {
+                onReady: () => setPhase("brick"),
+                onError: (err: unknown) => {
+                  const msg =
+                    err instanceof Error ? err.message : JSON.stringify(err)?.slice(0, 200) ?? "unknown";
+                  safeLog.error("[checkout] brick error", msg);
+                  setBrickDetail(msg);
+                  setPhase(data.init_point ? "fallback" : "error");
+                  if (!data.init_point) setError("Não deu pra carregar o pagamento embutido.");
+                },
+                onSubmit: () => {
+                  window.location.href = "/app/settings?upgrade=pending";
+                },
+              },
+            });
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : "unknown";
+            safeLog.error("[checkout] brick failed", msg);
+            setBrickDetail(msg);
+            setPhase(data.init_point ? "fallback" : "error");
+            if (!data.init_point) setError("Não deu pra carregar o pagamento embutido.");
+          }
+        };
+
+        if (window.MercadoPago) {
+          render();
+          return;
+        }
+        const script = document.createElement("script");
+        script.src = "https://sdk.mercadopago.com/js/v2";
+        script.async = true;
+        script.onload = () => render();
+        script.onerror = () => {
+          setBrickDetail("SDK bloqueado ou offline (script não carregou).");
+          setPhase(data.init_point ? "fallback" : "error");
+          if (!data.init_point) setError("Não deu pra carregar o pagamento. Desativa o adblock e recarrega.");
+        };
+        document.head.appendChild(script);
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "unknown";
-        safeLog.error("[checkout] brick failed", msg);
-        if (brickKey.current !== myKey) return;
-        setBrickDetail(msg);
-        setPhase(data.init_point ? "fallback" : "error");
-        if (!data.init_point) setError("Não deu pra carregar o pagamento embutido.");
+        safeLog.error("[checkout] failed", e instanceof Error ? e.message : "unknown");
+        setError("Falha de conexão. Tenta de novo.");
+        setPhase("error");
       }
-    } catch (e) {
-      safeLog.error("[checkout] failed", e instanceof Error ? e.message : "unknown");
-      setError("Falha de conexão. Tenta de novo.");
-      setPhase("error");
-    }
-  }
+    })();
+  }, [planId, amountCents]);
 
   return (
     <div className="mt-6">
-      <div role="radiogroup" aria-label="Forma de pagamento" className="grid grid-cols-3 gap-2">
-        {METHODS.map((m) => {
-          const active = m.id === method;
-          return (
-            <button
-              key={m.id}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              onClick={() => {
-                setMethod(m.id);
-                setPhase("idle");
-                setError(null);
-              }}
-              disabled={phase === "loading"}
-              className={
-                "rounded-lg border px-3 py-3 text-sm font-semibold text-center transition-colors " +
-                (active
-                  ? "border-primary bg-primary/15 text-primary ring-1 ring-primary/30"
-                  : "border-white/10 bg-background/40 text-foreground/85 hover:border-white/20 hover:bg-background/60")
-              }
-            >
-              {m.label}
-            </button>
-          );
-        })}
-      </div>
+      {phase === "loading" && (
+        <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          Carregando pagamento seguro…
+        </div>
+      )}
 
-      {error && (
+      {phase === "error" && error && (
         <div className="mt-4 rounded-md border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-500">
           {error}
         </div>
       )}
 
-      {(phase === "idle" || phase === "loading") && (
-        <Button size="lg" className="mt-6 w-full font-bold h-12" onClick={start} disabled={phase === "loading"}>
-          {phase === "loading" ? (
-            <>
-              <Loader2 className="size-4 animate-spin mr-2" />
-              Carregando {METHODS.find((m) => m.id === method)?.label}…
-            </>
-          ) : (
-            <>
-              <Lock className="size-4 mr-2" />
-              Pagar {formatBRL(amountCents / 100)} via {METHODS.find((m) => m.id === method)?.label}
-            </>
-          )}
-        </Button>
-      )}
-
-      {/* Brick: container sempre visível enquanto ativo */}
-      {(phase === "loading" || phase === "brick") && <div id="payment-brick" className="mt-6" />}
+      {/* Brick com Pix / Cartão / Boleto embutidos */}
+      {(phase === "loading" || phase === "brick") && <div id="payment-brick" className="mt-2" />}
 
       {phase === "fallback" && initPoint && (
         <div className="mt-6 rounded-lg border border-white/10 bg-background/40 p-5 text-center">
@@ -240,7 +169,6 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
             </p>
           )}
           <Button size="lg" className="mt-4 w-full font-bold" onClick={() => (window.location.href = initPoint)}>
-            <Lock className="size-4 mr-2" />
             Pagar {formatBRL(amountCents / 100)} · {planName}
           </Button>
         </div>
