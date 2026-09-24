@@ -47,6 +47,7 @@ declare global {
 export function CheckoutClient({ planId, planName, amountCents }: Props) {
   const [phase, setPhase] = useState<"loading" | "brick" | "fallback" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
+  const [brickDetail, setBrickDetail] = useState<string | null>(null);
   const [initPoint, setInitPoint] = useState<string | null>(null);
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [subLoading, setSubLoading] = useState(false);
@@ -111,7 +112,9 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
           callbacks: {
             onReady: () => setPhase("brick"),
             onError: (err: unknown) => {
-              safeLog.error("[checkout] brick error", err instanceof Error ? err.message : "unknown");
+              const msg = err instanceof Error ? err.message : JSON.stringify(err)?.slice(0, 200) ?? "unknown";
+              safeLog.error("[checkout] brick error", msg);
+              setBrickDetail(msg);
               setPhase(initPoint ? "fallback" : "error");
               if (!initPoint) setError("Não deu pra carregar o pagamento embutido.");
             },
@@ -121,7 +124,9 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
           },
         });
       } catch (e) {
-        safeLog.error("[checkout] brick failed", e instanceof Error ? e.message : "unknown");
+        const msg = e instanceof Error ? e.message : "unknown";
+        safeLog.error("[checkout] brick failed", msg);
+        setBrickDetail(msg);
         setPhase(initPoint ? "fallback" : "error");
         if (!initPoint) setError("Não deu pra carregar o pagamento embutido.");
       }
@@ -137,6 +142,7 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
     script.onload = () => render();
     script.onerror = () => {
       // SDK bloqueado (adblock/offline) → fallback hospedado
+      setBrickDetail("SDK bloqueado ou offline (script não carregou).");
       setPhase(initPoint ? "fallback" : "error");
       if (!initPoint) setError("Não deu pra carregar o pagamento. Desativa o adblock e recarrega.");
     };
@@ -178,6 +184,11 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
           <p className="text-xs text-muted-foreground mt-1">
             O embutido não carregou aqui — conclui no checkout seguro.
           </p>
+          {brickDetail && (
+            <p className="mt-2 rounded bg-background/60 p-2 text-[11px] font-mono text-muted-foreground break-all">
+              Detalhe: {brickDetail}
+            </p>
+          )}
           <Button
             size="lg"
             className="mt-4 w-full font-bold"
