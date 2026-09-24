@@ -95,9 +95,11 @@ export function CheckoutClient({ planId, planName, amountCents }: Props) {
             if (!window.MercadoPago) throw new Error("sdk_missing");
             const mp = new window.MercadoPago(publicKey);
             const bricks = mp.bricks();
+            // Amount com 2 casas exatas (float 59.9 vira 59.8999… e o Brick é estrito)
+            const amount = Number((amountCents / 100).toFixed(2));
             await bricks.create("payment", "payment-brick", {
               initialization: {
-                amount: amountCents / 100,
+                amount,
                 preferenceId: data.preference_id,
               },
               customization: { visual: { style: { theme: "default" } } },
