@@ -189,12 +189,18 @@ export function PwaBanner({ gifUrl }: { gifUrl?: string }) {
           </div>
         ) : gifUrl ? (
           <div className="mt-3">
+            <p className="text-center text-[11px] font-bold uppercase tracking-wider text-primary">
+              iPhone (Safari)
+            </p>
+            <p className="mt-1 text-center text-xs text-muted-foreground">
+              Compartilhar → Adicionar à Tela de Início
+            </p>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={gifUrl}
               alt="Como instalar no iPhone"
               loading="lazy"
-              className="mx-auto mt-3 w-auto max-w-[220px] max-h-[300px] rounded-xl border border-white/10 object-contain bg-black"
+              className="mx-auto mt-2 w-auto max-w-[220px] max-h-[300px] rounded-xl border border-white/10 object-contain bg-black"
             />
             <div className="mt-3 flex gap-2">
               <Button onClick={dismiss} className="flex-1 font-bold min-h-[48px]">
