@@ -297,6 +297,9 @@ export function ExercisePicker({
             </section>
           ))
         )}
+        <p className="pt-2 text-center text-[10px] text-foreground/30">
+          Demonstrações: Wikimedia Commons · wger.de
+        </p>
       </div>
     </div>
   );
