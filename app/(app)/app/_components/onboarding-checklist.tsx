@@ -228,7 +228,7 @@ function Task({
           >
             {title}
           </div>
-          <div className="text-xs text-muted-foreground truncate">{description}</div>
+          <div className="text-xs text-muted-foreground leading-snug">{description}</div>
         </div>
 
         {!done && (
