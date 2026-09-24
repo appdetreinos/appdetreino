@@ -61,6 +61,24 @@ export default async function UpgradePage() {
   const planName = PLANS.find((p) => p.id === currentTier)?.name ?? currentTier;
   const since = (lastPlanPay as { paid_at?: string } | null)?.paid_at;
 
+  // Ciclo de 30 dias a partir do último pagamento
+  const CYCLE_DAYS = 30;
+  let cyclePct = 0;
+  let cycleLabel: string | null = null;
+  if (hasPaid && since) {
+    const start = new Date(since).getTime();
+    const end = start + CYCLE_DAYS * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const elapsed = Math.min(Math.max(now - start, 0), end - start);
+    cyclePct = Math.round((elapsed / (end - start)) * 100);
+    const daysLeft = Math.max(0, Math.ceil((end - now) / (24 * 60 * 60 * 1000)));
+    cycleLabel = activeSub
+      ? `Renova sozinho em ${daysLeft} dia${daysLeft === 1 ? "" : "s"}`
+      : daysLeft > 0
+        ? `Válido por mais ${daysLeft} dia${daysLeft === 1 ? "" : "s"} (até ${new Date(end).toLocaleDateString("pt-BR")})`
+        : "Ciclo vencido — renove abaixo";
+  }
+
   return (
     <div className="min-h-screen">
       <header className="border-b border-white/10 sticky top-0 z-30 bg-background/85 backdrop-blur-md">
@@ -105,9 +123,11 @@ export default async function UpgradePage() {
                 ? `Ativo desde ${new Date(since).toLocaleDateString("pt-BR")} · ${
                     activeSub ? "renova sozinho todo mês no cartão" : "renovação manual a cada ciclo"
                   }`
-                : inTrial
-                  ? "Explore tudo. Sem cartão, sem cobrança."
-                  : "Escolhe um plano abaixo pra ativar."}
+                : hasPaid
+                  ? "Assinatura ativa. Troque de plano abaixo se quiser."
+                  : inTrial
+                    ? "Explore tudo. Sem cartão, sem cobrança."
+                    : "Escolhe um plano abaixo pra ativar."}
             </div>
           </div>
           {activeSub ? (
@@ -123,6 +143,21 @@ export default async function UpgradePage() {
             </Badge>
           ) : null}
         </Card>
+
+        {hasPaid && cycleLabel && (
+          <Card className="max-w-2xl mx-auto mb-8 p-5 bg-card/80 border-white/10">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-sm font-semibold">Ciclo atual</span>
+              <span className="text-xs text-muted-foreground">{cycleLabel}</span>
+            </div>
+            <div className="mt-2 h-2 rounded-full bg-white/5 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-primary to-emerald-500 rounded-full transition-all"
+                style={{ width: `${cyclePct}%` }}
+              />
+            </div>
+          </Card>
+        )}
 
         <div className="text-center max-w-2xl mx-auto mb-8">
           <Badge className="bg-primary/15 text-primary border-primary/30">
@@ -156,12 +191,15 @@ export default async function UpgradePage() {
                   <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                     {p.name}
                   </div>
-                  <div className="mt-1 flex items-baseline gap-1">
-                    <span className="num text-3xl font-extrabold">
-                      {formatBRL(p.priceMonthly)}
-                    </span>
-                    <span className="text-sm text-muted-foreground">/mês</span>
-                  </div>
+                  {/* Preços de teste (R$1) ficam ocultos; reais aparecem sozinhos */}
+                  {p.priceMonthly >= 10 && (
+                    <div className="mt-1 flex items-baseline gap-1">
+                      <span className="num text-3xl font-extrabold">
+                        {formatBRL(p.priceMonthly)}
+                      </span>
+                      <span className="text-sm text-muted-foreground">/mês</span>
+                    </div>
+                  )}
                   <div className="mt-1 text-xs text-muted-foreground">
                     {p.studentLimit
                       ? `Até ${p.studentLimit} alunos ativos`
