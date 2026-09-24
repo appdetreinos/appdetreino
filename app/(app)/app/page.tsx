@@ -199,7 +199,7 @@ export default async function TrainerDashboard() {
 
         {checklist && <OnboardingChecklist initial={checklist} />}
 
-        <PwaBanner />
+        <PwaBanner gifUrl="/install-ios.gif" />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard 

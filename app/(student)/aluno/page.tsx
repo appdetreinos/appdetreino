@@ -269,7 +269,7 @@ export default async function StudentHome() {
 
       <Stagger className="px-5 md:px-8 mt-6 max-w-3xl mx-auto" delay={0.05}>
         <StaggerItem>
-          <PwaBanner />
+          <PwaBanner gifUrl="/install-ios.gif" />
         </StaggerItem>
         {/* Push opt-in */}
         {vapidKey && (
