@@ -73,41 +73,108 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, idempotent: true });
   }
 
-  // 5) Atualiza a payment correspondente
-  const { data: payment, error } = await supabase
-    .from("payment_links")
-    .update({
-      paid_at: new Date().toISOString(),
-    })
-    .eq("external_id", externalId)
-    .select("trainer_id, id, description")
-    .maybeSingle();
+  // 5) Localiza a cobrança: o aviso traz o PAYMENT id, mas salvamos o
+  // PREFERENCE id. Busca o pagamento na API do MP e casa pela
+  // external_reference que gravamos (`userId:planId:yyyymm` ou `market:...`).
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  let refUserId: string | null = null;
+  let refPlan: string | null = null;
+  let refMarket: string | null = null;
+  if (accessToken) {
+    try {
+      const payRes = await fetch(`https://api.mercadopago.com/v1/payments/${externalId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (payRes.ok) {
+        const payData = (await payRes.json()) as {
+          status?: string;
+          external_reference?: string;
+        };
+        if (payData.status !== "approved") {
+          safeLog.info("[mp-webhook] payment not approved yet", { externalId, status: payData.status });
+          return NextResponse.json({ ok: true, pending: true });
+        }
+        const ref = String(payData.external_reference ?? "");
+        if (ref.startsWith("market:")) {
+          refMarket = ref;
+        } else {
+          const [uid, pid] = ref.split(":");
+          if (uid && pid) {
+            refUserId = uid;
+            refPlan = pid;
+          }
+        }
+      }
+    } catch (e) {
+      safeLog.error("[mp-webhook] payment fetch failed", e instanceof Error ? e.message : "unknown");
+    }
+  }
 
-  if (error) {
-    safeLog.error("[mp-webhook] update failed", error.message);
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  // 5.1) Marca pago: primeiro tenta pela external_reference, depois pelo
+  // external_id legado (compatibilidade).
+  type PayRow = { trainer_id: string | null; id: string; description: string | null };
+  let payment: PayRow | null = null;
+  if (refUserId) {
+    const { data } = await supabase
+      .from("payment_links")
+      .update({
+        paid_at: new Date().toISOString(),
+        external_id: externalId,
+      })
+      .eq("trainer_id", refUserId)
+      .like("description", "Plano %")
+      .is("paid_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .select("trainer_id, id, description")
+      .maybeSingle();
+    payment = data as PayRow | null;
+  }
+  if (!payment) {
+    const { data, error } = await supabase
+      .from("payment_links")
+      .update({
+        paid_at: new Date().toISOString(),
+      })
+      .eq("external_id", externalId)
+      .select("trainer_id, id, description")
+      .maybeSingle();
+    if (error) {
+      safeLog.error("[mp-webhook] update failed", error.message);
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+    payment = data as PayRow | null;
   }
 
   const desc = payment && "description" in payment ? String(payment.description ?? "") : "";
 
-  // 5.1) MARKETPLACE: clona a planilha comprada pro comprador
-  if (payment && desc.startsWith("Marketplace ") && "trainer_id" in payment && payment.trainer_id) {
-    try {
-      await fulfillMarketplace(
-        supabase,
-        payment.trainer_id as string,
-        desc.replace("Marketplace ", ""),
-      );
-    } catch (e) {
-      safeLog.error("[mp-webhook] marketplace fulfill failed", e instanceof Error ? e.message : "unknown");
+  // 5.1) MARKETPLACE: external_reference `market:buyer:kind:id` tem prioridade;
+  // cai pro legado via descrição da linha.
+  {
+    const buyer = refMarket
+      ? refMarket.split(":")[1]
+      : payment && "trainer_id" in payment
+        ? (payment.trainer_id as string | undefined)
+        : undefined;
+    const ref = refMarket
+      ? refMarket.split(":").slice(2).join(":")
+      : desc.startsWith("Marketplace ")
+        ? desc.replace("Marketplace ", "")
+        : null;
+    if (buyer && ref) {
+      try {
+        await fulfillMarketplace(supabase, buyer, ref);
+      } catch (e) {
+        safeLog.error("[mp-webhook] marketplace fulfill failed", e instanceof Error ? e.message : "unknown");
+      }
     }
   }
 
-  // 5.1) DESTRAVAR O TRAINER: tier derivado da descrição ("Plano Pro" -> pro).
-  // TESTE também destrava: é pagamento real aprovado e conta pra medição do MP.
+  // 5.2) DESTRAVAR O TRAINER: tier vem da external_reference (`uid:plan:mes`);
+  // cai pro legado via descrição. TESTE também destrava (pagamento real).
   if (payment && "trainer_id" in payment && payment.trainer_id) {
-    const descUpper = String(desc).toUpperCase();
-    const tier = descUpper.includes("TOP") ? "top" : descUpper.includes("PRO") ? "pro" : "start";
+    const planToken = (refPlan ?? desc).toUpperCase();
+    const tier = planToken.includes("TOP") ? "top" : planToken.includes("PRO") ? "pro" : "start";
     await supabase
       .from("trainer_profiles")
       .update({
