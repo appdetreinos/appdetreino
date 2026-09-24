@@ -52,6 +52,7 @@ export function CheckoutClient({ planId, planName, amountCents, testMode }: Prop
   const [phase, setPhase] = useState<"loading" | "brick" | "fallback" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
   const [brickDetail, setBrickDetail] = useState<string | null>(null);
+  const [credHint, setCredHint] = useState<string | null>(null);
   const [initPoint, setInitPoint] = useState<string | null>(null);
   const [subLoading, setSubLoading] = useState(false);
   const started = useRef(false);
@@ -82,6 +83,7 @@ export function CheckoutClient({ planId, planName, amountCents, testMode }: Prop
           ok: boolean;
           init_point?: string;
           preference_id?: string;
+          key_hint?: string;
           error?: string;
         } | null;
         if (!res.ok || !data?.ok || !data.preference_id) {
@@ -90,6 +92,7 @@ export function CheckoutClient({ planId, planName, amountCents, testMode }: Prop
           return;
         }
         setInitPoint(data.init_point ?? null);
+        if (data.key_hint) setCredHint(`Chave pública termina em ${data.key_hint} · Pref ${data.preference_id.slice(0, 8)}…`);
 
         const render = async () => {
           try {
@@ -177,6 +180,7 @@ export function CheckoutClient({ planId, planName, amountCents, testMode }: Prop
           {brickDetail && (
             <p className="mt-2 rounded bg-background/60 p-2 text-[11px] font-mono text-muted-foreground break-all">
               Detalhe: {brickDetail}
+              {credHint ? ` · ${credHint}` : ""}
             </p>
           )}
           <Button size="lg" className="mt-4 w-full font-bold" onClick={() => (window.location.href = initPoint)}>

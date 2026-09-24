@@ -207,7 +207,16 @@ export async function POST(request: NextRequest) {
       // Não retorna erro — o init_point já foi criado no MP.
     }
 
-    return NextResponse.json({ ok: true, init_point: initPoint, preference_id: mpData.id });
+    const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY || "";
+    const keyHint = publicKey.length >= 4 ? `…${publicKey.slice(-4)}` : "ausente";
+    safeLog.info("[mp-preference] created", { pref: mpData.id, key_hint: keyHint });
+
+    return NextResponse.json({
+      ok: true,
+      init_point: initPoint,
+      preference_id: mpData.id,
+      key_hint: keyHint,
+    });
   } catch (e) {
     safeLog.error("[mp-preference] unhandled", e instanceof Error ? e.message : "unknown");
     return NextResponse.json({ ok: false, error: "internal_error" }, { status: 500 });
