@@ -396,7 +396,12 @@ async function main() {
   if (stillMissing.length > 0) console.log("Faltando:", stillMissing.join(" | "));
 }
 
-main().catch((e) => {
-  console.error("Fatal:", e);
-  process.exit(1);
-});
+if (process.argv[1]?.endsWith("sync-exercise-media.ts")) {
+  main().catch((e) => {
+    console.error("Fatal:", e);
+    process.exit(1);
+  });
+}
+
+export { EN_TERMS, matchBases, wgerGet, slug, sleep };
+export type { WgerBase };

@@ -59,6 +59,8 @@ export function ExerciseMedia({
     : "h-full w-full rounded-2xl bg-white object-contain";
 
   if (showMedia && full) {
+    const poster =
+      exercise.image_url && exercise.image_url !== resolvedUrl ? exercise.image_url : undefined;
     return (
       <div
         className="block w-full rounded-2xl overflow-hidden border border-white/10"
@@ -67,6 +69,7 @@ export function ExerciseMedia({
         {isVideo ? (
           <video
             src={resolvedUrl as string}
+            poster={poster}
             className={imgClass}
             autoPlay
             loop
@@ -90,6 +93,8 @@ export function ExerciseMedia({
   }
 
   if (showMedia) {
+    const poster =
+      exercise.image_url && exercise.image_url !== resolvedUrl ? exercise.image_url : undefined;
     return (
       <div
         className={cn("shrink-0 rounded-2xl overflow-hidden border border-white/10", sizeDims(size))}
@@ -98,6 +103,7 @@ export function ExerciseMedia({
         {isVideo ? (
           <video
             src={resolvedUrl as string}
+            poster={poster}
             className={imgClass}
             autoPlay
             loop
